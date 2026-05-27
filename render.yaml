@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: kiteai-agent-backend
+    env: node
+    rootDir: backend
+    buildCommand: npm install --production
+    startCommand: node server.js
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: RAPIDAPI_HOST
+        value: twitter-api45.p.rapidapi.com
+      # Set these in Render dashboard → Environment (never commit real values here)
+      - key: RAPIDAPI_KEY
+        sync: false          # prompts you to enter value in dashboard
+      - key: ALLOWED_ORIGINS
+        sync: false          # e.g. https://your-app.vercel.app

@@ -1,0 +1,25 @@
+# ── Dependencies ─────────────────────────────────
+node_modules/
+
+# ── Environment (NEVER commit real keys) ─────────
+.env
+.env.local
+.env.production
+.env.production.local
+.env.development.local
+
+# ── Build output ──────────────────────────────────
+dist/
+build/
+
+# ── OS / editor ───────────────────────────────────
+.DS_Store
+Thumbs.db
+*.log
+*.log.*
+.vscode/
+.idea/
+
+# ── Render / Vercel cache ─────────────────────────
+.vercel/
+.render/

@@ -6,20 +6,8 @@ const cors    = require('cors');
 const app  = express();
 const PORT = process.env.PORT || 3001;
 
-// ── CORS — restrictive in production, open in dev ───────────────────────────
-const rawOrigins = (process.env.ALLOWED_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean);
-app.use(cors({
-  origin: (origin, cb) => {
-    // No origin = curl / Postman / server-to-server — allow
-    if (!origin) return cb(null, true);
-    // No restriction configured = dev mode, allow all
-    if (rawOrigins.length === 0) return cb(null, true);
-    // Check allow-list
-    if (rawOrigins.some(o => origin.startsWith(o))) return cb(null, true);
-    cb(new Error(`CORS: origin "${origin}" not in ALLOWED_ORIGINS`));
-  },
-  credentials: true,
-}));
+// ── CORS — open for demo (API key stays server-side, never in browser) ──────
+app.use(cors({ origin: '*' }));
 app.use(express.json());
 
 const RAPIDAPI_KEY  = process.env.RAPIDAPI_KEY;

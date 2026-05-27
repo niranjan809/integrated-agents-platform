@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 
-// Backend URL — reads from .env (VITE_BACKEND_URL) so it works both locally and on Vercel
-const BACKEND = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
+// Backend URL — set VITE_BACKEND_URL in Vercel env vars → https://your-app.onrender.com
+const BACKEND = (import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001').replace(/\/$/, '');
 
 function fmt(n) {
   if (n === undefined || n === null) return '—';

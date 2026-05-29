@@ -1,0 +1,128 @@
+const axios = require('axios');
+
+// ── Model config ──────────────────────────────────────────────────────────────
+// SCORING_MODEL: haiku is the right fit — fast, cheap, handles structured
+// classification well. Opus/Sonnet are overkill for bio scoring.
+const SCORING_MODEL = 'anthropic/claude-haiku-4-5';
+
+// Fallback chain for the test-connection endpoint and anything non-scoring
+const MODEL_CHAIN = [
+  'anthropic/claude-haiku-4-5',   // primary — fast + cheap for classification
+  'anthropic/claude-sonnet-4-5',  // fallback
+  'openai/gpt-4o-mini',           // fallback
+  'anthropic/claude-opus-4-5',    // last resort
+  'openai/gpt-4o',
+];
+
+// Batch size — how many accounts to score in one AI call
+const BATCH_SIZE = 6;
+
+function getKey() {
+  const k = process.env.OPENROUTER_API_KEY;
+  return k && k !== 'your_openrouter_key_here' ? k : null;
+}
+
+// ── Low-level OpenRouter call ─────────────────────────────────────────────────
+async function callOpenRouter(messages, { maxTokens = 400, temperature = 0.1, model = SCORING_MODEL } = {}) {
+  const key = getKey();
+  if (!key) return { success: false, error: 'OPENROUTER_API_KEY not set in .env' };
+
+  // Try specified model first, then fall back through chain
+  const tryModels = model === SCORING_MODEL
+    ? [SCORING_MODEL, 'anthropic/claude-sonnet-4-5', 'openai/gpt-4o-mini']
+    : MODEL_CHAIN;
+
+  for (const m of tryModels) {
+    try {
+      const resp = await axios.post(
+        'https://openrouter.ai/api/v1/chat/completions',
+        { model: m, messages, max_tokens: maxTokens, temperature },
+        {
+          headers: {
+            'Authorization': `Bearer ${key}`,
+            'HTTP-Referer':  'https://kiteai.com',
+            'X-Title':       'KiteAI X Agent',
+            'Content-Type':  'application/json',
+          },
+          timeout: 25000,
+        }
+      );
+      const content = resp.data.choices?.[0]?.message?.content || '';
+      return { success: true, content, model: m };
+    } catch (err) {
+      const status = err.response?.status;
+      if (status === 401) return { success: false, error: 'Invalid OpenRouter API key', status };
+      if (status === 400) return { success: false, error: `Bad request on ${m}`, status };
+      console.warn(`[OpenRouter] ${m} failed (${status || err.message}), trying next…`);
+    }
+  }
+  return { success: false, error: 'All models exhausted' };
+}
+
+// ── Batch scoring — scores up to BATCH_SIZE accounts in ONE AI call ───────────
+// This is the main scoring function. One call replaces N individual calls.
+//
+// Scoring rubric (passed to model):
+//   D2 Collab Intent: how open to partnerships/DMs/collab?
+//   D3 AI Relevance:  how AI/voice/LLM focused is their content?
+//   type:  Influencer | PR Page | AI Media | Brand Page | Account
+//   track: A (collab pipeline) | B (ads audience only)
+async function aiScoreBatch(accounts) {
+  if (!accounts.length) return [];
+
+  const key = getKey();
+  if (!key) return null; // no AI key — caller falls back to keyword scores
+
+  const lines = accounts.map((a, i) => {
+    const bio = (a.bio || '').slice(0, 160).replace(/\n/g, ' ');
+    return `${i + 1}. @${a.handle} | ${a.name} | ${(a.followers || 0).toLocaleString()} followers | verified:${a.verified ? 'yes' : 'no'} | website:${a.website ? 'yes' : 'no'} | bio: ${bio || '(empty)'}`;
+  }).join('\n');
+
+  const prompt = `KiteAI — voice AI company. Score these X accounts for influencer/PR outreach.
+
+RULES:
+D2 Collab Intent (0-100): 90+=DM open/media kit/email in bio; 65-89=website/biz inquiries; 35-64=personal no signals; 10-34=news/corp brand; 0-9=bot/spam
+D3 AI Relevance (0-100): 90+=voice AI/LLM/Vapi/ElevenLabs builder; 65-89=AI founder/SaaS/creator; 35-64=general tech; 10-34=adjacent; 0-9=none
+type: "Influencer" | "PR Page" | "AI Media" | "Brand Page" | "Account"
+track: "A"=collab pipeline | "B"=ads audience only
+
+ACCOUNTS:
+${lines}
+
+Return ONLY a JSON array with ${accounts.length} objects in the SAME ORDER. No markdown.
+Example: [{"d2":72,"d3":85,"type":"Influencer","track":"A"},...]`;
+
+  const result = await callOpenRouter(
+    [{ role: 'user', content: prompt }],
+    { maxTokens: 60 * accounts.length, temperature: 0.1 }
+  );
+
+  if (!result.success) {
+    console.warn('[OpenRouter] batch score failed:', result.error);
+    return null;
+  }
+
+  try {
+    const clean = result.content.replace(/```json|```/g, '').trim();
+    const arr   = JSON.parse(clean);
+    if (!Array.isArray(arr)) return null;
+
+    // Map back — if AI returned fewer items than expected, pad with nulls
+    return accounts.map((_, i) => {
+      const item = arr[i];
+      if (!item) return null;
+      return {
+        d2:    Math.max(0, Math.min(100, Number(item.d2)  || 0)),
+        d3:    Math.max(0, Math.min(100, Number(item.d3)  || 0)),
+        type:  item.type  || null,
+        track: item.track || null,
+        model: result.model,
+      };
+    });
+  } catch (e) {
+    console.warn('[OpenRouter] batch parse failed:', e.message, '| raw:', result.content.slice(0, 200));
+    return null;
+  }
+}
+
+module.exports = { callOpenRouter, aiScoreBatch, getKey, MODEL_CHAIN, BATCH_SIZE, SCORING_MODEL };

@@ -132,7 +132,10 @@ export default function AccountsPage({ mode }) {
   const [sortBy,     setSortBy]     = useState('score');
 
   const endpoint = mode === 'influencers' ? '/api/accounts/influencers' : '/api/accounts/pr-pages';
-  const title    = mode === 'influencers' ? 'Influencers'              : 'PR Pages';
+  const title    = mode === 'influencers' ? 'Track A — Collab Pipeline' : 'Track B — Ads Audience';
+  const subTitle = mode === 'influencers'
+    ? 'All Track A accounts — Influencers, AI Media, and collab-ready profiles'
+    : 'All Track B accounts — PR Pages, Brand Pages, and ads-only audience';
 
   useEffect(() => {
     setLoading(true);
@@ -193,7 +196,7 @@ export default function AccountsPage({ mode }) {
       <div className="page-header">
         <div>
           <h1>{title}</h1>
-          <p className="page-sub">{filtered.length} of {accounts.length} accounts</p>
+          <p className="page-sub">{subTitle} · {filtered.length} of {accounts.length} shown</p>
         </div>
       </div>
 

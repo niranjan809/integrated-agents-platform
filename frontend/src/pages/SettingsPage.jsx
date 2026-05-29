@@ -102,7 +102,7 @@ export default function SettingsPage() {
     setTesting(true);
     setTestResult(null);
     try {
-      const r = await apiFetch('/api/settings/test-openrouter', { method: 'POST' });
+      const r = await apiFetch('/api/settings/test-openrouter', { method: 'POST', body: '{}' });
       const d = await r.json();
       setTestResult(d);
     } catch (err) {
@@ -161,7 +161,7 @@ export default function SettingsPage() {
                 <div className="api-key-info">
                   <span className="api-key-name">RapidAPI {k.label}</span>
                   <span className="api-key-desc">
-                    {k.requests} requests used · {SAFE_RPM ?? 6} RPM limit
+                    {k.requests} requests used · {k.rpm_limit ?? 6} RPM limit
                     {k.cooldown_sec > 0 && ` · resumes in ${k.cooldown_sec}s`}
                   </span>
                 </div>

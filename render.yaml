@@ -2,17 +2,44 @@ services:
   - type: web
     name: kiteai-agent-backend
     env: node
+    region: singapore
     rootDir: backend
     buildCommand: npm install --production
     startCommand: node server.js
     healthCheckPath: /api/health
+    autoDeploy: true
+
     envVars:
+      # ── Static (safe to commit) ───────────────────────────────────────────────
       - key: NODE_ENV
         value: production
       - key: RAPIDAPI_HOST
         value: twitter-api45.p.rapidapi.com
-      # Set these in Render dashboard → Environment (never commit real values here)
+      - key: FRIEND_KEYWORDS_TABLE
+        value: keywords
+      - key: FRIEND_KEYWORDS_COLUMN
+        value: keyword
+
+      # ── Secret — set in Render dashboard → Environment → Add Env Var ──────────
       - key: RAPIDAPI_KEY
-        sync: false          # prompts you to enter value in dashboard
+        sync: false
+      - key: RAPIDAPI_KEY_BACKUP
+        sync: false
+      - key: TURSO_URL
+        sync: false
+      - key: TURSO_TOKEN
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: FRIEND_TURSO_URL
+        sync: false
+      - key: FRIEND_TURSO_TOKEN
+        sync: false
       - key: ALLOWED_ORIGINS
-        sync: false          # e.g. https://your-app.vercel.app
+        sync: false

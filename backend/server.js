@@ -26,8 +26,11 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
 
 app.use(cors({
   origin: (origin, cb) => {
-    if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
-    cb(new Error('CORS not allowed'));
+    if (!origin) return cb(null, true); // same-origin / curl / Render health checks
+    if (allowedOrigins.includes(origin)) return cb(null, true);
+    // Allow all Vercel preview deployments (*.vercel.app)
+    if (/^https:\/\/[a-z0-9-]+(\.vercel\.app)$/.test(origin)) return cb(null, true);
+    cb(new Error(`CORS not allowed for origin: ${origin}`));
   },
   credentials: false,
   methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],

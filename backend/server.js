@@ -61,31 +61,24 @@ app.use('/api/settings',  require('./routes/settings'));
 // This means we NEVER fire faster than the safe rate — no 429s.
 //
 // With 2 keys at 6 RPM each → 12 RPM combined → ~5s between requests total.
-// Paid shared key uses a lower RPM (PAID_KEY_RPM env var, default 3) to avoid
-// consuming other users' quota.
 // ═══════════════════════════════════════════════════════════════════════════
 const RAPIDAPI_HOST = process.env.RAPIDAPI_HOST || 'twitter-api45.p.rapidapi.com';
 const BASE_URL      = `https://${RAPIDAPI_HOST}`;
 
-const SAFE_RPM    = 6;     // standard keys
-const PAID_RPM    = Math.max(1, Number(process.env.PAID_KEY_RPM) || 3); // conservative for shared paid key
-const JITTER_MS   = 1200;  // ±600ms random spread
+const SAFE_RPM  = 6;     // requests-per-minute per key
+const JITTER_MS = 1200;  // ±600ms random spread
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 function jitter()  { return Math.floor(Math.random() * JITTER_MS) - JITTER_MS / 2; }
 
-// Build key list — each key has its own RPM limit
-const RAW_KEYS = [
-  { key: process.env.RAPIDAPI_KEY,        label: 'Key1', rpm: SAFE_RPM },
-  { key: process.env.RAPIDAPI_KEY_BACKUP, label: 'Key2', rpm: SAFE_RPM },
-  { key: process.env.RAPIDAPI_KEY_PAID,   label: 'KeyPaid', rpm: PAID_RPM },
-].filter(k => k.key);
-
-const KEYS = RAW_KEYS.map(({ key, label, rpm }) => ({
+const KEYS = [
+  process.env.RAPIDAPI_KEY,
+  process.env.RAPIDAPI_KEY_BACKUP,
+].filter(Boolean).map((key, i) => ({
   key,
-  label,
-  rpm,
-  minGapMs:          Math.ceil(60_000 / rpm), // e.g. 6 RPM → 10 000ms, 3 RPM → 20 000ms
+  label:             `Key${i + 1}`,
+  rpm:               SAFE_RPM,
+  minGapMs:          Math.ceil(60_000 / SAFE_RPM),
   lastFiredAt:       0,
   cooldownUntil:     0,
   disabled:          false,
@@ -874,7 +867,6 @@ initDB().then(async () => {
     console.log(`  OpenRouter: ${process.env.OPENROUTER_API_KEY && process.env.OPENROUTER_API_KEY !== 'your_openrouter_key_here' ? 'key set ✓' : 'NOT SET'}`);
     console.log(`  Monthly cron: active (1st of month, 02:00 UTC)`);
     console.log(`\n  RapidAPI keys (no quota burned on startup):`);
-    KEYS.forEach(k => console.log(`  ${k.label}: ${k.rpm} RPM limit (${Math.round(k.minGapMs/1000)}s gap)`));
     validateKeys();
   });
 }).catch(err => {

@@ -1,17 +1,12 @@
 const axios = require('axios');
 
 // ── Model config ──────────────────────────────────────────────────────────────
-// SCORING_MODEL: haiku is the right fit — fast, cheap, handles structured
-// classification well. Opus/Sonnet are overkill for bio scoring.
+// Only Claude Haiku — fast, cheap, accurate for classification.
+// No expensive fallbacks.
 const SCORING_MODEL = 'anthropic/claude-haiku-4-5';
 
-// Fallback chain for the test-connection endpoint and anything non-scoring
 const MODEL_CHAIN = [
-  'anthropic/claude-haiku-4-5',   // primary — fast + cheap for classification
-  'anthropic/claude-sonnet-4-5',  // fallback
-  'openai/gpt-4o-mini',           // fallback
-  'anthropic/claude-opus-4-5',    // last resort
-  'openai/gpt-4o',
+  'anthropic/claude-haiku-4-5',
 ];
 
 // Batch size — how many accounts to score in one AI call
@@ -27,10 +22,8 @@ async function callOpenRouter(messages, { maxTokens = 400, temperature = 0.1, mo
   const key = getKey();
   if (!key) return { success: false, error: 'OPENROUTER_API_KEY not set in .env' };
 
-  // Try specified model first, then fall back through chain
-  const tryModels = model === SCORING_MODEL
-    ? [SCORING_MODEL, 'anthropic/claude-sonnet-4-5', 'openai/gpt-4o-mini']
-    : MODEL_CHAIN;
+  // Only Haiku — no expensive fallbacks
+  const tryModels = [SCORING_MODEL];
 
   for (const m of tryModels) {
     try {

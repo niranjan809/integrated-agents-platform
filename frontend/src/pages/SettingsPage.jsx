@@ -2,11 +2,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 
 const MODEL_LABELS = {
-  'anthropic/claude-haiku-4-5':  'Primary — fast, cheap, perfect for classification',
-  'anthropic/claude-sonnet-4-5': 'Fallback — smarter reasoning',
-  'openai/gpt-4o-mini':          'Fallback — OpenAI lightweight',
-  'anthropic/claude-opus-4-5':   'Last resort — most capable',
-  'openai/gpt-4o':               'Last resort — OpenAI flagship',
+  'anthropic/claude-haiku-4-5': 'Active — only model used, no expensive fallbacks',
 };
 
 const STATUS_LABELS = {

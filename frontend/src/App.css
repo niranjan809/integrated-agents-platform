@@ -333,12 +333,13 @@ body { background: var(--bg); color: var(--text); font-family: 'Inter', 'Segoe U
 .arf-dim-bar      { flex: 1; height: 4px; background: var(--bg3); border-radius: 2px; overflow: hidden; }
 .arf-score        { font-size: 22px; font-weight: 700; text-align: right; }
 .arf-tags         { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
-.arf-main-row     { display: grid; grid-template-columns: 28px 40px 1fr 110px 180px 52px 90px 24px; gap: 12px; align-items: center; padding: 12px 16px; cursor: pointer; }
-.arf-main-row:hover { background: rgba(29,155,240,.04); border-radius: 10px; }
+/* account-row-full is a BLOCK container — NOT a grid. Grid lives only on arf-main-row */
+.account-row-full         { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 8px; overflow: hidden; transition: border-color .15s; display: block; }
+.account-row-full.expanded { border-color: var(--blue); }
+.arf-main-row     { display: grid; grid-template-columns: 28px 40px 1fr 110px 180px 52px 90px 24px; gap: 12px; align-items: center; padding: 12px 16px; cursor: pointer; width: 100%; }
+.arf-main-row:hover { background: rgba(29,155,240,.04); }
 .arf-meta-row     { display: flex; gap: 6px; margin-top: 3px; flex-wrap: wrap; }
 .arf-expand-btn   { font-size: 10px; color: var(--text2); text-align: center; }
-.account-row-full { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 8px; overflow: hidden; transition: border-color .15s; }
-.account-row-full.expanded { border-color: var(--blue); }
 .arf-hint         { font-size: 11px; color: var(--text2); margin-bottom: 8px; }
 
 /* Contact panel */

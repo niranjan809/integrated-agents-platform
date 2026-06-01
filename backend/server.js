@@ -555,10 +555,12 @@ async function runAgent({ queries, directHandles = [], triggeredBy = 'manual', s
       const ai  = aiScores[a.handle]; // present only for new accounts
       const isDup = existingHandles.has(a.handle);
 
-      const finalD2    = ai ? ai.d2    : sc.d2;
-      const finalD3    = ai ? ai.d3    : sc.d3;
-      const finalType  = ai ? (ai.type  || sc.type)  : sc.type;
-      const finalTrack = ai ? (ai.track || sc.track) : sc.track;
+      const finalD2   = ai ? ai.d2  : sc.d2;
+      const finalD3   = ai ? ai.d3  : sc.d3;
+      const finalType = ai ? (ai.type || sc.type) : sc.type;
+      // Track is enforced by type — AI track suggestion is overridden to prevent
+      // inconsistencies where AI says "PR Page" but returns track "A"
+      const finalTrack = (finalType === 'PR Page' || finalType === 'Brand Page') ? 'B' : 'A';
       const finalOverall = Math.round(finalD2 * 0.25 + finalD3 * 0.25 + sc.d4 * 0.20 + sc.d5 * 0.30);
 
       const account = {
@@ -649,7 +651,8 @@ async function runAgent({ queries, directHandles = [], triggeredBy = 'manual', s
         for (const a of directFetched) {
           const sc = a._sc; const ai = aiScoresDirect[a.handle]; const isDup = existingSet.has(a.handle);
           const finalD2 = ai ? ai.d2 : sc.d2; const finalD3 = ai ? ai.d3 : sc.d3;
-          const finalType = ai ? (ai.type || sc.type) : sc.type; const finalTrack = ai ? (ai.track || sc.track) : sc.track;
+          const finalType  = ai ? (ai.type || sc.type) : sc.type;
+          const finalTrack = (finalType === 'PR Page' || finalType === 'Brand Page') ? 'B' : 'A';
           const finalOverall = Math.round(finalD2 * 0.25 + finalD3 * 0.25 + sc.d4 * 0.20 + sc.d5 * 0.30);
           const account = {
             handle: a.handle, name: a.name, bio: a.bio, followers: a.followers, following: a.following,

@@ -65,7 +65,7 @@ function ContactPanel({ account }) {
         <div className="cp-summary">
           <div className="cp-name">
             {account.name}
-            {account.verified && <span className="verified-badge"> ✓</span>}
+            {!!account.verified && <span className="verified-badge"> ✓</span>}
           </div>
           <a href={xProfileUrl} target="_blank" rel="noreferrer" className="cp-handle-link">
             @{handle} ↗
@@ -103,25 +103,25 @@ function ContactPanel({ account }) {
             𝕏 View Profile
           </a>
 
-          {/* DM — only if open */}
-          {account.dm_open && (
+          {/* DM — only if open (!! converts DB integer 0/1 to boolean) */}
+          {!!account.dm_open && (
             <a href={xProfileUrl} target="_blank" rel="noreferrer" className="cp-contact-btn cp-dm">
               💬 Send DM
             </a>
           )}
 
           {/* Email */}
-          {account.contact_email && (
+          {!!account.contact_email && (
             <a href={`mailto:${account.contact_email}`} className="cp-contact-btn cp-email">
               ✉ {account.contact_email}
             </a>
           )}
-          {!account.contact_email && account.has_email && (
+          {!account.contact_email && !!account.has_email && (
             <span className="cp-contact-hint">✉ Email in bio — check profile</span>
           )}
 
           {/* Website */}
-          {account.website && (
+          {!!account.website && (
             <a href={account.website} target="_blank" rel="noreferrer" className="cp-contact-btn cp-web">
               🌐 Website
             </a>
@@ -181,7 +181,7 @@ function AccountRow({ account, rank }) {
         <div className="arf-identity">
           <div className="arf-name">
             {account.name}
-            {account.verified && <span className="verified-badge"> ✓</span>}
+            {!!account.verified && <span className="verified-badge"> ✓</span>}
           </div>
           <div className="arf-handle">@{account.handle}</div>
           <div className="arf-meta-row">
@@ -212,15 +212,15 @@ function AccountRow({ account, rank }) {
           {account.overall}
         </div>
 
-        {/* Contact badges — always visible */}
+        {/* Contact badges — !! converts DB integers (0/1) to boolean to avoid rendering "0" as text */}
         <div className="arf-tags">
-          {account.dm_open    && <span className="badge green" title="DM Open">DM</span>}
-          {account.has_email  && <span className="badge blue"  title="Has Email">✉</span>}
-          {account.website    && (
+          {!!account.dm_open    && <span className="badge green" title="DM Open">DM</span>}
+          {!!account.has_email  && <span className="badge blue"  title="Has Email">✉</span>}
+          {!!account.website    && (
             <a href={account.website} target="_blank" rel="noreferrer"
               className="badge link" onClick={e => e.stopPropagation()}>↗</a>
           )}
-          {account.contact_email && <span className="badge blue" title={account.contact_email}>@</span>}
+          {!!account.contact_email && <span className="badge blue" title={account.contact_email}>@</span>}
         </div>
 
         <div className="arf-expand-btn">{expanded ? '▲' : '▼'}</div>

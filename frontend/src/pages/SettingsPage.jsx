@@ -155,9 +155,9 @@ export default function SettingsPage() {
             return (
               <div key={k.label} className="api-key-row">
                 <div className="api-key-info">
-                  <span className="api-key-name">RapidAPI {k.label}</span>
+                  <span className="api-key-name">RapidAPI {k.label} — twitter241</span>
                   <span className="api-key-desc">
-                    {k.requests} requests used · {k.rpm_limit ?? 6} RPM limit
+                    {k.requests} requests used · {k.rpm_limit ?? 3} RPM · twitter241.p.rapidapi.com
                     {k.cooldown_sec > 0 && ` · resumes in ${k.cooldown_sec}s`}
                   </span>
                 </div>
@@ -310,7 +310,7 @@ export default function SettingsPage() {
         <div className="settings-card-header">
           <div>
             <h2>Weekly Auto-Run</h2>
-            <p>Agent runs automatically every Monday at 02:00 UTC. Accounts updated within the last 6 days are skipped to protect shared API quota.</p>
+            <p>Agent runs automatically every Monday at <strong>02:00 AM IST</strong> (Indian Standard Time). Accounts updated within the last 6 days are skipped to protect shared API quota.</p>
           </div>
           <label className="toggle-switch">
             <input type="checkbox" checked={autoRun} onChange={e => toggleAutoRun(e.target.checked)} />
@@ -321,7 +321,7 @@ export default function SettingsPage() {
         <div className="schedule-info">
           <div className="sched-row"><span>Last run</span><span>{config?.last_run || 'Never'}</span></div>
           <div className="sched-row"><span>Next run</span><span>{config?.next_run || '—'}</span></div>
-          <div className="sched-row"><span>Schedule</span><span>0 2 * * 1 — every Monday 02:00 UTC</span></div>
+          <div className="sched-row"><span>Schedule</span><span>0 2 * * 1 IST — every Monday 02:00 AM IST (Asia/Kolkata)</span></div>
           <div className="sched-row"><span>Request cap</span><span>{config?.max_requests_per_run ?? 5000} calls/run (set MAX_REQUESTS_PER_RUN in .env)</span></div>
           <div className="sched-row"><span>Skip recent</span><span>Accounts updated &lt; 6 days ago are skipped (saves quota on re-runs)</span></div>
           <div className="sched-row"><span>Anti-bot</span><span>±3s jitter · human breaks every 20–35 requests · shuffled query order · varied count 40-50</span></div>

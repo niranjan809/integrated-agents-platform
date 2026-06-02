@@ -17,8 +17,7 @@ router.get('/keys', (req, res) => {
 
 // POST /api/settings/keys/test — test all keys with a minimal API call
 router.post('/keys/test', async (req, res) => {
-  const apiHost = process.env.RAPIDAPI_HOST || 'twitter-api45.p.rapidapi.com';
-  // Only paid key is active — free keys removed
+  const apiHost = process.env.RAPIDAPI_HOST || 'twitter241.p.rapidapi.com';
   const rawKeys = [
     { label: 'KeyPaid', key: process.env.RAPIDAPI_KEY_PAID },
   ].filter(k => k.key);
@@ -26,10 +25,11 @@ router.post('/keys/test', async (req, res) => {
   const results = [];
   for (const k of rawKeys) {
     try {
-      const resp = await axios.get(`https://${apiHost}/search.php`, {
-        params:  { query: 'ai', count: 1 },
+      // twitter241 search endpoint
+      const resp = await axios.get(`https://${apiHost}/search`, {
+        params:  { query: 'ai voice', count: 3, type: 'Top' },
         headers: { 'X-RapidAPI-Key': k.key, 'X-RapidAPI-Host': apiHost, 'Content-Type': 'application/json' },
-        timeout: 12_000,
+        timeout: 15_000,
       });
       results.push({ label: k.label, status: 'ok', http: resp.status });
     } catch (err) {

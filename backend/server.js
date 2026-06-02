@@ -60,58 +60,90 @@ app.use('/api/settings',  require('./routes/settings'));
 // without exceeding that rate, then sleep until then (+ random jitter).
 // This means we NEVER fire faster than the safe rate — no 429s.
 //
-// Paid key only — free keys removed.
-// Anti-bot strategy:
-//   1. Conservative 3 RPM = 20s minimum gap (looks human, not mechanical)
-//   2. Large random jitter ±3s so requests never arrive at predictable intervals
-//   3. Random extra pause every 20-30 requests (simulates human "taking a break")
-//   4. Query order shuffled on every run
-//   5. count param varies 40-50 each search (not always 50)
+// Paid key only (twitter241.p.rapidapi.com)
+// Anti-bot: 3 RPM, ±3s jitter, human breaks every 20-35 requests,
+//           shuffled query order, varied count 40-50 per search
 // ═══════════════════════════════════════════════════════════════════════════
-const RAPIDAPI_HOST = process.env.RAPIDAPI_HOST || 'twitter-api45.p.rapidapi.com';
+const RAPIDAPI_HOST = process.env.RAPIDAPI_HOST || 'twitter241.p.rapidapi.com';
 const BASE_URL      = `https://${RAPIDAPI_HOST}`;
 
 const PAID_RPM  = Math.max(1, Number(process.env.PAID_KEY_RPM) || 3);
-const JITTER_MS = 6000; // ±3 000ms — large randomness prevents pattern detection
+const JITTER_MS = 6000; // ±3 000ms random spread
 
-// Per-run request cap — protects shared quota
+// Per-run request cap — protects shared paid quota
 const MAX_REQUESTS_PER_RUN = Number(process.env.MAX_REQUESTS_PER_RUN) || 5000;
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 function jitter()  { return Math.floor(Math.random() * JITTER_MS) - JITTER_MS / 2; }
 
-// Random extra pause every ~25 requests (simulates human behaviour)
+// Human break — random pause every 20-35 requests (anti-bot behaviour)
 let requestsSinceBreak = 0;
 async function humanBreak(emitStatus) {
   requestsSinceBreak++;
-  const threshold = 20 + Math.floor(Math.random() * 15); // every 20-35 requests
+  const threshold = 20 + Math.floor(Math.random() * 15);
   if (requestsSinceBreak >= threshold) {
     requestsSinceBreak = 0;
-    const breakMs = 30_000 + Math.floor(Math.random() * 30_000); // 30-60s break
+    const breakMs = 30_000 + Math.floor(Math.random() * 30_000);
     if (emitStatus) emitStatus(`Human break — ${Math.round(breakMs/1000)}s pause (anti-bot)`);
     console.log(`[ANTI-BOT] Human break: ${Math.round(breakMs/1000)}s`);
     await sleep(breakMs);
   }
 }
 
-// All configured keys — paid key + own keys as fallback
-// Paid key uses conservative RPM; own keys use standard RPM
-const SAFE_RPM = 6;
+// Paid key only — free keys removed
 const KEYS = [
-  { key: process.env.RAPIDAPI_KEY,        label: 'Key1',    rpm: SAFE_RPM },
-  { key: process.env.RAPIDAPI_KEY_BACKUP, label: 'Key2',    rpm: SAFE_RPM },
-  { key: process.env.RAPIDAPI_KEY_PAID,   label: 'KeyPaid', rpm: PAID_RPM },
+  { key: process.env.RAPIDAPI_KEY_PAID, label: 'KeyPaid', rpm: PAID_RPM },
 ].filter(k => k.key).map(({ key, label, rpm }) => ({
   key,
   label,
   rpm,
-  minGapMs:          Math.ceil(60_000 / rpm), // 3 RPM = 20 000ms gap
+  minGapMs:          Math.ceil(60_000 / rpm),
   lastFiredAt:       0,
   cooldownUntil:     0,
   disabled:          false,
   consecutiveErrors: 0,
   requests:          0,
 }));
+
+// ── twitter241 response field extractors ─────────────────────────────────────
+
+// Extract handles from twitter241 /search response
+function extractHandles241(data) {
+  const instructions = data?.result?.timeline?.instructions || [];
+  const addEntries   = instructions.find(i => i.type === 'TimelineAddEntries');
+  const entries      = addEntries?.entries || [];
+  const handles = [];
+  const seen = new Set();
+  for (const e of entries) {
+    try {
+      const userResult = e.content?.itemContent?.tweet_results?.result
+                          ?.core?.user_results?.result;
+      const h = userResult?.core?.screen_name?.toLowerCase();
+      if (h && !seen.has(h)) { seen.add(h); handles.push(userResult.core.screen_name); }
+    } catch {}
+  }
+  return handles;
+}
+
+// Extract profile fields from twitter241 /user response
+function extractProfile241(data, handle) {
+  const u = data?.result?.data?.user?.result;
+  if (!u) return null;
+  const core   = u.core   || {};
+  const legacy = u.legacy || {};
+  return {
+    name:      core.name      || handle,
+    screen:    core.screen_name || handle,
+    bio:       legacy.description || '',
+    followers: Number(legacy.followers_count) || 0,
+    following: Number(legacy.friends_count)   || 0,
+    tweets:    Number(legacy.statuses_count)  || 0,
+    verified:  u.is_blue_verified || false,
+    avatar:    u.avatar?.image_url || '',
+    website:   legacy.entities?.url?.urls?.[0]?.expanded_url || '',
+    location:  legacy.location || '',
+  };
+}
 
 // Returns the key that will be ready soonest, sleeping until it is
 // Validate keys without burning quota — just format-check then mark as pending.
@@ -460,7 +492,8 @@ async function runAgent({ queries, directHandles = [], triggeredBy = 'manual', s
 
     // Vary count 40-50 per search — not always exactly 50 (anti-bot pattern variation)
     const searchCount = 40 + Math.floor(Math.random() * 11);
-    const searchRes = await callAPI('search.php', { query, count: searchCount }, paceWithBreak, keepAlive);
+    // twitter241: /search endpoint with type=Top, varied count
+    const searchRes = await callAPI('search', { query, count: searchCount, type: 'Top' }, paceWithBreak, keepAlive);
     health.calls++; health.totalMs += searchRes.duration_ms;
     durations.push(searchRes.duration_ms);
 
@@ -475,13 +508,12 @@ async function runAgent({ queries, directHandles = [], triggeredBy = 'manual', s
     }
     health.successes++;
 
-    const tweets  = searchRes.data?.timeline || [];
-    const seenQuery = new Set();
-    const handles = [];
-    for (const t of tweets) {
-      const h = t.screen_name || t.author?.screen_name;
+    // twitter241: extract handles from timeline entries
+    const rawHandles = extractHandles241(searchRes.data);
+    const seenQuery  = new Set();
+    const handles    = [];
+    for (const h of rawHandles) {
       const hl = h?.toLowerCase();
-      // Skip duplicates within this query AND duplicates already fetched in this run
       if (hl && !seenQuery.has(hl) && !seenThisRun.has(hl)) {
         seenQuery.add(hl);
         handles.push(h);
@@ -527,7 +559,8 @@ async function runAgent({ queries, directHandles = [], triggeredBy = 'manual', s
         key_stats: keyStats(),
       });
 
-      const r = await callAPI('screenname.php', { screenname: handle }, paceWithBreak, keepAlive);
+      // twitter241: /user?username=handle
+      const r = await callAPI('user', { username: handle }, paceWithBreak, keepAlive);
       health.calls++; health.totalMs += r.duration_ms;
       durations.push(r.duration_ms);
 
@@ -542,11 +575,20 @@ async function runAgent({ queries, directHandles = [], triggeredBy = 'manual', s
 
       if (r.success) {
         health.successes++;
-        const u         = r.data;
-        const followers = Number(u.sub_count)      || 0;
-        const tweets    = Number(u.statuses_count) || 0;
-        const name      = (u.name || '').trim();
-        const bio       = (u.desc || '').trim();
+        // twitter241 response → flat fields via extractProfile241
+        const p         = extractProfile241(r.data, handle);
+        if (!p) { health.errors++; continue; }
+        const followers = p.followers;
+        const tweets    = p.tweets;
+        const name      = p.name.trim();
+        const bio       = p.bio.trim();
+        // Build a normalised object scoreAndClassify can read
+        const u = {
+          name: p.name, desc: p.bio,
+          sub_count: p.followers, friends: p.following,
+          statuses_count: p.tweets, blue_verified: p.verified,
+          avatar: p.avatar, website: p.website, location: p.location,
+        };
 
         // ── Minimum bar — discard invalid/bot/empty profiles ──────────────
         // These checks happen before scoring to save AI quota on junk accounts
@@ -710,15 +752,19 @@ async function runAgent({ queries, directHandles = [], triggeredBy = 'manual', s
         const handle = newDirectHandles[i];
         seenThisRun.add(handle.toLowerCase());
         emit('status', { step: 'fetching', message: `[Friend list] @${handle} [${i + 1}/${newDirectHandles.length}]`, progress: 95 });
-        const r = await callAPI('screenname.php', { screenname: handle }, paceWithBreak, keepAlive);
+        const r = await callAPI('user', { username: handle }, paceWithBreak, keepAlive);
         health.calls++; health.totalMs += r.duration_ms;
         if (r.success) {
           health.successes++;
-          const u         = r.data;
-          const followers = Number(u.sub_count)      || 0;
-          const tweets    = Number(u.statuses_count) || 0;
-          const name      = (u.name || '').trim();
-          const bio       = (u.desc || '').trim();
+          const p         = extractProfile241(r.data, handle);
+          if (!p) { health.errors++; continue; }
+          const followers = p.followers;
+          const tweets    = p.tweets;
+          const name      = p.name.trim();
+          const bio       = p.bio.trim();
+          const u = { name: p.name, desc: p.bio, sub_count: p.followers, friends: p.following,
+                      statuses_count: p.tweets, blue_verified: p.verified,
+                      avatar: p.avatar, website: p.website, location: p.location };
 
           const skipReason =
             followers < 100                       ? `only ${followers} followers` :
@@ -736,9 +782,9 @@ async function runAgent({ queries, directHandles = [], triggeredBy = 'manual', s
             } else {
               directFetched.push({
                 handle: handle.toLowerCase(), name, bio,
-                followers, following: Number(u.friends) || 0, tweets,
-                verified: u.blue_verified || false, avatar: u.avatar || '',
-                website: u.website || '', location: u.location || '',
+                followers, following: p.following, tweets,
+                verified: p.verified, avatar: p.avatar,
+                website: p.website, location: p.location,
                 _sc: sc,
               });
             }

@@ -284,7 +284,7 @@ export default function WorkflowPage() {
             <InfoBox color={C.gold} style={{ flex: 1 }}>
               <div style={{ fontWeight: 700, marginBottom: 4, color: C.gold }}>Cron (Automatic)</div>
               <Code>cron.schedule('0 2 1 * *', ...)</Code><br />
-              Runs 1st of every month at <strong>02:00 AM UTC</strong>.<br />
+              Runs every Monday at <strong>02:00 AM IST</strong> (Asia/Kolkata).<br />
               Pre-condition: <Code>auto_run_enabled = '1'</Code> in agent_config.<br />
               Must have at least one keyword or direct handle.<br />
               <Code>triggeredBy: 'cron'</Code> — no SSE output.
@@ -342,7 +342,7 @@ export default function WorkflowPage() {
               Exact API Request — Search
             </div>
             <div style={{ background: '#0d1117', border: `1px solid ${C.border}`, borderRadius: 6, padding: '12px 14px', fontFamily: 'monospace', fontSize: 11, lineHeight: 1.9 }}>
-              <div><span style={{ color: C.green }}>GET</span> <span style={{ color: '#79c0ff' }}>https://twitter-api45.p.rapidapi.com/search.php</span></div>
+              <div><span style={{ color: C.green }}>GET</span> <span style={{ color: '#79c0ff' }}>https://twitter241.p.rapidapi.com/search.php</span></div>
               <div style={{ color: C.muted, marginTop: 6 }}>Query Parameters:</div>
               <div style={{ paddingLeft: 16 }}>
                 <span style={{ color: C.gold }}>query</span><span style={{ color: C.muted }}> = </span><span style={{ color: '#a5d6ff' }}>"ai voice assistant"</span><br />
@@ -351,11 +351,11 @@ export default function WorkflowPage() {
               <div style={{ color: C.muted, marginTop: 6 }}>Headers:</div>
               <div style={{ paddingLeft: 16 }}>
                 <span style={{ color: C.gold }}>X-RapidAPI-Key</span><span style={{ color: C.muted }}>:  </span><span style={{ color: '#a5d6ff' }}>YOUR_RAPIDAPI_KEY_HERE</span><br />
-                <span style={{ color: C.gold }}>X-RapidAPI-Host</span><span style={{ color: C.muted }}>: </span><span style={{ color: '#a5d6ff' }}>twitter-api45.p.rapidapi.com</span>
+                <span style={{ color: C.gold }}>X-RapidAPI-Host</span><span style={{ color: C.muted }}>: </span><span style={{ color: '#a5d6ff' }}>twitter241.p.rapidapi.com</span>
               </div>
               <div style={{ color: C.muted, marginTop: 8, fontSize: 10 }}>Full URL string:</div>
               <div style={{ color: '#58a6ff', wordBreak: 'break-all', marginTop: 2 }}>
-                https://twitter-api45.p.rapidapi.com/search.php?query=ai+voice+assistant&count=47
+                https://twitter241.p.rapidapi.com/search?query=ai+voice+assistant&count=47&type=Top
               </div>
             </div>
           </div>
@@ -439,7 +439,7 @@ export default function WorkflowPage() {
               Exact API Request — Profile Fetch
             </div>
             <div style={{ background: '#0d1117', border: `1px solid ${C.border}`, borderRadius: 6, padding: '12px 14px', fontFamily: 'monospace', fontSize: 11, lineHeight: 1.9 }}>
-              <div><span style={{ color: C.green }}>GET</span> <span style={{ color: '#79c0ff' }}>https://twitter-api45.p.rapidapi.com/screenname.php</span></div>
+              <div><span style={{ color: C.green }}>GET</span> <span style={{ color: '#79c0ff' }}>https://twitter241.p.rapidapi.com/screenname.php</span></div>
               <div style={{ color: C.muted, marginTop: 6 }}>Query Parameters:</div>
               <div style={{ paddingLeft: 16 }}>
                 <span style={{ color: C.gold }}>screenname</span><span style={{ color: C.muted }}> = </span><span style={{ color: '#a5d6ff' }}>"vapidev"</span><span style={{ color: C.muted }}> (no @ symbol)</span>
@@ -447,11 +447,11 @@ export default function WorkflowPage() {
               <div style={{ color: C.muted, marginTop: 6 }}>Headers:</div>
               <div style={{ paddingLeft: 16 }}>
                 <span style={{ color: C.gold }}>X-RapidAPI-Key</span><span style={{ color: C.muted }}>:  </span><span style={{ color: '#a5d6ff' }}>YOUR_RAPIDAPI_KEY_HERE</span><br />
-                <span style={{ color: C.gold }}>X-RapidAPI-Host</span><span style={{ color: C.muted }}>: </span><span style={{ color: '#a5d6ff' }}>twitter-api45.p.rapidapi.com</span>
+                <span style={{ color: C.gold }}>X-RapidAPI-Host</span><span style={{ color: C.muted }}>: </span><span style={{ color: '#a5d6ff' }}>twitter241.p.rapidapi.com</span>
               </div>
               <div style={{ color: C.muted, marginTop: 8, fontSize: 10 }}>Full URL string:</div>
               <div style={{ color: '#58a6ff', marginTop: 2 }}>
-                https://twitter-api45.p.rapidapi.com/screenname.php?screenname=vapidev
+                https://twitter241.p.rapidapi.com/user?username=vapidev
               </div>
             </div>
           </div>

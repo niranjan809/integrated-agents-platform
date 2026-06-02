@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 
 const MODEL_LABELS = {
-  'anthropic/claude-haiku-4-5': 'Active — only model used, no expensive fallbacks',
+  'anthropic/claude-opus-4-5': 'Active — top model, best classification accuracy',
 };
 
 const STATUS_LABELS = {
@@ -54,6 +54,7 @@ export default function SettingsPage() {
   const [keyTestRes,  setKeyTestRes]  = useState(null);
   const [testResult,  setTestResult]  = useState(null);
   const [autoRun,     setAutoRun]     = useState(true);
+  const [loadError,   setLoadError]   = useState('');
   const [msg,         setMsg]         = useState('');
   const [msgType,     setMsgType]     = useState('');
 
@@ -72,7 +73,7 @@ export default function SettingsPage() {
       setKeyStats(ks.keys || []);
       setAutoRun(cfg.config?.auto_run_enabled === '1');
       setLoading(false);
-    }).catch(() => setLoading(false));
+    }).catch(err => { setLoadError(err.message || 'Failed to load settings'); setLoading(false); });
   }
 
   useEffect(() => { loadSettings(); }, []);
@@ -124,6 +125,7 @@ export default function SettingsPage() {
   const orKeySet = config?.openrouter_env_set;
 
   if (loading) return <div className="page-loader"><div className="spinner" /></div>;
+  if (loadError) return <div className="page" style={{padding:32}}><div className="page-error">{loadError}</div><button className="btn-primary" style={{marginTop:16}} onClick={loadSettings}>Retry</button></div>;
 
   return (
     <div className="page settings-page">
@@ -184,7 +186,7 @@ export default function SettingsPage() {
                   <span style={{ color: st.color }}>{st.text}</span>
                   {r.status === 'not_subscribed' && (
                     <span className="key-hint">
-                      → Subscribe this key to twitter-api45 on rapidapi.com
+                      → Subscribe this key to twitter241 on rapidapi.com
                     </span>
                   )}
                   {r.status === 'quota_exhausted' && (
@@ -200,7 +202,7 @@ export default function SettingsPage() {
           <div className="api-key-row">
             <div className="api-key-info">
               <span className="api-key-name">OpenRouter API</span>
-              <span className="api-key-desc">AI scoring — Claude Opus 4.5, batch 6 accounts/call</span>
+              <span className="api-key-desc">AI scoring — Claude Opus 4.5, batched 6 accounts/call, no fallbacks</span>
             </div>
             <div className={`key-status-pill ${orKeySet ? 'set' : 'unset'}`}>
               {orKeySet ? '✓ Set in .env' : '✗ Not set'}

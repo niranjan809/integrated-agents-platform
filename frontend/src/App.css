@@ -189,7 +189,7 @@ body { background: var(--bg); color: var(--text); font-family: 'Inter', 'Segoe U
 }
 
 /* Progress label */
-.progress-bar-wrap { position: relative; }
+.progress-bar-wrap { position: relative; height: 4px; background: var(--bg3); border-radius: 2px; margin-bottom: 16px; overflow: hidden; }
 .progress-pct {
   position: absolute; right: 0; top: 6px; font-size: 11px;
   color: var(--text2); font-weight: 600;
@@ -216,7 +216,7 @@ body { background: var(--bg); color: var(--text); font-family: 'Inter', 'Segoe U
 .preset-chip      { padding: 5px 12px; background: var(--bg3); border: 1px solid var(--border); border-radius: 20px; color: var(--text2); font-size: 12px; cursor: pointer; transition: all .15s; }
 .preset-chip:hover, .preset-chip.active { border-color: var(--blue); color: var(--blue); }
 .preset-chip:disabled { opacity: .4; cursor: not-allowed; }
-.progress-bar-wrap { height: 4px; background: var(--bg3); border-radius: 2px; margin-bottom: 16px; overflow: hidden; }
+/* merged into first .progress-bar-wrap definition above */
 .progress-bar      { height: 100%; background: linear-gradient(90deg, var(--blue), var(--green)); border-radius: 2px; transition: width .3s; }
 .summary-banner    { padding: 14px 20px; background: rgba(0,200,150,.1); border: 1px solid rgba(0,200,150,.3); border-radius: 8px; color: var(--green); font-size: 13px; margin-bottom: 20px; }
 .agent-body        { display: grid; grid-template-columns: 280px 1fr; gap: 20px; }

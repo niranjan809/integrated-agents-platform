@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 
 const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) throw new Error('JWT_SECRET environment variable is required but not set');
 
 function requireAuth(req, res, next) {
   // Support token via Authorization header OR _token query param (needed for SSE/EventSource)

@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useRef, useCallback } from 'react';
+import { createContext, useContext, useState, useRef, useCallback, useEffect } from 'react';
 
 const AgentContext = createContext(null);
 const API = (import.meta.env.VITE_API_URL || 'http://localhost:3001').replace(/\/$/, '');
@@ -20,6 +20,9 @@ export function AgentProvider({ children }) {
   const addLog = useCallback((msg, type = 'info') => {
     setStepLog(prev => [...prev.slice(-299), { msg, type, ts: Date.now() }]);
   }, []);
+
+  // Cleanup: close EventSource on unmount to prevent leaks
+  useEffect(() => () => { esRef.current?.close(); }, []);
 
   // Dashboard (or any page) can register a callback to run when agent finishes
   const onRunComplete = useCallback((cb) => {
@@ -122,13 +125,30 @@ export function AgentProvider({ children }) {
       } catch {}
     });
 
+    // Helper: cleanly end the run
+    const endRun = (es) => {
+      completedRef.current = true;
+      setRunning(false);
+      esRef.current = null; // null BEFORE close so onerror guard skips
+      es.close();
+    };
+
     es.addEventListener('quota_exhausted', e => {
       try {
         const d = JSON.parse(e.data);
         setConnErr(`⛔ ${d.message}`);
         addLog(`API quota exhausted — ${d.message}`, 'error');
-        completedRef.current = true; // treat as graceful end
       } catch {}
+      endRun(es); // fix: was missing setRunning(false) + close
+    });
+
+    // fix: cap_reached was previously unhandled — running stayed true forever
+    es.addEventListener('cap_reached', e => {
+      try {
+        const d = JSON.parse(e.data);
+        addLog(`⚠️ Request cap reached — ${d.message ?? 'data saved so far'}`, 'warn');
+      } catch {}
+      endRun(es);
     });
 
     es.addEventListener('error', e => {
@@ -141,7 +161,6 @@ export function AgentProvider({ children }) {
     es.addEventListener('complete', e => {
       try {
         const d = JSON.parse(e.data);
-        completedRef.current = true;
         setSummary(d);
         if (d.quotaExhausted) {
           addLog(`⚠️ Run stopped early — API quota exhausted. ${d.accountsAdded ?? 0} new accounts saved.`, 'warn');
@@ -151,16 +170,16 @@ export function AgentProvider({ children }) {
         setProgress(100);
         doneCallbacks.current.forEach(cb => { try { cb(d); } catch {} });
       } catch {}
-      setRunning(false);
-      es.close();
+      endRun(es); // null esRef BEFORE close to prevent onerror clobbering clean state
     });
 
     es.onerror = () => {
-      if (completedRef.current) { es.close(); return; }
+      if (completedRef.current) { es.close(); return; } // normal close — ignore
       if (esRef.current === es) {
         setConnErr(`Connection lost — the backend stopped responding. Check it is running at ${API} and try again.`);
         addLog('Stream disconnected', 'error');
         setRunning(false);
+        esRef.current = null;
       }
       es.close();
     };

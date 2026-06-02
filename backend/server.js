@@ -1,4 +1,4 @@
-require('dotenv').config();
+﻿require('dotenv').config();
 const express      = require('express');
 const axios        = require('axios');
 const cors         = require('cors');
@@ -10,17 +10,17 @@ const { aiScoreBatch, BATCH_SIZE, SCORING_MODEL } = require('./openrouter');
 const { getFriendSearchQueries, getFriendInfluencerHandles, testFriendDb } = require('./friendDb');
 
 const app  = express();
-app.set('trust proxy', 1); // Required on Render — sits behind a reverse proxy
+app.set('trust proxy', 1); // Required on Render â€” sits behind a reverse proxy
 const PORT = process.env.PORT || 3001;
 
-// ── Security headers (API-safe — disable browser-only policies) ──────────────
+// â”€â”€ Security headers (API-safe â€” disable browser-only policies) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 app.use(helmet({
   crossOriginResourcePolicy:   { policy: 'cross-origin' },
   crossOriginEmbedderPolicy:   false,
   contentSecurityPolicy:       false,
 }));
 
-// ── CORS — JWT is in Authorization header so no credentials mode needed ───────
+// â”€â”€ CORS â€” JWT is in Authorization header so no credentials mode needed â”€â”€â”€â”€â”€â”€â”€
 const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',').map(s => s.trim())
   : ['http://localhost:5173', 'http://localhost:4173'];
@@ -42,42 +42,42 @@ app.use(cors({
 app.options('*', cors());
 app.use(express.json());
 
-// ── Rate limiting ─────────────────────────────────────────────────────────────
+// â”€â”€ Rate limiting â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 app.use('/api/auth', rateLimit({ windowMs: 15 * 60 * 1000, max: 20, standardHeaders: true }));
 app.use('/api',      rateLimit({ windowMs: 1 * 60 * 1000,  max: 120, standardHeaders: true }));
 
-// ── Routes ────────────────────────────────────────────────────────────────────
+// â”€â”€ Routes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 app.use('/api/auth',      require('./routes/auth'));
 app.use('/api/keywords',  require('./routes/keywords'));
 app.use('/api/accounts',  require('./routes/accounts'));
 app.use('/api/dashboard', require('./routes/dashboard'));
 app.use('/api/settings',  require('./routes/settings'));
 
-// ═══════════════════════════════════════════════════════════════════════════
-// PROACTIVE RATE LIMITER — prevents blocks before they happen
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// PROACTIVE RATE LIMITER â€” prevents blocks before they happen
 //
 // Strategy: each key is allowed SAFE_RPM requests per minute.
 // Before every request we calculate the earliest time that key can fire
 // without exceeding that rate, then sleep until then (+ random jitter).
-// This means we NEVER fire faster than the safe rate — no 429s.
+// This means we NEVER fire faster than the safe rate â€” no 429s.
 //
 // Paid key only (twitter241.p.rapidapi.com)
-// Anti-bot: 3 RPM, ±3s jitter, human breaks every 20-35 requests,
+// Anti-bot: 3 RPM, Â±3s jitter, human breaks every 20-35 requests,
 //           shuffled query order, varied count 40-50 per search
-// ═══════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 const RAPIDAPI_HOST = process.env.RAPIDAPI_HOST || 'twitter241.p.rapidapi.com';
 const BASE_URL      = `https://${RAPIDAPI_HOST}`;
 
 const PAID_RPM  = Math.max(1, Number(process.env.PAID_KEY_RPM) || 3);
-const JITTER_MS = 6000; // ±3 000ms random spread
+const JITTER_MS = 6000; // Â±3 000ms random spread
 
-// Per-run request cap — protects shared paid quota
+// Per-run request cap â€” protects shared paid quota
 const MAX_REQUESTS_PER_RUN = Number(process.env.MAX_REQUESTS_PER_RUN) || 5000;
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 function jitter()  { return Math.floor(Math.random() * JITTER_MS) - JITTER_MS / 2; }
 
-// Human break — random pause every 20-35 requests (anti-bot behaviour)
+// Human break â€” random pause every 20-35 requests (anti-bot behaviour)
 let requestsSinceBreak = 0;
 async function humanBreak(emitStatus) {
   requestsSinceBreak++;
@@ -85,13 +85,13 @@ async function humanBreak(emitStatus) {
   if (requestsSinceBreak >= threshold) {
     requestsSinceBreak = 0;
     const breakMs = 30_000 + Math.floor(Math.random() * 30_000);
-    if (emitStatus) emitStatus(`Human break — ${Math.round(breakMs/1000)}s pause (anti-bot)`);
+    if (emitStatus) emitStatus(`Human break â€” ${Math.round(breakMs/1000)}s pause (anti-bot)`);
     console.log(`[ANTI-BOT] Human break: ${Math.round(breakMs/1000)}s`);
     await sleep(breakMs);
   }
 }
 
-// Paid key only — free keys removed
+// Paid key only â€” free keys removed
 const KEYS = [
   { key: process.env.RAPIDAPI_KEY_PAID, label: 'KeyPaid', rpm: PAID_RPM },
 ].filter(k => k.key).map(({ key, label, rpm }) => ({
@@ -106,7 +106,7 @@ const KEYS = [
   requests:          0,
 }));
 
-// ── twitter241 response field extractors ─────────────────────────────────────
+// â”€â”€ twitter241 response field extractors â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 // Extract handles from twitter241 /search response
 function extractHandles241(data) {
@@ -147,26 +147,26 @@ function extractProfile241(data, handle) {
 }
 
 // Returns the key that will be ready soonest, sleeping until it is
-// Validate keys without burning quota — just format-check then mark as pending.
+// Validate keys without burning quota â€” just format-check then mark as pending.
 // Real validation happens on the first actual API call.
 function validateKeys() {
   for (const k of KEYS) {
     if (!k.key || k.key.length < 20) {
       k.disabled = true;
-      console.log(`  ${k.label}: ✗ disabled — key missing or invalid format`);
+      console.log(`  ${k.label}: âœ— disabled â€” key missing or invalid format`);
     } else {
-      console.log(`  ${k.label}: ✓ configured (will test on first use)`);
+      console.log(`  ${k.label}: âœ“ configured (will test on first use)`);
     }
   }
   const activeKeys = KEYS.filter(k => !k.disabled);
   if (activeKeys.length === 0) {
-    console.log('  ⚠️  WARNING: No API keys configured! Set RAPIDAPI_KEY_PAID in environment variables.');
+    console.log('  âš ï¸  WARNING: No API keys configured! Set RAPIDAPI_KEY_PAID in environment variables.');
   } else {
     console.log(`  Keys configured: ${activeKeys.map(k => k.label).join(', ')}`);
   }
 }
 
-// Track global consecutive 429s — 3+ in a row = daily quota exhausted
+// Track global consecutive 429s â€” 3+ in a row = daily quota exhausted
 let globalConsecutive429 = 0;
 const QUOTA_EXHAUSTED_THRESHOLD = 3;
 
@@ -178,13 +178,13 @@ class QuotaExhaustedError extends Error {
 // Sleep in 8-second chunks, sending SSE keepalive pings so browser
 // doesn't close the idle EventSource connection during long rate-limit waits
 async function sleepWithPing(totalMs, keepAlive) {
-  const CHUNK = 5_000; // ping every 5s — Render drops idle SSE after ~30s
+  const CHUNK = 5_000; // ping every 5s â€” Render drops idle SSE after ~30s
   let remaining = totalMs;
   while (remaining > 0) {
     const chunk = Math.min(CHUNK, remaining);
     await sleep(chunk);
     remaining -= chunk;
-    // Send SSE comment — browser ignores it as data but TCP stays alive
+    // Send SSE comment â€” browser ignores it as data but TCP stays alive
     if (keepAlive) keepAlive(Math.ceil(remaining / 1000));
   }
 }
@@ -197,7 +197,7 @@ async function acquireKey(emitStatus, sseKeepAlive) {
     const activeKeys = KEYS.filter(k => !k.disabled); // disabled = invalid key format only
     if (activeKeys.length === 0) throw new QuotaExhaustedError(
       KEYS.length === 0
-        ? 'No API keys configured — set RAPIDAPI_KEY_PAID in Render environment variables'
+        ? 'No API keys configured â€” set RAPIDAPI_KEY_PAID in Render environment variables'
         : 'All API keys are disabled or in cooldown'
     );
     if (globalConsecutive429 >= QUOTA_EXHAUSTED_THRESHOLD) {
@@ -219,11 +219,11 @@ async function acquireKey(emitStatus, sseKeepAlive) {
 
     if (waitMs > 500) {
       const waitSec = Math.round(waitMs / 1000);
-      if (emitStatus) emitStatus(`Rate pacing — waiting ${waitSec}s (${KEYS[idx].label})`);
-      console.log(`[RATE] waiting ${waitSec}s → ${KEYS[idx].label}`);
-      // Sleep in chunks — each chunk sends a keepalive ping to the SSE client
+      if (emitStatus) emitStatus(`Rate pacing â€” waiting ${waitSec}s (${KEYS[idx].label})`);
+      console.log(`[RATE] waiting ${waitSec}s â†’ ${KEYS[idx].label}`);
+      // Sleep in chunks â€” each chunk sends a keepalive ping to the SSE client
       await sleepWithPing(waitMs, (remSec) => {
-        if (emitStatus && remSec > 0) emitStatus(`Rate pacing — ${remSec}s remaining`);
+        if (emitStatus && remSec > 0) emitStatus(`Rate pacing â€” ${remSec}s remaining`);
         if (sseKeepAlive) sseKeepAlive(); // sends raw SSE comment to keep TCP alive
       });
     }
@@ -241,17 +241,17 @@ function penalise(k, status) {
   if (status === 429) {
     globalConsecutive429++;
     k.cooldownUntil = Date.now() + 75_000;
-    console.log(`[RATE] ${k.label} 429 (consecutive: ${globalConsecutive429}) → cooldown 75s`);
+    console.log(`[RATE] ${k.label} 429 (consecutive: ${globalConsecutive429}) â†’ cooldown 75s`);
   } else if (status === 403) {
-    // Not subscribed or forbidden — long cooldown, auto-retry after 1hr
+    // Not subscribed or forbidden â€” long cooldown, auto-retry after 1hr
     // Key will re-activate automatically if user subscribes on RapidAPI
     k.cooldownUntil = Date.now() + 3_600_000;
     k.notSubscribed = true;
-    console.log(`[RATE] ${k.label} 403 → not subscribed (cooldown 1hr, auto-retries)`);
+    console.log(`[RATE] ${k.label} 403 â†’ not subscribed (cooldown 1hr, auto-retries)`);
   } else {
     const backoff = Math.min(120_000, 8_000 * Math.pow(2, k.consecutiveErrors - 1));
     k.cooldownUntil = Date.now() + backoff;
-    console.log(`[RATE] ${k.label} ${status} → backoff ${Math.round(backoff / 1000)}s`);
+    console.log(`[RATE] ${k.label} ${status} â†’ backoff ${Math.round(backoff / 1000)}s`);
   }
 }
 
@@ -287,6 +287,7 @@ async function callAPI(endpoint, params = {}, emitStatus = null, sseKeepAlive = 
       const other = KEYS.find(x => x !== k && !x.disabled && Date.now() >= x.cooldownUntil);
       if (other) {
         console.log(`[RATE] Immediate retry with ${other.label}`);
+        other.lastFiredAt = Date.now(); // mark fired before attempt to prevent immediate re-use
         await sleep(800 + Math.max(0, jitter()));
         try {
           const resp2 = await axios.get(`${BASE_URL}/${endpoint}`, {
@@ -327,7 +328,7 @@ function keyStats() {
   });
 }
 
-// ── Scoring & classification ──────────────────────────────────────────────────
+// â”€â”€ Scoring & classification â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function scoreAndClassify(u) {
   const bio      = (u.desc  || '').toLowerCase();
   const name     = (u.name  || '').toLowerCase();
@@ -393,7 +394,7 @@ function scoreAndClassify(u) {
            overall, type, track, dmOpen, hasEmail, contactEmail: emailMatch ? emailMatch[0] : null };
 }
 
-// ── Health calculator ─────────────────────────────────────────────────────────
+// â”€â”€ Health calculator â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function calcHealth(calls, successes, errors, totalMs, flags) {
   const avgMs       = calls > 0 ? Math.round(totalMs / calls) : 0;
   const successRate = calls > 0 ? Math.round((successes / calls) * 100) : 100;
@@ -408,12 +409,12 @@ function calcHealth(calls, successes, errors, totalMs, flags) {
            total_keys: KEYS.length };
 }
 
-// ── SSE helper ────────────────────────────────────────────────────────────────
+// â”€â”€ SSE helper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function sse(res, event, data) {
   res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
 }
 
-// ── Save account to DB with deduplication ─────────────────────────────────────
+// â”€â”€ Save account to DB with deduplication â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function upsertAccount(account, runId) {
   const { rows } = await db.execute({
     sql: 'SELECT id FROM accounts WHERE handle = ?',
@@ -455,21 +456,22 @@ async function upsertAccount(account, runId) {
   return isDup;
 }
 
-// ── Core agent run function (reused by SSE endpoint + cron) ───────────────────
+// â”€â”€ Core agent run function (reused by SSE endpoint + cron) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function runAgent({ queries, directHandles = [], triggeredBy = 'manual', sseRes = null, isAborted = () => false }) {
+  // Local abort flag for this run â€” set when the SSE socket closes unexpectedly
+  let localAborted = false;
+  const isLocalAborted = () => localAborted || isAborted();
+
   const emit = (event, data) => {
-    if (sseRes && !isAborted()) {
-      try { sse(sseRes, event, data); } catch { aborted = true; } // socket closed — mark aborted
+    if (sseRes && !isLocalAborted()) {
+      try { sse(sseRes, event, data); } catch { localAborted = true; } // socket closed
     }
   };
-  // Pass a status emitter into callAPI so pacing messages reach the UI
   const pace = (msg) => emit('status', { step: 'pacing', message: msg });
   const paceWithBreak = async (msg) => { pace(msg); await humanBreak(pace); };
-  // Sends a raw SSE comment every 8s during rate-limit waits — keeps the
-  // browser's EventSource TCP connection alive during long silent periods
   const keepAlive = () => {
-    if (sseRes && !isAborted()) {
-      try { sseRes.write(': ping\n\n'); } catch { aborted = true; } // socket closed
+    if (sseRes && !isLocalAborted()) {
+      try { sseRes.write(': ping\n\n'); } catch { localAborted = true; }
     }
   };
 
@@ -487,7 +489,7 @@ async function runAgent({ queries, directHandles = [], triggeredBy = 'manual', s
   globalConsecutive429  = 0;    // reset quota counter for a fresh run
   requestsSinceBreak   = 0;    // reset human-break counter
 
-  // Shuffle query order every run — prevents bot-pattern detection
+  // Shuffle query order every run â€” prevents bot-pattern detection
   queries = [...queries].sort(() => Math.random() - 0.5);
 
   const sendHealth = () => emit('health', {
@@ -500,7 +502,7 @@ async function runAgent({ queries, directHandles = [], triggeredBy = 'manual', s
   for (const query of queries) {
     emit('status', { step: 'search', message: `Searching X for: "${query}"`, progress: 0 });
 
-    // Vary count 40-50 per search — not always exactly 50 (anti-bot pattern variation)
+    // Vary count 40-50 per search â€” not always exactly 50 (anti-bot pattern variation)
     const searchCount = 40 + Math.floor(Math.random() * 11);
     // twitter241: /search endpoint with type=Top, varied count
     const searchRes = await callAPI('search', { query, count: searchCount, type: 'Top' }, paceWithBreak, keepAlive);
@@ -530,7 +532,7 @@ async function runAgent({ queries, directHandles = [], triggeredBy = 'manual', s
       }
     }
     // Filter out handles updated within the last 6 days (weekly run optimisation)
-    // These accounts are fresh enough — skip re-fetching to save API quota
+    // These accounts are fresh enough â€” skip re-fetching to save API quota
     const recentCutoff = new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString();
     const freshHandles = handles.map(h => h.toLowerCase());
     let skipCount = 0;
@@ -553,11 +555,11 @@ async function runAgent({ queries, directHandles = [], triggeredBy = 'manual', s
     });
     sendHealth();
 
-    // ── Phase 1: Fetch all profiles for this query ──────────────────────────
+    // â”€â”€ Phase 1: Fetch all profiles for this query â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const fetchedAccounts = []; // { accountBase, sc, isDuplicate }
 
     for (let i = 0; i < targets.length; i++) {
-      if (isAborted()) break;
+      if (isLocalAborted()) break;
       const handle = targets[i];
       seenThisRun.add(handle.toLowerCase());
 
@@ -574,7 +576,7 @@ async function runAgent({ queries, directHandles = [], triggeredBy = 'manual', s
       health.calls++; health.totalMs += r.duration_ms;
       durations.push(r.duration_ms);
 
-      // Per-run request cap — stop gracefully when limit reached
+      // Per-run request cap â€” stop gracefully when limit reached
       if (health.calls >= MAX_REQUESTS_PER_RUN) {
         emit('status', { step: 'cap_reached',
           message: `Request cap reached (${MAX_REQUESTS_PER_RUN} calls). Stopping to protect shared quota. Data saved so far.`,
@@ -585,7 +587,7 @@ async function runAgent({ queries, directHandles = [], triggeredBy = 'manual', s
 
       if (r.success) {
         health.successes++;
-        // twitter241 response → flat fields via extractProfile241
+        // twitter241 response â†’ flat fields via extractProfile241
         const p         = extractProfile241(r.data, handle);
         if (!p) { health.errors++; continue; }
         const followers = p.followers;
@@ -600,7 +602,7 @@ async function runAgent({ queries, directHandles = [], triggeredBy = 'manual', s
           avatar: p.avatar, website: p.website, location: p.location,
         };
 
-        // ── Minimum bar — discard invalid/bot/empty profiles ──────────────
+        // â”€â”€ Minimum bar â€” discard invalid/bot/empty profiles â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         // These checks happen before scoring to save AI quota on junk accounts
         const skipReason =
           followers < 100                    ? `only ${followers} followers` :
@@ -611,30 +613,27 @@ async function runAgent({ queries, directHandles = [], triggeredBy = 'manual', s
 
         if (skipReason) {
           emit('status', { step: 'filtered',
-            message: `Skipped @${handle} — ${skipReason}`, progress: Math.round((i / targets.length) * 80) });
+            message: `Skipped @${handle} â€” ${skipReason}`, progress: Math.round((i / targets.length) * 80) });
           continue;
         }
 
         const sc = scoreAndClassify(u);
 
-        // Post-score gate — discard accounts with near-zero relevance (score < 10)
-        // e.g. 100-follower, no bio, no website → overall ≈ 7-8. Not worth AI quota or DB space.
+        // Post-score gate â€” discard accounts with near-zero relevance (score < 10)
+        // e.g. 100-follower, no bio, no website â†’ overall â‰ˆ 7-8. Not worth AI quota or DB space.
         if (sc.overall < 10) {
-          emit('status', { step: 'filtered', message: `Skipped @${handle} — overall score too low (${sc.overall})`, progress: Math.round((i / targets.length) * 80) });
+          emit('status', { step: 'filtered', message: `Skipped @${handle} â€” overall score too low (${sc.overall})`, progress: Math.round((i / targets.length) * 80) });
           continue;
         }
 
         fetchedAccounts.push({
-          handle: handle.toLowerCase(),
-          name,
-          bio,
-          followers,
-          following: Number(u.friends) || 0,
-          tweets,
-          verified:  u.blue_verified  || false,
-          avatar:    u.avatar         || '',
-          website:   u.website        || '',
-          location:  u.location       || '',
+          handle:    handle.toLowerCase(),
+          name, bio, followers, tweets,
+          following: p.following,
+          verified:  p.verified,
+          avatar:    p.avatar,
+          website:   p.website,
+          location:  p.location,
           _sc: sc,
         });
       } else {
@@ -642,15 +641,15 @@ async function runAgent({ queries, directHandles = [], triggeredBy = 'manual', s
         if (r.status === 429) health.flags.limited = true;
         if (r.status === 403) health.flags.blocked = true;
         emit('fetch_error', { handle, index: i + 1, total: targets.length,
-          status: r.status, error: r.error,
+          status: r.status, error: typeof r.error === 'string' ? r.error : 'Request failed',
           health: calcHealth(health.calls, health.successes, health.errors, health.totalMs, health.flags) });
       }
       sendHealth();
     }
 
-    if (isAborted() || !fetchedAccounts.length) continue;
+    if (isLocalAborted() || !fetchedAccounts.length) continue;
 
-    // ── Phase 2: Batch AI scoring — only NEW accounts, BATCH_SIZE at a time ─
+    // â”€â”€ Phase 2: Batch AI scoring â€” only NEW accounts, BATCH_SIZE at a time â”€
     // Duplicates already have scores in DB and don't need re-scoring.
     // Pre-check which handles already exist in DB.
     const existingHandles = new Set();
@@ -668,18 +667,18 @@ async function runAgent({ queries, directHandles = [], triggeredBy = 'manual', s
 
     emit('status', {
       step:    'ai_scoring',
-      message: `AI scoring ${newAccounts.length} new accounts in batches of ${BATCH_SIZE} (${dupAccounts.length} duplicates skip AI)…`,
+      message: `AI scoring ${newAccounts.length} new accounts in batches of ${BATCH_SIZE} (${dupAccounts.length} duplicates skip AI)â€¦`,
       progress: 80,
     });
 
     // Score new accounts in batches
-    const aiScores = {}; // handle → ai result
+    const aiScores = {}; // handle â†’ ai result
     for (let b = 0; b < newAccounts.length; b += BATCH_SIZE) {
-      if (isAborted()) break;
+      if (isLocalAborted()) break;
       const batch = newAccounts.slice(b, b + BATCH_SIZE);
       emit('status', {
         step:    'ai_scoring',
-        message: `Batch AI [${Math.floor(b / BATCH_SIZE) + 1}/${Math.ceil(newAccounts.length / BATCH_SIZE)}] — scoring @${batch.map(a => a.handle).join(', @')}`,
+        message: `Batch AI [${Math.floor(b / BATCH_SIZE) + 1}/${Math.ceil(newAccounts.length / BATCH_SIZE)}] â€” scoring @${batch.map(a => a.handle).join(', @')}`,
         progress: 80 + Math.round((b / Math.max(newAccounts.length, 1)) * 15),
       });
       try {
@@ -692,7 +691,7 @@ async function runAgent({ queries, directHandles = [], triggeredBy = 'manual', s
       }
     }
 
-    // ── Phase 3: Merge scores, upsert to DB, emit to client ──────────────────
+    // â”€â”€ Phase 3: Merge scores, upsert to DB, emit to client â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const allToEmit = [...newAccounts, ...dupAccounts];
     for (let idx = 0; idx < allToEmit.length; idx++) {
       const a   = allToEmit[idx];
@@ -703,7 +702,7 @@ async function runAgent({ queries, directHandles = [], triggeredBy = 'manual', s
       const finalD2   = ai ? ai.d2  : sc.d2;
       const finalD3   = ai ? ai.d3  : sc.d3;
       const finalType = ai ? (ai.type || sc.type) : sc.type;
-      // Track is enforced by type — AI track suggestion is overridden to prevent
+      // Track is enforced by type â€” AI track suggestion is overridden to prevent
       // inconsistencies where AI says "PR Page" but returns track "A"
       const finalTrack = (finalType === 'PR Page' || finalType === 'Brand Page') ? 'B' : 'A';
       const finalOverall = Math.round(finalD2 * 0.25 + finalD3 * 0.25 + sc.d4 * 0.20 + sc.d5 * 0.30);
@@ -746,19 +745,19 @@ async function runAgent({ queries, directHandles = [], triggeredBy = 'manual', s
     sendHealth();
   }
 
-  // ── Direct handle phase — fetch known influencers from friend's DB ────────────
+  // â”€â”€ Direct handle phase â€” fetch known influencers from friend's DB â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // These are fetched directly (no search step) and saved to OUR DB only
-  if (directHandles.length > 0 && !isAborted()) {
+  if (directHandles.length > 0 && !isLocalAborted()) {
     const newDirectHandles = directHandles.filter(h => !seenThisRun.has(h.toLowerCase()));
     if (newDirectHandles.length > 0) {
       emit('status', {
         step: 'direct_fetch',
-        message: `Fetching ${newDirectHandles.length} known influencers from friend's list…`,
+        message: `Fetching ${newDirectHandles.length} known influencers from friend's listâ€¦`,
         progress: 95,
       });
       const directFetched = [];
       for (let i = 0; i < newDirectHandles.length; i++) {
-        if (isAborted()) break;
+        if (isLocalAborted()) break;
         const handle = newDirectHandles[i];
         seenThisRun.add(handle.toLowerCase());
         emit('status', { step: 'fetching', message: `[Friend list] @${handle} [${i + 1}/${newDirectHandles.length}]`, progress: 95 });
@@ -784,11 +783,11 @@ async function runAgent({ queries, directHandles = [], triggeredBy = 'manual', s
             null;
 
           if (skipReason) {
-            emit('status', { step: 'filtered', message: `Skipped @${handle} (friend list) — ${skipReason}`, progress: 95 });
+            emit('status', { step: 'filtered', message: `Skipped @${handle} (friend list) â€” ${skipReason}`, progress: 95 });
           } else {
             const sc = scoreAndClassify(u);
             if (sc.overall < 10) {
-              emit('status', { step: 'filtered', message: `Skipped @${handle} (friend list) — score too low (${sc.overall})`, progress: 95 });
+              emit('status', { step: 'filtered', message: `Skipped @${handle} (friend list) â€” score too low (${sc.overall})`, progress: 95 });
             } else {
               directFetched.push({
                 handle: handle.toLowerCase(), name, bio,
@@ -812,7 +811,7 @@ async function runAgent({ queries, directHandles = [], triggeredBy = 'manual', s
         const newDirect = directFetched.filter(a => !existingSet.has(a.handle));
         const aiScoresDirect = {};
         for (let b = 0; b < newDirect.length; b += BATCH_SIZE) {
-          if (isAborted()) break;
+          if (isLocalAborted()) break;
           const batch = newDirect.slice(b, b + BATCH_SIZE);
           try {
             const results = await aiScoreBatch(batch);
@@ -842,12 +841,12 @@ async function runAgent({ queries, directHandles = [], triggeredBy = 'manual', s
   }
 
   } catch (err) {
-    // Quota exhausted — stop gracefully, save what we have, tell the client clearly
+    // Quota exhausted â€” stop gracefully, save what we have, tell the client clearly
     if (err.name === 'QuotaExhaustedError') {
       emit('quota_exhausted', { message: err.message });
       console.log('[RATE] Run stopped early:', err.message);
     } else {
-      throw err; // unexpected error — propagate
+      throw err; // unexpected error â€” propagate
     }
   }
 
@@ -868,23 +867,23 @@ async function runAgent({ queries, directHandles = [], triggeredBy = 'manual', s
   return summary;
 }
 
-// ── SSE Agent Run endpoint ────────────────────────────────────────────────────
+// â”€â”€ SSE Agent Run endpoint â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 app.get('/api/run-demo', require('./middleware/auth').requireAuth, async (req, res) => {
   res.setHeader('Content-Type',      'text/event-stream');
   res.setHeader('Cache-Control',     'no-cache');
   res.setHeader('Connection',        'keep-alive');
   res.setHeader('X-Accel-Buffering', 'no');
   // retry:0 tells the browser's EventSource NOT to auto-reconnect when the
-  // stream closes normally — prevents the false "connection lost" error
+  // stream closes normally â€” prevents the false "connection lost" error
   res.write('retry: 0\n\n');
   res.flushHeaders();
 
   let queries         = [];
-  let directHandles   = []; // influencer handles from friend's DB — fetched directly, no search
+  let directHandles   = []; // influencer handles from friend's DB â€” fetched directly, no search
   const { query } = req.query;
 
   if (query) {
-    // Custom query from UI — use as-is
+    // Custom query from UI â€” use as-is
     queries = [query];
   } else {
     // 1. Own active keywords
@@ -915,11 +914,16 @@ app.get('/api/run-demo', require('./middleware/auth').requireAuth, async (req, r
   let aborted = false;
   req.on('close', () => { aborted = true; });
 
-  await runAgent({ queries, directHandles, triggeredBy: 'manual', sseRes: res, isAborted: () => aborted });
-  if (!res.writableEnded) res.end();
+  try {
+    await runAgent({ queries, directHandles, triggeredBy: 'manual', sseRes: res, isAborted: () => aborted });
+  } catch (err) {
+    console.error('[SSE] Unexpected error in runAgent:', err.message);
+  } finally {
+    if (!res.writableEnded) res.end();
+  }
 });
 
-// ── Health check (public) ─────────────────────────────────────────────────────
+// â”€â”€ Health check (public) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 app.get('/api/health', (req, res) => {
   res.json({
     status:     'ok',
@@ -928,15 +932,15 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// ── Weekly cron — every Monday at 02:00 AM IST (Indian Standard Time, UTC+5:30) ──
-// Only schedule — monthly cron removed. Weekly keeps data fresh.
+// â”€â”€ Weekly cron â€” every Monday at 02:00 AM IST (Indian Standard Time, UTC+5:30) â”€â”€
+// Only schedule â€” monthly cron removed. Weekly keeps data fresh.
 // Recent accounts (< 6 days old) are skipped to protect shared API quota.
 cron.schedule('0 2 * * 1', async () => {
   const stamp = new Date().toISOString();
-  console.log(`\n[WEEKLY] ══════ Weekly refresh starting — ${stamp} ══════`);
+  console.log(`\n[WEEKLY] â•â•â•â•â•â• Weekly refresh starting â€” ${stamp} â•â•â•â•â•â•`);
   try {
     const cfg = await db.execute(`SELECT value FROM agent_config WHERE key='auto_run_enabled'`);
-    if (cfg.rows[0]?.value !== '1') { console.log('[WEEKLY] Auto-run disabled — skipping'); return; }
+    if (cfg.rows[0]?.value !== '1') { console.log('[WEEKLY] Auto-run disabled â€” skipping'); return; }
 
     const { rows: ownRows } = await db.execute(`SELECT keyword FROM keywords WHERE active = 1 ORDER BY class, category`);
     const ownKeywords   = ownRows.map(r => r.keyword);
@@ -949,31 +953,31 @@ cron.schedule('0 2 * * 1', async () => {
       if (!seen.has(q.toLowerCase())) { seen.add(q.toLowerCase()); merged.push(q); }
     }
 
-    if (!merged.length && !directHandles.length) { console.log('[WEEKLY] No keywords — skipping'); return; }
+    if (!merged.length && !directHandles.length) { console.log('[WEEKLY] No keywords â€” skipping'); return; }
 
     console.log(`[WEEKLY] ${merged.length} queries | cap: ${MAX_REQUESTS_PER_RUN} | anti-bot: on`);
     const nextRun = new Date(); nextRun.setDate(nextRun.getDate() + 7); nextRun.setHours(2, 0, 0, 0);
     await db.execute({ sql: `UPDATE agent_config SET value=?, updated_at=datetime('now') WHERE key='next_run'`, args: [nextRun.toISOString()] });
 
     const summary = await runAgent({ queries: merged, directHandles, triggeredBy: 'weekly_cron' });
-    console.log(`[WEEKLY] ══════ Done — +${summary.accountsAdded} new, ${summary.duplicatesSkipped} updated ══════\n`);
+    console.log(`[WEEKLY] â•â•â•â•â•â• Done â€” +${summary.accountsAdded} new, ${summary.duplicatesSkipped} updated â•â•â•â•â•â•\n`);
   } catch (err) {
     console.error('[WEEKLY] Error:', err.message);
   }
 }, { timezone: 'Asia/Kolkata' });
 
-// ── Boot ──────────────────────────────────────────────────────────────────────
+// â”€â”€ Boot â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 initDB().then(async () => {
   app.listen(PORT, () => {
     // Expose keyStats to routes via app.locals
     app.locals.keyStats = keyStats;
 
-    console.log(`\n  KiteAI X Agent — Backend`);
+    console.log(`\n  KiteAI X Agent â€” Backend`);
     console.log(`  http://localhost:${PORT}`);
     console.log(`  Turso:    ${process.env.TURSO_URL ? 'connected' : 'NOT SET'}`);
-    console.log(`  OpenRouter: ${process.env.OPENROUTER_API_KEY && process.env.OPENROUTER_API_KEY !== 'your_openrouter_key_here' ? 'key set ✓' : 'NOT SET'}`);
+    console.log(`  OpenRouter: ${process.env.OPENROUTER_API_KEY && process.env.OPENROUTER_API_KEY !== 'your_openrouter_key_here' ? 'key set âœ“' : 'NOT SET'}`);
     console.log(`  Weekly cron:  active (every Monday, 02:00 IST / Asia/Kolkata)`);
-    console.log(`  Request cap: ${MAX_REQUESTS_PER_RUN}/run | Anti-bot: jitter ±3s + human breaks`);
+    console.log(`  Request cap: ${MAX_REQUESTS_PER_RUN}/run | Anti-bot: jitter Â±3s + human breaks`);
     console.log(`\n  RapidAPI keys (no quota burned on startup):`);
     validateKeys();
   });

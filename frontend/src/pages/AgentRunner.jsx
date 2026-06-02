@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+﻿import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAgent } from '../context/AgentContext';
 
@@ -12,11 +12,11 @@ function AccountCard({ account }) {
         <div className="ac-identity">
           <div className="ac-name">
             {account.name}
-            {account.verified && <span className="verified-badge"> ✓</span>}
+            {account.verified && <span className="verified-badge"> âœ“</span>}
           </div>
           <div className="ac-handle">@{account.handle}</div>
-          <div className="ac-meta">{account.tier} · {account.account_type} · Track {account.track}</div>
-          {account.ai_reason && <div className="ac-ai-reason">🤖 {account.ai_reason}</div>}
+          <div className="ac-meta">{account.tier} Â· {account.account_type} Â· Track {account.track}</div>
+          {account.ai_reason && <div className="ac-ai-reason">ðŸ¤– {account.ai_reason}</div>}
         </div>
         <div className="ac-score" style={{ color: scoreColor(account.overall) }}>
           {account.overall}
@@ -44,7 +44,7 @@ function AccountCard({ account }) {
         <span>{(account.followers || 0).toLocaleString()} followers</span>
         {account.dmOpen   && <span className="badge green">DM Open</span>}
         {account.hasEmail && <span className="badge blue">Has Email</span>}
-        {account.website  && <a href={account.website} target="_blank" rel="noreferrer" className="badge link">Website ↗</a>}
+        {account.website  && <a href={account.website} target="_blank" rel="noreferrer" className="badge link">Website â†—</a>}
         {account.ai_model && (
           <span className="badge purple" title={account.ai_model}>
             {account.ai_model.split('/')[1]?.split('-').slice(0, 2).join('-') || 'AI'}
@@ -78,37 +78,37 @@ export default function AgentRunner() {
         <div>
           <h1>Run Agent</h1>
           <p className="page-sub">
-            Fetches all active keywords — results saved to database.
-            {running && <span className="running-note"> You can navigate away — the run continues in the background.</span>}
+            Fetches all active keywords â€” results saved to database.
+            {running && <span className="running-note"> You can navigate away â€” the run continues in the background.</span>}
           </p>
         </div>
         {running && (
           <div className="run-live-stats">
             <span className="live-dot" />
             <span className="live-label">Live</span>
-            <span className="live-stat green">+{stats.added} new</span>
-            <span className="live-stat gold">{stats.updated} updated</span>
-            {stats.errors > 0 && <span className="live-stat red">{stats.errors} err</span>}
+            <span className="live-stat green">+{stats?.added ?? 0} new</span>
+            <span className="live-stat gold">{stats?.updated ?? 0} updated</span>
+            {(stats?.errors ?? 0) > 0 && <span className="live-stat red">{stats?.errors ?? 0} err</span>}
           </div>
         )}
       </div>
 
-      {connErr && <div className="conn-error">⚠️ {connErr}</div>}
+      {connErr && <div className="conn-error">âš ï¸ {connErr}</div>}
 
       {/* Controls */}
       <div className="agent-controls">
         <div className="search-row">
           <input
             className="search-input"
-            placeholder="Custom query — or leave blank to run all 61 active keywords"
+            placeholder="Custom query â€” or leave blank to run all 61 active keywords"
             value={query}
             onChange={e => setQuery(e.target.value)}
             disabled={running}
             onKeyDown={e => e.key === 'Enter' && !running && startRun(query)}
           />
           {running
-            ? <button className="btn-danger" onClick={stopRun}>■ Stop</button>
-            : <button className="btn-primary" onClick={() => startRun(query)}>⚡ Run Agent</button>
+            ? <button className="btn-danger" onClick={stopRun}>â–  Stop</button>
+            : <button className="btn-primary" onClick={() => startRun(query)}>âš¡ Run Agent</button>
           }
         </div>
         <div className="presets">
@@ -133,25 +133,25 @@ export default function AgentRunner() {
       {/* Summary */}
       {summary && !running && (
         <div className="summary-banner">
-          ✅ Run complete —{' '}
+          âœ… Run complete â€”{' '}
           <strong>{summary.accountsAdded ?? 0} new accounts</strong> added,{' '}
           <strong>{summary.duplicatesSkipped ?? 0} updated</strong> in database.{' '}
-          <button className="link-btn" onClick={() => navigate('/')}>View Dashboard →</button>
+          <button className="link-btn" onClick={() => navigate('/')}>View Dashboard â†’</button>
         </div>
       )}
 
       <div className="agent-body">
-        {/* Live log — persists even after navigation */}
+        {/* Live log â€” persists even after navigation */}
         <div className="step-log" ref={logRef} onScroll={() => {}}>
           <div className="log-title">
             Agent Log
             {stepLog.length > 0 && (
-              <button className="log-scroll-btn" onClick={scrollLog}>↓ Latest</button>
+              <button className="log-scroll-btn" onClick={scrollLog}>â†“ Latest</button>
             )}
           </div>
           {stepLog.length === 0 && (
             <div className="log-empty">
-              {running ? 'Starting…' : 'Ready — click Run Agent to start'}
+              {running ? 'Startingâ€¦' : 'Ready â€” click Run Agent to start'}
             </div>
           )}
           {stepLog.map((l, i) => (
@@ -164,7 +164,7 @@ export default function AgentRunner() {
           {accounts.length > 0 && (
             <div className="results-header">
               <span>{accounts.length} accounts this run</span>
-              {stats.errors > 0 && <span className="err-cnt">{stats.errors} errors</span>}
+              {(stats?.errors ?? 0) > 0 && <span className="err-cnt">{stats?.errors ?? 0} errors</span>}
             </div>
           )}
           {[...accounts].sort((a, b) => b.overall - a.overall).map(a => (
@@ -172,7 +172,7 @@ export default function AgentRunner() {
           ))}
           {!running && accounts.length === 0 && stepLog.length > 0 && (
             <div className="empty-state">
-              No new accounts found — all results were already in the database.
+              No new accounts found â€” all results were already in the database.
             </div>
           )}
         </div>

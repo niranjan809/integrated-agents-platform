@@ -7,7 +7,11 @@ router.use(requireAuth);
 
 // GET /api/accounts — all accounts with filters
 router.get('/', async (req, res) => {
-  const { track, type, tier, min_score, limit = 1000, offset = 0 } = req.query;
+  const limitRaw = parseInt(req.query.limit, 10);
+  const offsetRaw = parseInt(req.query.offset, 10);
+  const limit = isNaN(limitRaw) ? 1000 : Math.min(limitRaw, 5000);
+  const offset = isNaN(offsetRaw) ? 0 : offsetRaw;
+  const { track, type, tier, min_score } = req.query;
   try {
     let sql = 'SELECT * FROM accounts WHERE 1=1';
     const args = [];
@@ -16,7 +20,7 @@ router.get('/', async (req, res) => {
     if (tier)      { sql += ' AND tier = ?';          args.push(tier); }
     if (min_score) { sql += ' AND overall >= ?';      args.push(Number(min_score)); }
     sql += ' ORDER BY overall DESC LIMIT ? OFFSET ?';
-    args.push(Number(limit), Number(offset));
+    args.push(limit, offset);
 
     const { rows } = await db.execute({ sql, args });
     const total    = await db.execute({ sql: 'SELECT COUNT(*) as cnt FROM accounts', args: [] });

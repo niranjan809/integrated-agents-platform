@@ -283,7 +283,7 @@ export default function WorkflowPage() {
             </InfoBox>
             <InfoBox color={C.gold} style={{ flex: 1 }}>
               <div style={{ fontWeight: 700, marginBottom: 4, color: C.gold }}>Cron (Automatic)</div>
-              <Code>cron.schedule('0 2 1 * *', ...)</Code><br />
+              <Code>cron.schedule('0 2 * * 1', ...)</Code><br />
               Runs every Monday at <strong>02:00 AM IST</strong> (Asia/Kolkata).<br />
               Pre-condition: <Code>auto_run_enabled = '1'</Code> in agent_config.<br />
               Must have at least one keyword or direct handle.<br />

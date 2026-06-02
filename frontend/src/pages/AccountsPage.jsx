@@ -305,7 +305,7 @@ export default function AccountsPage({ mode }) {
   const emailCount = accounts.filter(a => a.has_email).length;
 
   if (loading) return <div className="page-loader"><div className="spinner" /></div>;
-  if (error)   return <div className="page" style={{padding:32}}><div className="page-error">{error}</div></div>;
+  if (error)   return <div className="page" style={{padding:32}}><div className="page-error">{error}</div><button className="btn-primary" style={{marginTop:16}} onClick={()=>{ setLoading(true); setError(''); apiFetch(endpoint).then(r=>r.json()).then(d=>{setAccounts(d.accounts||[]);setLoading(false);}).catch(e=>{setError(e.message);setLoading(false);}); }}>Retry</button></div>;
 
   return (
     <div className="page accounts-page">

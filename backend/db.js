@@ -205,12 +205,14 @@ async function initDB() {
       });
       console.log(`  Admin user created: ${adminEmail}`);
     } else {
-      // Update password if it changed in .env
-      const hash = await bcrypt.hash(adminPassword, 12);
-      await db.execute({
-        sql:  'UPDATE users SET password_hash = ? WHERE email = ?',
-        args: [hash, adminEmail],
-      });
+      // Only rehash if password changed — avoids bcrypt cost on every cold start
+      const { rows: userRow } = await db.execute({ sql: 'SELECT password_hash FROM users WHERE email = ?', args: [adminEmail] });
+      const matches = userRow.length > 0 && await bcrypt.compare(adminPassword, userRow[0].password_hash);
+      if (!matches) {
+        const hash = await bcrypt.hash(adminPassword, 12);
+        await db.execute({ sql: 'UPDATE users SET password_hash = ? WHERE email = ?', args: [hash, adminEmail] });
+        console.log(`  Admin password updated: ${adminEmail}`);
+      }
     }
   }
 

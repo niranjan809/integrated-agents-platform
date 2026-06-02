@@ -65,7 +65,7 @@ async function getFriendKeywordsForUI() {
   if (!client) return null;
   try {
     const [classRes, kwRes, infRes] = await Promise.all([
-      client.execute(`SELECT class_key, name, description, priority, color_hex FROM keyword_classes ORDER BY display_order`),
+      client.execute(`SELECT class_key, name, description, color_hex FROM keyword_classes ORDER BY display_order`),
       client.execute(`SELECT id, keyword, class_key, sub_category, intent, priority, search_query, enabled
                       FROM keywords ORDER BY class_key,
                         CASE priority WHEN 'High' THEN 1 WHEN 'STANDARD' THEN 2 ELSE 3 END, keyword`),
@@ -95,6 +95,7 @@ async function testFriendDb() {
   if (!url) return { ok: false, error: 'FRIEND_TURSO_URL not set in .env' };
   try {
     const client = getClient();
+    if (!client) return { ok: false, error: 'DB client not initialised (check FRIEND_TURSO_TOKEN)' };
     const [kwRes, infRes] = await Promise.all([
       client.execute('SELECT COUNT(*) as n FROM keywords WHERE enabled = 1'),
       client.execute('SELECT COUNT(*) as n FROM influencers WHERE enabled = 1'),

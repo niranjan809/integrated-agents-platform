@@ -97,7 +97,7 @@ router.patch('/:configKey', async (req, res) => {
   const { value }     = req.body;
   // Block any attempt to set sensitive keys via this endpoint
   const blocked = ['openrouter_api_key', 'jwt_secret', 'turso_token', 'rapidapi_key'];
-  if (blocked.some(b => configKey.toLowerCase().includes(b.split('_')[0]))) {
+  if (blocked.some(b => configKey.toLowerCase().includes(b))) {
     return res.status(400).json({ error: 'Sensitive keys must be set in .env — not via API' });
   }
   try {

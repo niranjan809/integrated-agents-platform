@@ -24,7 +24,11 @@ router.get('/stats', async (req, res) => {
     ]);
 
     const configMap = {};
-    for (const row of config.rows) configMap[row.key] = row.value;
+    const SENSITIVE = ['key', 'token', 'secret', 'password'];
+    for (const row of config.rows) {
+      if (SENSITIVE.some(s => row.key.toLowerCase().includes(s))) continue;
+      configMap[row.key] = row.value;
+    }
 
     res.json({
       totals:       totals.rows[0],

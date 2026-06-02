@@ -21,7 +21,7 @@ async function callOpenRouter(messages, { maxTokens = 400, temperature = 0.1, mo
   const key = getKey();
   if (!key) return { success: false, error: 'OPENROUTER_API_KEY not set in .env' };
 
-  // Only Haiku — no expensive fallbacks
+  // Only Opus 4.5 — best classification accuracy
   const tryModels = [SCORING_MODEL];
 
   for (const m of tryModels) {
@@ -86,7 +86,7 @@ Example: [{"d2":72,"d3":85,"type":"Influencer","track":"A"},...]`;
 
   const result = await callOpenRouter(
     [{ role: 'user', content: prompt }],
-    { maxTokens: 60 * accounts.length, temperature: 0.1 }
+    { maxTokens: Math.max(750, 120 * accounts.length), temperature: 0.1 }
   );
 
   if (!result.success) {

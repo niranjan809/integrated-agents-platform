@@ -10,6 +10,7 @@ const { aiScoreBatch, BATCH_SIZE, SCORING_MODEL } = require('./openrouter');
 const { getFriendSearchQueries, getFriendInfluencerHandles, testFriendDb } = require('./friendDb');
 
 const app  = express();
+app.set('trust proxy', 1); // Required on Render — sits behind a reverse proxy
 const PORT = process.env.PORT || 3001;
 
 // ── Security headers (API-safe — disable browser-only policies) ──────────────
@@ -548,7 +549,7 @@ async function runAgent({ queries, directHandles = [], triggeredBy = 'manual', s
 
     emit('search_done', {
       query, found: handles.length, fetching: targets.length, handles: targets,
-      tweets_returned: tweets.length, duration_ms: searchRes.duration_ms,
+      tweets_returned: rawHandles.length, duration_ms: searchRes.duration_ms,
     });
     sendHealth();
 

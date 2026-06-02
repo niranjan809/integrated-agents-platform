@@ -18,9 +18,8 @@ router.get('/keys', (req, res) => {
 // POST /api/settings/keys/test — test all keys with a minimal API call
 router.post('/keys/test', async (req, res) => {
   const apiHost = process.env.RAPIDAPI_HOST || 'twitter-api45.p.rapidapi.com';
+  // Only paid key is active — free keys removed
   const rawKeys = [
-    { label: 'Key1',    key: process.env.RAPIDAPI_KEY },
-    { label: 'Key2',    key: process.env.RAPIDAPI_KEY_BACKUP },
     { label: 'KeyPaid', key: process.env.RAPIDAPI_KEY_PAID },
   ].filter(k => k.key);
 

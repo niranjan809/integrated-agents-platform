@@ -60,31 +60,48 @@ app.use('/api/settings',  require('./routes/settings'));
 // without exceeding that rate, then sleep until then (+ random jitter).
 // This means we NEVER fire faster than the safe rate — no 429s.
 //
-// With 2 keys at 6 RPM each → 12 RPM combined → ~5s between requests total.
+// Paid key only — free keys removed.
+// Anti-bot strategy:
+//   1. Conservative 3 RPM = 20s minimum gap (looks human, not mechanical)
+//   2. Large random jitter ±3s so requests never arrive at predictable intervals
+//   3. Random extra pause every 20-30 requests (simulates human "taking a break")
+//   4. Query order shuffled on every run
+//   5. count param varies 40-50 each search (not always 50)
 // ═══════════════════════════════════════════════════════════════════════════
 const RAPIDAPI_HOST = process.env.RAPIDAPI_HOST || 'twitter-api45.p.rapidapi.com';
 const BASE_URL      = `https://${RAPIDAPI_HOST}`;
 
-const SAFE_RPM  = 6;     // standard keys — requests-per-minute
-const PAID_RPM  = Math.max(1, Number(process.env.PAID_KEY_RPM) || 3); // paid shared key (conservative)
-const JITTER_MS = 1200;  // ±600ms random spread
+const PAID_RPM  = Math.max(1, Number(process.env.PAID_KEY_RPM) || 3);
+const JITTER_MS = 6000; // ±3 000ms — large randomness prevents pattern detection
 
-// Per-run request cap — protects shared paid key quota
-// 5000 = ~20% of 100K monthly shared limit, across 4 weekly runs
+// Per-run request cap — protects shared quota
 const MAX_REQUESTS_PER_RUN = Number(process.env.MAX_REQUESTS_PER_RUN) || 5000;
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 function jitter()  { return Math.floor(Math.random() * JITTER_MS) - JITTER_MS / 2; }
 
+// Random extra pause every ~25 requests (simulates human behaviour)
+let requestsSinceBreak = 0;
+async function humanBreak(emitStatus) {
+  requestsSinceBreak++;
+  const threshold = 20 + Math.floor(Math.random() * 15); // every 20-35 requests
+  if (requestsSinceBreak >= threshold) {
+    requestsSinceBreak = 0;
+    const breakMs = 30_000 + Math.floor(Math.random() * 30_000); // 30-60s break
+    if (emitStatus) emitStatus(`Human break — ${Math.round(breakMs/1000)}s pause (anti-bot)`);
+    console.log(`[ANTI-BOT] Human break: ${Math.round(breakMs/1000)}s`);
+    await sleep(breakMs);
+  }
+}
+
+// Paid key only — no free keys
 const KEYS = [
-  { key: process.env.RAPIDAPI_KEY,        label: 'Key1',    rpm: SAFE_RPM },
-  { key: process.env.RAPIDAPI_KEY_BACKUP, label: 'Key2',    rpm: SAFE_RPM },
-  { key: process.env.RAPIDAPI_KEY_PAID,   label: 'KeyPaid', rpm: PAID_RPM },
+  { key: process.env.RAPIDAPI_KEY_PAID, label: 'KeyPaid', rpm: PAID_RPM },
 ].filter(k => k.key).map(({ key, label, rpm }) => ({
   key,
   label,
   rpm,
-  minGapMs:          Math.ceil(60_000 / rpm),
+  minGapMs:          Math.ceil(60_000 / rpm), // 3 RPM = 20 000ms gap
   lastFiredAt:       0,
   cooldownUntil:     0,
   disabled:          false,
@@ -397,6 +414,7 @@ async function runAgent({ queries, directHandles = [], triggeredBy = 'manual', s
   const emit = (event, data) => { if (sseRes && !isAborted()) sse(sseRes, event, data); };
   // Pass a status emitter into callAPI so pacing messages reach the UI
   const pace = (msg) => emit('status', { step: 'pacing', message: msg });
+  const paceWithBreak = async (msg) => { pace(msg); await humanBreak(pace); };
   // Sends a raw SSE comment every 8s during rate-limit waits — keeps the
   // browser's EventSource TCP connection alive during long silent periods
   const keepAlive = () => { if (sseRes && !isAborted()) sseRes.write(': ping\n\n'); };
@@ -412,7 +430,11 @@ async function runAgent({ queries, directHandles = [], triggeredBy = 'manual', s
   const durations = [];
   let accountsAdded = 0, duplicatesSkipped = 0;
   const seenThisRun = new Set(); // cross-query dedup within this run
-  globalConsecutive429 = 0;     // reset quota counter for a fresh run
+  globalConsecutive429  = 0;    // reset quota counter for a fresh run
+  requestsSinceBreak   = 0;    // reset human-break counter
+
+  // Shuffle query order every run — prevents bot-pattern detection
+  queries = [...queries].sort(() => Math.random() - 0.5);
 
   const sendHealth = () => emit('health', {
     ...calcHealth(health.calls, health.successes, health.errors, health.totalMs, health.flags),
@@ -424,7 +446,9 @@ async function runAgent({ queries, directHandles = [], triggeredBy = 'manual', s
   for (const query of queries) {
     emit('status', { step: 'search', message: `Searching X for: "${query}"`, progress: 0 });
 
-    const searchRes = await callAPI('search.php', { query, count: 50 }, pace, keepAlive);
+    // Vary count 40-50 per search — not always exactly 50 (anti-bot pattern variation)
+    const searchCount = 40 + Math.floor(Math.random() * 11);
+    const searchRes = await callAPI('search.php', { query, count: searchCount }, paceWithBreak, keepAlive);
     health.calls++; health.totalMs += searchRes.duration_ms;
     durations.push(searchRes.duration_ms);
 
@@ -491,7 +515,7 @@ async function runAgent({ queries, directHandles = [], triggeredBy = 'manual', s
         key_stats: keyStats(),
       });
 
-      const r = await callAPI('screenname.php', { screenname: handle }, pace, keepAlive);
+      const r = await callAPI('screenname.php', { screenname: handle }, paceWithBreak, keepAlive);
       health.calls++; health.totalMs += r.duration_ms;
       durations.push(r.duration_ms);
 
@@ -674,7 +698,7 @@ async function runAgent({ queries, directHandles = [], triggeredBy = 'manual', s
         const handle = newDirectHandles[i];
         seenThisRun.add(handle.toLowerCase());
         emit('status', { step: 'fetching', message: `[Friend list] @${handle} [${i + 1}/${newDirectHandles.length}]`, progress: 95 });
-        const r = await callAPI('screenname.php', { screenname: handle }, pace, keepAlive);
+        const r = await callAPI('screenname.php', { screenname: handle }, paceWithBreak, keepAlive);
         health.calls++; health.totalMs += r.duration_ms;
         if (r.success) {
           health.successes++;
@@ -836,65 +860,11 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// ── Monthly cron — 1st of every month at 02:00 AM UTC ────────────────────────
-cron.schedule('0 2 1 * *', async () => {
-  const stamp = new Date().toISOString();
-  console.log(`\n[CRON] ══════ Monthly run starting — ${stamp} ══════`);
-  try {
-    // Check auto-run is enabled
-    const cfg = await db.execute(`SELECT value FROM agent_config WHERE key='auto_run_enabled'`);
-    if (cfg.rows[0]?.value !== '1') {
-      console.log('[CRON] Auto-run is disabled in settings — skipping');
-      return;
-    }
-
-    // 1. Own active keywords (all, no limit)
-    const { rows: ownRows } = await db.execute(`SELECT keyword FROM keywords WHERE active = 1 ORDER BY class, category`);
-    const ownKeywords = ownRows.map(r => r.keyword);
-
-    // 2. Friend's search queries (read-only)
-    const friendQueries = await getFriendSearchQueries({ maxRows: 300 });
-
-    // 3. Friend's known influencer handles (direct fetch)
-    const directHandles = await getFriendInfluencerHandles();
-
-    // Merge + deduplicate
-    const seen = new Set(ownKeywords.map(k => k.toLowerCase()));
-    const merged = [...ownKeywords];
-    for (const q of friendQueries) {
-      if (!seen.has(q.toLowerCase())) { seen.add(q.toLowerCase()); merged.push(q); }
-    }
-
-    if (!merged.length && !directHandles.length) {
-      console.log('[CRON] No keywords or handles to process — skipping');
-      return;
-    }
-
-    console.log(`[CRON] Queries: ${ownKeywords.length} own + ${friendQueries.length} friend = ${merged.length} total`);
-    console.log(`[CRON] Direct handles: ${directHandles.length}`);
-
-    // Record next-run time before starting (1st of next month)
-    const nextRun = new Date(); nextRun.setMonth(nextRun.getMonth() + 1); nextRun.setDate(1); nextRun.setHours(2, 0, 0, 0);
-    await db.execute({ sql: `UPDATE agent_config SET value=?, updated_at=datetime('now') WHERE key='next_run'`, args: [nextRun.toISOString()] });
-
-    const summary = await runAgent({ queries: merged, directHandles, triggeredBy: 'cron' });
-    console.log(`[CRON] ══════ Monthly run complete — added:${summary.accountsAdded} updated:${summary.duplicatesSkipped} errors:${summary.errors} ══════\n`);
-
-  } catch (err) {
-    console.error('[CRON] Monthly run error:', err.message);
-  }
-}, { timezone: 'UTC' });
-
-// ── Weekly cron — every Monday at 02:00 AM UTC (skip if today is the 1st) ────
-// Keeps data fresh with smaller top-up runs. Skips on the 1st because the
-// monthly cron already runs a full fetch that day.
+// ── Weekly cron — every Monday at 02:00 AM UTC ───────────────────────────────
+// Only schedule — monthly cron removed. Weekly keeps data fresh.
+// Recent accounts (< 6 days old) are skipped to protect shared API quota.
 cron.schedule('0 2 * * 1', async () => {
-  const today = new Date();
-  if (today.getUTCDate() === 1) {
-    console.log('[WEEKLY] Skipping — monthly cron runs today (1st of month)');
-    return;
-  }
-  const stamp = today.toISOString();
+  const stamp = new Date().toISOString();
   console.log(`\n[WEEKLY] ══════ Weekly refresh starting — ${stamp} ══════`);
   try {
     const cfg = await db.execute(`SELECT value FROM agent_config WHERE key='auto_run_enabled'`);
@@ -905,20 +875,20 @@ cron.schedule('0 2 * * 1', async () => {
     const friendQueries = await getFriendSearchQueries({ maxRows: 300 });
     const directHandles = await getFriendInfluencerHandles();
 
-    const seen   = new Set(ownKeywords.map(k => k.toLowerCase()));
+    const seen = new Set(ownKeywords.map(k => k.toLowerCase()));
     const merged = [...ownKeywords];
     for (const q of friendQueries) {
       if (!seen.has(q.toLowerCase())) { seen.add(q.toLowerCase()); merged.push(q); }
     }
 
-    console.log(`[WEEKLY] Queries: ${merged.length} total | Cap: ${MAX_REQUESTS_PER_RUN} requests`);
-    console.log(`[WEEKLY] Recent accounts (last 6 days) will be skipped to save quota`);
+    if (!merged.length && !directHandles.length) { console.log('[WEEKLY] No keywords — skipping'); return; }
 
+    console.log(`[WEEKLY] ${merged.length} queries | cap: ${MAX_REQUESTS_PER_RUN} | anti-bot: on`);
     const nextRun = new Date(); nextRun.setDate(nextRun.getDate() + 7); nextRun.setHours(2, 0, 0, 0);
     await db.execute({ sql: `UPDATE agent_config SET value=?, updated_at=datetime('now') WHERE key='next_run'`, args: [nextRun.toISOString()] });
 
     const summary = await runAgent({ queries: merged, directHandles, triggeredBy: 'weekly_cron' });
-    console.log(`[WEEKLY] ══════ Complete — added:${summary.accountsAdded} updated:${summary.duplicatesSkipped} ══════\n`);
+    console.log(`[WEEKLY] ══════ Done — +${summary.accountsAdded} new, ${summary.duplicatesSkipped} updated ══════\n`);
   } catch (err) {
     console.error('[WEEKLY] Error:', err.message);
   }
@@ -934,7 +904,8 @@ initDB().then(async () => {
     console.log(`  http://localhost:${PORT}`);
     console.log(`  Turso:    ${process.env.TURSO_URL ? 'connected' : 'NOT SET'}`);
     console.log(`  OpenRouter: ${process.env.OPENROUTER_API_KEY && process.env.OPENROUTER_API_KEY !== 'your_openrouter_key_here' ? 'key set ✓' : 'NOT SET'}`);
-    console.log(`  Monthly cron: active (1st of month, 02:00 UTC)`);
+    console.log(`  Weekly cron:  active (every Monday, 02:00 UTC)`);
+    console.log(`  Request cap: ${MAX_REQUESTS_PER_RUN}/run | Anti-bot: jitter ±3s + human breaks`);
     console.log(`\n  RapidAPI keys (no quota burned on startup):`);
     validateKeys();
   });

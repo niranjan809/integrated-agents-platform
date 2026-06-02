@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>KiteAI X Agent — Complete System Workflow</title>
+<style>
+  body { font-family: Calibri, Arial, sans-serif; font-size: 11pt; color: #1a1a1a; margin: 2cm 2.5cm; line-height: 1.6; }
+  h1  { font-size: 24pt; color: #1a56a0; border-bottom: 4px solid #1a56a0; padding-bottom: 8pt; margin-top: 0; }
+  h2  { font-size: 16pt; color: #1a56a0; border-left: 6px solid #1a56a0; padding-left: 12pt; margin-top: 28pt; page-break-before: auto; }
+  h3  { font-size: 12.5pt; color: #0d7a5e; margin-top: 18pt; border-bottom: 1px solid #d0e8d8; padding-bottom: 3pt; }
+  h4  { font-size: 11pt; color: #7b3fa0; margin-top: 14pt; }
+  p   { margin: 5pt 0; }
+  pre, code { font-family: 'Courier New', monospace; font-size: 10pt; background: #f5f5f5; }
+  code { padding: 1pt 5pt; border-radius: 3pt; }
+  pre  { display: block; padding: 12pt 14pt; border-left: 4px solid #1a56a0; margin: 10pt 0 14pt; white-space: pre-wrap; line-height: 1.8; }
+  table { border-collapse: collapse; width: 100%; margin: 10pt 0 16pt; font-size: 10.5pt; }
+  th { background: #1a56a0; color: #fff; padding: 7pt 10pt; text-align: left; font-size: 10pt; }
+  td { padding: 6pt 10pt; border: 1px solid #ccc; vertical-align: top; }
+  tr:nth-child(even) td { background: #f0f5ff; }
+  .box       { border: 1px solid #b8cef0; border-left: 5px solid #1a56a0; background: #f0f5ff; padding: 10pt 14pt; margin: 10pt 0; border-radius: 2pt; }
+  .box-green { border-left-color: #0d7a5e; background: #f0faf5; border-color: #a0d8c0; }
+  .box-gold  { border-left-color: #b8860b; background: #fffbee; border-color: #e0cc80; }
+  .box-red   { border-left-color: #c0392b; background: #fff5f5; border-color: #f0b0a0; }
+  .box-purple{ border-left-color: #7b3fa0; background: #f8f0ff; border-color: #d0a0f0; }
+  .formula   { background: #0d1b2a; color: #79c0ff; padding: 16pt; font-family: 'Courier New', monospace; border-radius: 4pt; margin: 12pt 0; font-size: 12pt; line-height: 2.4; }
+  .formula .label { color: #58c0a0; }
+  .formula .val   { color: #f9c513; font-weight: bold; }
+  ul { margin: 6pt 0; padding-left: 22pt; }
+  li { margin: 4pt 0; }
+  .kw { display: inline-block; background: #e8f0fe; color: #1a56a0; border: 1px solid #b0c8f8; border-radius: 3pt; padding: 1pt 6pt; font-size: 9.5pt; font-family: monospace; margin: 2pt; }
+  .kw-green { background: #e6f4ea; color: #1e7a40; border-color: #90d0a0; }
+  .kw-gold  { background: #fef8e0; color: #8a6000; border-color: #e0c060; }
+  .kw-red   { background: #fdecea; color: #900000; border-color: #f0a0a0; }
+  .track-a  { background: #d1fae5; color: #065f46; padding: 2pt 8pt; border-radius: 3pt; font-weight: bold; }
+  .track-b  { background: #fef3c7; color: #92400e; padding: 2pt 8pt; border-radius: 3pt; font-weight: bold; }
+  .page-break { page-break-before: always; }
+  .subtitle { color: #555; font-size: 10.5pt; margin-bottom: 20pt; }
+  .toc { background: #f0f5ff; border: 2px solid #b8cef0; padding: 16pt 20pt; margin: 20pt 0 28pt; border-radius: 4pt; }
+  .toc-title { font-size: 14pt; font-weight: bold; color: #1a56a0; margin-bottom: 12pt; }
+  .toc a { color: #1a56a0; text-decoration: none; display: block; padding: 3pt 0; font-size: 10.5pt; }
+  .toc-sub { padding-left: 20pt; font-size: 10pt; color: #444; }
+  .step-badge { display: inline-block; background: #1a56a0; color: white; font-size: 9pt; font-weight: bold; padding: 2pt 8pt; border-radius: 3pt; margin-right: 6pt; }
+  .note { font-size: 9.5pt; color: #666; font-style: italic; margin-top: 4pt; }
+  .example-row { background: #fffde7 !important; }
+  hr { border: none; border-top: 2px solid #1a56a0; margin: 24pt 0 8pt; }
+</style>
+</head>
+<body>
+
+<h1>KiteAI X Agent — Complete System Workflow</h1>
+<div class="subtitle">
+  Full pipeline documentation | Anyone reading this document should understand exactly how the system works, what decisions are made, and why.<br>
+  Backend: <code>https://pr-x-agent.onrender.com</code> &nbsp;|&nbsp;
+  Frontend: <code>https://pr-x-agent.vercel.app</code> &nbsp;|&nbsp;
+  Repo: <code>github.com/Yathukrishnan/PR_X_AGENT</code>
+</div>
+
+<!-- TABLE OF CONTENTS -->
+<div class="toc">
+  <div class="toc-title">📋 Table of Contents</div>
+  <a href="#overview">1. What This System Does — Big Picture</a>
+  <a href="#pipeline">2. Complete Pipeline Flow Diagram</a>
+  <a href="#trigger">3. Trigger — How a Run Starts</a>
+  <a href="#keywords">4. Keyword Loading — Where Searches Come From</a>
+  <a href="#search">5. Search Phase — Finding X Handles</a>
+  <a href="#ratelimiter">6. Rate Limiter — Protecting API Keys</a>
+  <a href="#fetch">7. Profile Fetch — Getting Full Account Data</a>
+  <a href="#validation">8. Profile Validation — Minimum Bar (Discarding Invalid Accounts)</a>
+  <a href="#algo-scoring">9. Algorithmic Scoring — D4 &amp; D5 (Instant, No API Call)</a>
+  <a href="#ai-scoring">10. AI Scoring — D2 &amp; D3 via Claude Opus 4.5</a>
+  <a href="#type-class">11. Account Type Classification — How Each Type is Detected</a>
+  <a href="#track">12. Track Assignment — A vs B (The Critical Split)</a>
+  <a href="#finalscore">13. Final Score Formula + Worked Example</a>
+  <a href="#tiers">14. Score Tiers — What Tier 1 / Tier 2 / Archive Mean</a>
+  <a href="#ideal">15. What Makes an Ideal Profile (Track A)</a>
+  <a href="#dedup">16. Deduplication — No Account Appears Twice</a>
+  <a href="#dbwrite">17. Database Write — What Gets Saved</a>
+  <a href="#sse">18. SSE Events — Real-Time Streaming to Browser</a>
+  <a href="#direct">19. Direct Handle Fetch — Friend's Influencer List</a>
+  <a href="#quota">20. Quota Exhaustion — When the API Runs Out</a>
+  <a href="#endpoints">21. All API Endpoints</a>
+  <a href="#security">22. Security</a>
+  <a href="#stack">23. Tech Stack &amp; Deployment</a>
+  <a href="#costs">24. Costs</a>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<h2 id="overview">1. What This System Does — Big Picture</h2>
+
+<p>The KiteAI X Agent automatically finds X (Twitter) accounts that KiteAI should work with — either as <strong>collab partners</strong> (influencers, AI builders) or as <strong>ads audiences</strong> (PR pages, brand communities). It does this by:</p>
+
+<ol>
+  <li><strong>Searching X</strong> for accounts using 1,500+ curated AI/voice keywords</li>
+  <li><strong>Fetching full profile data</strong> for every discovered account</li>
+  <li><strong>Filtering out invalid/irrelevant accounts</strong> automatically</li>
+  <li><strong>Scoring each account</strong> on 4 dimensions (D2, D3, D4, D5) using both AI and math</li>
+  <li><strong>Classifying each account</strong> into a type (Influencer, PR Page, AI Media, Brand Page)</li>
+  <li><strong>Sorting into Track A or Track B</strong> — contact vs ads-only</li>
+  <li><strong>Saving everything to a database</strong> that powers the dashboard</li>
+  <li><strong>Running automatically</strong> on the 1st of every month</li>
+</ol>
+
+<div class="box">
+  <strong>In one sentence:</strong> The system discovers, scores, classifies, and stores every relevant X account in the AI/voice space so the KiteAI team knows exactly who to reach out to and who to target with ads.
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<h2 id="pipeline">2. Complete Pipeline Flow Diagram</h2>
+<pre>
+┌─────────────────────────────────────────────────────────────────────────┐
+│  TRIGGER  (manual click OR automatic cron: 1st of month, 02:00 UTC)     │
+└──────────────────────┬──────────────────────────────────────────────────┘
+                       │
+                       ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│  KEYWORD LOADING                                                         │
+│  Own DB: 61 keywords (Class A-K)                                        │
+│  Friend's DB: 1,506 keywords + 42 influencer handles (READ-ONLY)        │
+│  → Merge + deduplicate → ~358 unique search queries                      │
+└──────────────────────┬──────────────────────────────────────────────────┘
+                       │
+                       ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│  SEARCH PHASE  (for each query)                                          │
+│  GET /search.php?query="ai voice assistant"&count=50                    │
+│  → Up to 50 tweet results → extract screen_name from each              │
+│  → Cross-query dedup via seenThisRun Set                                │
+│  Rate limiter: Key1 ⟷ Key2 alternating, 6 RPM each, 10s min gap       │
+└──────────────────────┬──────────────────────────────────────────────────┘
+                       │
+                       ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│  PROFILE FETCH  (for each unique handle)                                 │
+│  GET /screenname.php?screenname=vapidev                                 │
+│  → name, bio, followers, following, tweets, verified, avatar, website   │
+└──────────────────────┬──────────────────────────────────────────────────┘
+                       │
+                       ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│  VALIDATION — MINIMUM BAR  (discard invalid accounts)                   │
+│  ✗ followers &lt; 100                (bot / new account)                  │
+│  ✗ tweets &lt; 1                     (never posted)                       │
+│  ✗ name is empty                   (suspended account)                  │
+│  ✗ followers &lt; 500 AND bio empty  (no signal at all)                   │
+│  ✗ overall score &lt; 10 (post-calc) (zero relevance)                     │
+└──────────────────────┬──────────────────────────────────────────────────┘
+                       │  (only valid accounts continue)
+                       ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│  KEYWORD SCORING  (instant, no API call)                                 │
+│  D4 = verified + follower/following ratio + follower count              │
+│  D5 = reach tier (Macro/Mid/Micro/Nano based on follower count)         │
+│  D2, D3 = keyword heuristics (fallback if AI unavailable)               │
+└──────────────────────┬──────────────────────────────────────────────────┘
+                       │
+                       ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│  AI BATCH SCORING  (6 accounts per call → Claude Opus 4.5)              │
+│  Reads: handle, name, bio, followers, verified, website                  │
+│  Returns: D2 (Collab Intent), D3 (AI Relevance), type, track            │
+│  Only NEW accounts scored — existing DB accounts skip (saves quota)     │
+└──────────────────────┬──────────────────────────────────────────────────┘
+                       │
+                       ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│  TYPE CLASSIFICATION                                                     │
+│  AI Media → PR Page → Influencer → Brand Page → Account                │
+│  Based on keyword matches in bio + name                                  │
+└──────────────────────┬──────────────────────────────────────────────────┘
+                       │
+                       ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│  TRACK ASSIGNMENT  (enforced by type, AI cannot override)               │
+│  PR Page / Brand Page  → Track B (Ads audience only)                   │
+│  All other types       → Track A (Collab pipeline)                     │
+└──────────────────────┬──────────────────────────────────────────────────┘
+                       │
+                       ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│  FINAL SCORE                                                             │
+│  Overall = D2×25% + D3×25% + D4×20% + D5×30%                          │
+└──────────────────────┬──────────────────────────────────────────────────┘
+                       │
+                       ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│  DATABASE UPSERT (Turso)                                                 │
+│  handle = UNIQUE KEY → INSERT (new) or UPDATE (existing)                │
+│  All scores, type, track, contact info saved                            │
+└──────────────────────┬──────────────────────────────────────────────────┘
+                       │
+                       ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│  SSE STREAM → Live account cards appear in browser in real time         │
+└─────────────────────────────────────────────────────────────────────────┘
+</pre>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<h2 id="trigger">3. Trigger — How a Run Starts</h2>
+<table>
+  <tr><th>Trigger Type</th><th>How</th><th>Details</th></tr>
+  <tr>
+    <td><strong>Manual</strong></td>
+    <td>User clicks "Run Agent" on dashboard</td>
+    <td>Calls GET /api/run-demo with JWT token. Results stream live to browser via SSE. <code>triggeredBy = 'manual'</code> saved in DB.</td>
+  </tr>
+  <tr>
+    <td><strong>Automatic Cron</strong></td>
+    <td>node-cron fires on schedule</td>
+    <td>Schedule: <code>0 2 1 * *</code> = 02:00 UTC on the 1st of every month. Pre-condition: <code>auto_run_enabled = '1'</code> in agent_config table. <code>triggeredBy = 'cron'</code>. No SSE output — runs silently.</td>
+  </tr>
+</table>
+<div class="box">
+  On every run, a new row is inserted into the <code>runs</code> table with <code>status = 'running'</code>.
+  When the run finishes, it is updated to <code>status = 'completed'</code> or <code>'quota_exhausted'</code>.
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<h2 id="keywords">4. Keyword Loading — Where Searches Come From</h2>
+
+<h3>Own Keywords (61 total — managed in UI)</h3>
+<p>Stored in the Turso <code>keywords</code> table. Only keywords with <code>active = 1</code> are used. Grouped into 8 classes:</p>
+<table>
+  <tr><th>Class</th><th>Category</th><th>Example keywords</th><th>Priority</th></tr>
+  <tr><td>C</td><td>Voice AI Stack</td><td>vapi, elevenlabs, deepgram, cartesia, retell ai, ai phone agent, voice cloning, whisper ai</td><td>P1 (High)</td></tr>
+  <tr><td>A</td><td>AI Models</td><td>gpt-4, claude ai, gemini ai, llama model, openai, anthropic</td><td>P2</td></tr>
+  <tr><td>B</td><td>Orchestration</td><td>langchain, n8n, rag pipeline, ai agent, mcp server, vector database</td><td>P2</td></tr>
+  <tr><td>E</td><td>Language Moat</td><td>gulf arabic ai, arabic nlp, multilingual ai</td><td>P1</td></tr>
+  <tr><td>F</td><td>Vertical AI</td><td>ai for dental, gohighlevel ai, white label ai, ai saas founder</td><td>P1</td></tr>
+  <tr><td>H</td><td>Influencer</td><td>ai influencer, ai content creator, ai reviewer</td><td>P1</td></tr>
+  <tr><td>K</td><td>Product Keywords</td><td>vapi alternative, elevenlabs alternative, voice ai pricing</td><td>P1</td></tr>
+</table>
+
+<h3>Friend's Keywords (1,506 total — READ-ONLY)</h3>
+<p>Loaded from a separate Turso database (<code>FRIEND_TURSO_URL</code> env var). <strong>The system only ever reads from this database — it never writes to it.</strong></p>
+<ul>
+  <li>Maximum 300 search queries loaded per run (High priority first)</li>
+  <li>Each keyword has a <code>search_query</code> field — a refined version like <code>"GPT-4o review"</code> instead of just <code>"GPT-4o"</code></li>
+  <li>42 known influencer handles also loaded for direct fetching (no search step needed)</li>
+</ul>
+
+<h3>Merging</h3>
+<pre>Own keywords (61) + Friend search queries (up to 300) = merged, deduplicated
+Result: ~358 unique queries per run</pre>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<h2 id="search">5. Search Phase — Finding X Handles</h2>
+<pre>API call: GET https://twitter-api45.p.rapidapi.com/search.php
+Headers:  X-RapidAPI-Key: &lt;key&gt;, X-RapidAPI-Host: twitter-api45.p.rapidapi.com
+Params:   query="ai voice assistant", count=50
+
+Response structure:
+{
+  "timeline": [
+    { "screen_name": "vapidev", "full_text": "Excited about voice AI..." },
+    { "screen_name": "deepgram", "full_text": "Building the future..." },
+    ...up to 50 tweet objects
+  ]
+}</pre>
+<p><strong>What we extract:</strong> <code>screen_name</code> (Twitter handle) from each tweet result.</p>
+<p><strong>Deduplication:</strong> A <code>seenThisRun</code> Set tracks all handles processed in the current run. If the same handle appears in a later keyword search, it is skipped — so each profile is only fetched once per run no matter how many keywords match it.</p>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<h2 id="ratelimiter">6. Rate Limiter — Protecting API Keys</h2>
+<p>The rate limiter is <strong>proactive, not reactive</strong>. Before every API call, it calculates the earliest time that key can safely fire without exceeding 6 requests per minute, then sleeps until that moment. It never fires too fast — there are no "retry after 429" loops in normal operation.</p>
+
+<table>
+  <tr><th>Parameter</th><th>Value</th><th>Meaning</th></tr>
+  <tr><td>Keys loaded</td><td>Key1 + Key2</td><td>Two RapidAPI keys alternate</td></tr>
+  <tr><td>Safe RPM per key</td><td>6 req/min</td><td>Max 6 requests per minute per key</td></tr>
+  <tr><td>Min gap per key</td><td>10,000 ms</td><td>At least 10s between requests on the same key</td></tr>
+  <tr><td>Combined throughput</td><td>12 req/min</td><td>~5 seconds between requests overall</td></tr>
+  <tr><td>Jitter added</td><td>±600 ms</td><td>Random variation — looks human to the API</td></tr>
+  <tr><td>429 rate limit hit</td><td>75s cooldown</td><td>That key rests for 75s, other key takes over</td></tr>
+  <tr><td>403 forbidden hit</td><td>60 min cooldown</td><td>Auto-retries after cooldown expires</td></tr>
+  <tr><td>3 consecutive 429s</td><td>Run stops</td><td>Daily quota exhausted — saves data and exits gracefully</td></tr>
+</table>
+<div class="box-gold">
+  <strong>SSE Keepalive:</strong> During long waits (e.g. 75s cooldown), the backend sends a raw SSE comment (<code>: ping</code>) every 8 seconds. This prevents the browser from closing the live connection because it thinks the server has gone silent.
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<h2 id="fetch">7. Profile Fetch — Getting Full Account Data</h2>
+<pre>API call: GET https://twitter-api45.p.rapidapi.com/screenname.php
+Params:   screenname="vapidev"
+
+Response:
+{
+  "name":            "Vapi",
+  "desc":            "Build voice AI apps. DM for partnerships.",
+  "sub_count":       12400,
+  "friends":         890,
+  "statuses_count":  1240,
+  "blue_verified":   true,
+  "avatar":          "https://pbs.twimg.com/profile_images/...",
+  "website":         "https://vapi.ai",
+  "location":        "San Francisco"
+}</pre>
+
+<table>
+  <tr><th>Field we extract</th><th>From API field</th><th>Used for</th></tr>
+  <tr><td>name</td><td>u.name</td><td>Display, type classification</td></tr>
+  <tr><td>bio</td><td>u.desc</td><td>All scoring + type classification</td></tr>
+  <tr><td>followers</td><td>u.sub_count</td><td>D4, D5, tier, validation</td></tr>
+  <tr><td>following</td><td>u.friends</td><td>D4 ratio calculation</td></tr>
+  <tr><td>tweets</td><td>u.statuses_count</td><td>Validation minimum bar</td></tr>
+  <tr><td>verified</td><td>u.blue_verified</td><td>D4 +30 bonus</td></tr>
+  <tr><td>avatar</td><td>u.avatar</td><td>UI display</td></tr>
+  <tr><td>website</td><td>u.website</td><td>D2 fallback scoring</td></tr>
+  <tr><td>location</td><td>u.location</td><td>Stored, shown in UI</td></tr>
+</table>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<h2 id="validation">8. Profile Validation — Minimum Bar</h2>
+<p>Immediately after fetching a profile, five checks determine if it should be kept. If <strong>any</strong> check fails, the account is discarded — no AI quota is spent on it, and it is never saved to the database.</p>
+
+<table>
+  <tr><th>Check</th><th>Rule</th><th>Why we discard</th></tr>
+  <tr><td>Follower minimum</td><td>followers &lt; 100</td><td>Likely a bot, spam account, or brand-new account with no real audience. Not worth reaching out to.</td></tr>
+  <tr><td>Activity check</td><td>tweets &lt; 1</td><td>Account has never posted anything — inactive, a placeholder handle, or suspended.</td></tr>
+  <tr><td>Name check</td><td>name is empty</td><td>Deactivated or permanently suspended account. The API returns a blank name in this case.</td></tr>
+  <tr><td>Bio + reach check</td><td>followers &lt; 500 AND bio is empty</td><td>Low-reach account with nothing to evaluate — no bio means no AI relevance signal and no collab intent signal.</td></tr>
+  <tr><td>Post-score gate</td><td>overall score &lt; 10</td><td>After keyword scoring runs, accounts scoring below 10 are discarded. These are edge cases that pass the above checks but have zero relevance — e.g. 100-follower account, no bio, no website → scores ~7.</td></tr>
+</table>
+<p class="note">Every discarded account emits a "filtered" SSE status event so it appears in the agent log with the reason.</p>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<h2 id="algo-scoring">9. Algorithmic Scoring — D4 &amp; D5</h2>
+<p>D4 and D5 are calculated instantly from the raw numbers — no AI call needed. They measure objective facts: how credible is the account, and how many people does it reach?</p>
+
+<h3>D4 — Authority Score (contributes 20% to overall, max 95)</h3>
+<p>D4 measures how credible and established the account is based on three signals:</p>
+<pre>D4 = verified_bonus + ratio_bonus + follower_bonus
+
+verified_bonus:
+  +30  if blue_verified = true (paid blue tick)
+  +0   otherwise
+
+ratio_bonus (followers ÷ following):
+  +35  if ratio ≥ 30x  (e.g. 30,000 followers, 1,000 following)
+  +22  if ratio ≥ 10x
+  +12  if ratio ≥ 3x
+  +0   if ratio &lt; 3x
+
+follower_bonus:
+  +30  if followers ≥ 100,000
+  +20  if followers ≥ 10,000
+  +10  if followers ≥ 1,000
+  +0   otherwise
+
+D4 = min(95, sum of all three)
+
+Example: @vapidev — verified + ratio 14x (12,400÷890) + 10K+
+  = 30 + 22 + 20 = 72</pre>
+
+<div class="box-gold">
+  <strong>Why ratio matters:</strong> A high follower/following ratio shows an account grew organically. Accounts that follow 10,000 people to get 10,000 followers back are less valuable than accounts followed by many without following back.
+</div>
+
+<h3>D5 — Reach Quality Score (contributes 30% to overall)</h3>
+<p>D5 is the most heavily weighted dimension (30%) because reach directly determines how many people KiteAI can access through this account.</p>
+<table>
+  <tr><th>Tier</th><th>Follower Range</th><th>D5 Score</th><th>What it means</th></tr>
+  <tr><td>Macro</td><td>≥ 500,000</td><td><strong>95</strong></td><td>Top-tier account — massive reach</td></tr>
+  <tr><td>Mid-Tier</td><td>≥ 100,000</td><td><strong>80</strong></td><td>Strong audience — very valuable</td></tr>
+  <tr><td>Micro</td><td>≥ 10,000</td><td><strong>60</strong></td><td>Decent reach — good for niche</td></tr>
+  <tr><td>Nano</td><td>≥ 1,000</td><td><strong>40</strong></td><td>Small but engaged community</td></tr>
+  <tr><td>Low</td><td>≥ 500</td><td><strong>25</strong></td><td>Very small reach</td></tr>
+  <tr><td>Very low</td><td>&lt; 500</td><td><strong>10</strong></td><td>Minimal — usually not worth outreach</td></tr>
+</table>
+
+<h3>D2 &amp; D3 — Keyword Fallback (used when AI is unavailable)</h3>
+<p>If the AI call fails, these heuristic scores are used instead:</p>
+<pre>D2 — Collab Intent (keyword match in bio):
+  82  if bio contains any of: "dm open", "dms open", "dm for", "collab",
+      "partnership", "partner", "business inquir", "media kit",
+      "contact", "open to", "work with", "available for"
+  50  if no collab keyword BUT profile has a website link
+  18  otherwise (no signal at all)
+
+D3 — AI Relevance:
+  = min(95, aiHits × 12 + 8)   [+8 only if bio length &gt; 30 chars]
+
+  aiHits = count of these keywords found in bio OR name:
+  "ai", "artificial intelligence", "machine learning", "ml", "llm",
+  "gpt", "voice", "speech", "nlp", "deep learning", "developer",
+  "engineer", "founder", "startup", "saas", "api", "tech",
+  "software", "product", "build", "creator", "conversational",
+  "chatbot", "language model", "generative", "vapi", "elevenlabs"
+
+  Example: bio = "AI developer building voice agents"
+  Hits: ai(1) + developer(1) + voice(1) + agents≈build(1) = 4 hits
+  D3 = min(95, 4×12 + 8) = min(95, 56) = 56</pre>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<h2 id="ai-scoring">10. AI Scoring — D2 &amp; D3 via Claude Opus 4.5</h2>
+<p>When AI is available (OpenRouter API key set), Claude Opus 4.5 replaces the keyword heuristics with genuine language understanding. The AI reads the bio and judges intent and relevance far better than keyword matching.</p>
+
+<table>
+  <tr><th>Setting</th><th>Value</th></tr>
+  <tr><td>Model</td><td>anthropic/claude-opus-4-5 via OpenRouter</td></tr>
+  <tr><td>Batch size</td><td>6 accounts per API call (6× cheaper than 1 per call)</td></tr>
+  <tr><td>Scope</td><td>Only NEW accounts — accounts already in the DB skip AI scoring (saves cost)</td></tr>
+  <tr><td>On failure</td><td>Falls back silently to keyword heuristics. Run always continues.</td></tr>
+</table>
+
+<h3>What the AI is asked to score</h3>
+
+<h4>D2 — Collab Intent (0–100): How open is this account to partnerships?</h4>
+<table>
+  <tr><th>Score Range</th><th>Signal</th><th>Example bio signals</th></tr>
+  <tr><td>90–100</td><td>Explicit open signal</td><td>"DM open", "media kit available", "partnership@email.com", "collab4collab", email address in bio</td></tr>
+  <tr><td>65–89</td><td>Business contact available</td><td>"Business inquiries", website with contact page, "open to sponsorships"</td></tr>
+  <tr><td>35–64</td><td>Personal account, no explicit signal</td><td>Personal bio, no collab language but approachable individual</td></tr>
+  <tr><td>10–34</td><td>Not a collab target</td><td>News outlet, corporate brand, media agency — they don't do paid collabs</td></tr>
+  <tr><td>0–9</td><td>Bot or spam</td><td>No bio, repetitive content, zero engagement signals</td></tr>
+</table>
+
+<h4>D3 — AI Relevance (0–100): How AI/voice focused is their content?</h4>
+<table>
+  <tr><th>Score Range</th><th>Signal</th><th>Example</th></tr>
+  <tr><td>90–100</td><td>Core AI/voice builder</td><td>Builds with Vapi/ElevenLabs/Deepgram, LLM researcher, voice AI developer</td></tr>
+  <tr><td>65–89</td><td>AI-adjacent founder/creator</td><td>AI/ML founder, SaaS builder in AI space, AI newsletter creator</td></tr>
+  <tr><td>35–64</td><td>General tech, mentions AI</td><td>General startup founder, tech blogger who mentions AI occasionally</td></tr>
+  <tr><td>10–34</td><td>Peripheral</td><td>VC investor, marketing person with minimal AI focus</td></tr>
+  <tr><td>0–9</td><td>No AI relevance</td><td>Completely unrelated content — fitness, sports, cooking</td></tr>
+</table>
+
+<h3>What the AI sends back</h3>
+<pre>Input prompt (per account):
+  "@vapidev | Vapi | 12,400 followers | verified:yes | website:yes
+   bio: Build voice AI apps. DM for partnerships."
+
+Output (JSON array, one object per account):
+[
+  {
+    "d2": 88,
+    "d3": 95,
+    "type": "Brand Page",
+    "track": "A"
+  }
+]
+
+Note: track returned by AI is IGNORED — it is always recalculated by the
+backend from the final type (see Section 12).</pre>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<h2 id="type-class">11. Account Type Classification — How Each Type is Detected</h2>
+<p>This is the most important classification step. Type is determined first, and then track is derived from type. The AI can refine the type if keywords get it wrong.</p>
+
+<h3>Types and How They Are Detected</h3>
+<p>The backend checks bio and name for keywords. Classification rules run in this priority order:</p>
+
+<h4>1. AI Media (checked first)</h4>
+<p>Name contains any of these phrases:</p>
+<p>
+  <span class="kw">"ai news"</span>
+  <span class="kw">"ai daily"</span>
+  <span class="kw">"ai insider"</span>
+  <span class="kw">"ai hub"</span>
+  <span class="kw">"ai tools"</span>
+  <span class="kw">"ai weekly"</span>
+  <span class="kw">"llm news"</span>
+</p>
+<p>Example: Account named "AI Daily Digest" → AI Media</p>
+
+<h4>2. PR Page (checked second)</h4>
+<p>PR keyword score &gt; Influencer keyword score AND PR score &gt; 0.</p>
+<p>PR keywords checked in <strong>bio AND name</strong>:</p>
+<p>
+  <span class="kw-red">"official"</span>
+  <span class="kw-red">" hq"</span>
+  <span class="kw-red">" team"</span>
+  <span class="kw-red">"news"</span>
+  <span class="kw-red">"daily"</span>
+  <span class="kw-red">"media"</span>
+  <span class="kw-red">"press"</span>
+  <span class="kw-red">"brand"</span>
+  <span class="kw-red">"product"</span>
+  <span class="kw-red">"inc"</span>
+  <span class="kw-red">"corp"</span>
+  <span class="kw-red">"comms"</span>
+  <span class="kw-red">"marketing"</span>
+  <span class="kw-red">"agency"</span>
+  <span class="kw-red">"newsletter"</span>
+  <span class="kw-red">"digest"</span>
+  <span class="kw-red">"hub"</span>
+</p>
+
+<h4>3. Influencer (checked third)</h4>
+<p>Any of these conditions:</p>
+<ul>
+  <li>≥ 2 influencer keywords found in bio, OR</li>
+  <li>1 influencer keyword AND follower/following ratio ≥ 5, OR</li>
+  <li>No keyword check — ratio ≥ 15 (organically grown account)</li>
+</ul>
+<p>Influencer keywords checked in <strong>bio only</strong>:</p>
+<p>
+  <span class="kw-green">"founder"</span>
+  <span class="kw-green">"ceo"</span>
+  <span class="kw-green">"cto"</span>
+  <span class="kw-green">"engineer"</span>
+  <span class="kw-green">"developer"</span>
+  <span class="kw-green">"researcher"</span>
+  <span class="kw-green">"writer"</span>
+  <span class="kw-green">"investor"</span>
+  <span class="kw-green">"creator"</span>
+  <span class="kw-green">"building"</span>
+  <span class="kw-green">"blogger"</span>
+  <span class="kw-green">"author"</span>
+  <span class="kw-green">"speaker"</span>
+</p>
+
+<h4>4. Brand Page (checked fourth)</h4>
+<p>Follower/following ratio ≤ 1.5 AND followers ≥ 1,000.</p>
+<p>This catches corporate accounts that follow nearly as many people as follow them — typical of brand promotion accounts.</p>
+
+<h4>5. Account (default)</h4>
+<p>If none of the above rules match, the account is classified as a generic "Account".</p>
+
+<h3>How AI Can Change the Type</h3>
+<p>Claude Opus 4.5 reads the actual bio text and can override the keyword-based type if it gets the classification wrong. For example:</p>
+<ul>
+  <li>A bio saying "media kit available" might trigger PR keywords, but AI recognises it as an individual influencer offering press assets → reclassifies as Influencer</li>
+  <li>An account with no matching keywords but clearly building an AI product → AI sets type to Influencer</li>
+</ul>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<h2 id="track">12. Track Assignment — A vs B (The Critical Split)</h2>
+<p>Track determines <strong>what action KiteAI takes</strong> with each account. This is the most important output of the classification system.</p>
+
+<div style="display: table; width: 100%; margin: 14pt 0;">
+  <div style="display: table-row;">
+    <div style="display: table-cell; width: 48%; padding: 14pt; background: #d1fae5; border: 2px solid #0d7a5e; border-radius: 4pt; vertical-align: top;">
+      <div style="font-size: 16pt; font-weight: bold; color: #065f46; margin-bottom: 10pt;">Track A — Pro Collab Pipeline</div>
+      <p><strong>Types:</strong> Influencer · AI Media · Account</p>
+      <p><strong>Action:</strong> Contact directly</p>
+      <ul>
+        <li>Send a DM on X</li>
+        <li>Send a cold email</li>
+        <li>Propose a paid review, sponsorship, or co-marketing deal</li>
+      </ul>
+      <p><strong>Goal:</strong> Get them to promote KiteAI to their audience</p>
+      <p><strong>Visible at:</strong> Track A page in dashboard</p>
+    </div>
+    <div style="display: table-cell; width: 4%;"></div>
+    <div style="display: table-cell; width: 48%; padding: 14pt; background: #fef3c7; border: 2px solid #b8860b; border-radius: 4pt; vertical-align: top;">
+      <div style="font-size: 16pt; font-weight: bold; color: #92400e; margin-bottom: 10pt;">Track B — Ads Audience Only</div>
+      <p><strong>Types:</strong> PR Page · Brand Page</p>
+      <p><strong>Action:</strong> NEVER contact directly</p>
+      <ul>
+        <li>Use their followers as X Ads target audience</li>
+        <li>Run paid ads targeting people who follow these accounts</li>
+      </ul>
+      <p><strong>Goal:</strong> Reach their audience through paid ads, not through them</p>
+      <p><strong>Visible at:</strong> Track B page in dashboard</p>
+    </div>
+  </div>
+</div>
+
+<h3>The Exact Rule (in code)</h3>
+<pre>// This runs AFTER AI classification
+// Track is always enforced from type — AI's track suggestion is ignored
+const finalTrack = (finalType === 'PR Page' || finalType === 'Brand Page') ? 'B' : 'A';</pre>
+
+<div class="box-red">
+  <strong>Why AI's track is overridden:</strong> In testing, Claude sometimes returned <code>type: "PR Page"</code> but <code>track: "A"</code> — an inconsistency that would put corporate accounts into the direct-contact pipeline. The backend now always derives track from type, making the classification deterministic and consistent.
+</div>
+
+<h3>Real Classification Examples</h3>
+<table>
+  <tr><th>Account</th><th>Bio</th><th>Type</th><th>Track</th><th>Why</th></tr>
+  <tr><td>@vapidev</td><td>"Build voice AI apps. DM for partnerships."</td><td>Brand Page</td><td class="track-a">A</td><td>Though ratio is low, AI reclassifies based on "DM for partnerships" — collab-open company</td></tr>
+  <tr><td>@swyx</td><td>"AI developer education, founder"</td><td>Influencer</td><td class="track-a">A</td><td>founder + developer = 2 influencer keywords → Influencer</td></tr>
+  <tr><td>@karpathy</td><td>"Neural networks, AI education, ex-OpenAI"</td><td>Influencer</td><td class="track-a">A</td><td>researcher keyword + very high ratio (1M+ followers) → Influencer</td></tr>
+  <tr><td>@techcrunch</td><td>"Technology news and media"</td><td>PR Page</td><td class="track-b">B</td><td>media + news keywords = PR Page → Track B, never contact</td></tr>
+  <tr><td>@ainewsdaily</td><td>"Your daily AI digest"</td><td>AI Media</td><td class="track-a">A</td><td>"ai daily" in name → AI Media (Track A — they cover AI content)</td></tr>
+  <tr><td>@deepgram</td><td>"Speech AI API. Build with us."</td><td>Brand Page</td><td class="track-b">B</td><td>ratio ≤ 1.5 (follows nearly as many as follow them) → Brand Page → B</td></tr>
+</table>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<h2 id="finalscore">13. Final Score Formula + Worked Example</h2>
+
+<div class="formula">
+<span class="label">Overall Score</span> = <span class="val">D2</span> × 0.25  +  <span class="val">D3</span> × 0.25  +  <span class="val">D4</span> × 0.20  +  <span class="val">D5</span> × 0.30
+</div>
+
+<table>
+  <tr><th>Dimension</th><th>Weight</th><th>What it measures</th><th>How it's scored</th></tr>
+  <tr><td>D2 — Collab Intent</td><td>25%</td><td>How open to partnerships?</td><td>Claude Opus 4.5 (AI)</td></tr>
+  <tr><td>D3 — AI Relevance</td><td>25%</td><td>How AI/voice focused?</td><td>Claude Opus 4.5 (AI)</td></tr>
+  <tr><td>D4 — Authority</td><td>20%</td><td>Verified + follower ratio</td><td>Algorithmic (instant)</td></tr>
+  <tr><td>D5 — Reach Quality</td><td>30%</td><td>Follower tier</td><td>Algorithmic (instant)</td></tr>
+</table>
+
+<h3>Worked Example — @vapidev</h3>
+<p>Profile: 12,400 followers · 890 following · verified · bio: "Build voice AI apps. DM for partnerships." · website: vapi.ai</p>
+<table>
+  <tr><th>Dimension</th><th>Value</th><th>Weight</th><th>Contribution</th><th>Calculation</th></tr>
+  <tr><td>D2 Collab Intent</td><td>88</td><td>25%</td><td>22.00</td><td>AI: "DM for partnerships" = strong collab signal</td></tr>
+  <tr><td>D3 AI Relevance</td><td>95</td><td>25%</td><td>23.75</td><td>AI: "Build voice AI apps" = core AI relevance</td></tr>
+  <tr><td>D4 Authority</td><td>72</td><td>20%</td><td>14.40</td><td>+30 verified + +22 ratio≥10x (14x) + +20 10K+ followers</td></tr>
+  <tr><td>D5 Reach</td><td>60</td><td>30%</td><td>18.00</td><td>12,400 followers = Micro tier → 60</td></tr>
+  <tr><td colspan="2"><strong>OVERALL</strong></td><td>100%</td><td><strong>78.15 → 78</strong></td><td>Tier 1 (≥65) · Track A</td></tr>
+</table>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<h2 id="tiers">14. Score Tiers</h2>
+<table>
+  <tr><th>Tier</th><th>Score Range</th><th>What it means</th><th>Action</th></tr>
+  <tr><td><strong>Tier 1</strong></td><td>≥ 65</td><td>Top quality — high collab potential, strong AI relevance, meaningful reach</td><td>Prioritise for direct outreach</td></tr>
+  <tr><td><strong>Tier 2</strong></td><td>45–64</td><td>Good — worth reviewing, some collab signals, decent reach</td><td>Secondary outreach list</td></tr>
+  <tr><td><strong>Archive</strong></td><td>&lt; 45</td><td>Lower relevance — small following or weak AI/collab signals</td><td>Keep for ads targeting reference</td></tr>
+</table>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<h2 id="ideal">15. What Makes an Ideal Profile (Track A, Tier 1)</h2>
+<ul>
+  <li>100,000+ followers (Mid-Tier or Macro) → D5 ≥ 80</li>
+  <li>Verified account (blue tick) → D4 +30</li>
+  <li>High follower/following ratio (≥ 10x) → D4 +22</li>
+  <li>"DM open", email in bio, or explicit partnership language → D2 = 82–100</li>
+  <li>Bio mentions building AI/voice apps, LLM tools, or voice AI specifically → D3 ≥ 90</li>
+  <li>Regular poster with AI content → more search hits</li>
+</ul>
+
+<div class="box-green">
+  <strong>Perfect Tier 1 example:</strong> @karpathy — 1M+ followers (D5=95), verified (D4+30), ratio ≥15x (D4+35), well-known AI educator (D3=90+), occasionally mentions partnerships → Overall ~87. Tier 1, Track A.
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<h2 id="dedup">16. Deduplication — No Account Appears Twice</h2>
+<h3>Layer 1 — seenThisRun Set (in-memory, per run)</h3>
+<p>Every handle is added to a JavaScript Set the moment it appears in any search result. If the same handle appears again in a different keyword search (e.g. @vapidev matched both "voice ai" AND "vapi developer"), the second occurrence is silently skipped. This means each profile is only fetched once per run, saving API calls.</p>
+
+<h3>Layer 2 — DB UNIQUE constraint (permanent, across runs)</h3>
+<p>The <code>handle</code> column in the <code>accounts</code> table has a UNIQUE constraint. Every write is an UPSERT:</p>
+<pre>If handle already exists in DB → UPDATE (refresh scores with latest data)
+If handle is new              → INSERT (add new row)</pre>
+<p>This means running the agent multiple times never creates duplicate records. It only refreshes scores.</p>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<h2 id="dbwrite">17. Database Write — What Gets Saved</h2>
+<p>Database: Turso (libSQL — SQLite running on edge infrastructure).</p>
+<h3>accounts table — one row per X account</h3>
+<table>
+  <tr><th>Column</th><th>Type</th><th>What it stores</th></tr>
+  <tr><td>handle</td><td>TEXT UNIQUE</td><td>X username — the unique identifier (e.g. "vapidev")</td></tr>
+  <tr><td>name</td><td>TEXT</td><td>Display name</td></tr>
+  <tr><td>bio</td><td>TEXT</td><td>Full profile bio/description</td></tr>
+  <tr><td>followers</td><td>INT</td><td>Follower count at time of last fetch</td></tr>
+  <tr><td>following</td><td>INT</td><td>Following count</td></tr>
+  <tr><td>tweets</td><td>INT</td><td>Total tweet count</td></tr>
+  <tr><td>verified</td><td>INT 0/1</td><td>Blue verification status</td></tr>
+  <tr><td>avatar</td><td>TEXT</td><td>Profile image URL</td></tr>
+  <tr><td>website</td><td>TEXT</td><td>Website URL from profile</td></tr>
+  <tr><td>location</td><td>TEXT</td><td>Location text from profile</td></tr>
+  <tr><td>tier</td><td>TEXT</td><td>Macro / Mid-Tier / Micro / Nano / Below bar</td></tr>
+  <tr><td>account_type</td><td>TEXT</td><td>Influencer / PR Page / AI Media / Brand Page / Account</td></tr>
+  <tr><td>track</td><td>TEXT</td><td>A (collab) or B (ads only)</td></tr>
+  <tr><td>d2</td><td>REAL</td><td>Collab Intent score 0–100 (AI-rated)</td></tr>
+  <tr><td>d3</td><td>REAL</td><td>AI Relevance score 0–100 (AI-rated)</td></tr>
+  <tr><td>d4</td><td>REAL</td><td>Authority score 0–95 (algorithmic)</td></tr>
+  <tr><td>d5</td><td>REAL</td><td>Reach Quality score 0–95 (algorithmic)</td></tr>
+  <tr><td>overall</td><td>REAL</td><td>Final composite score 0–100</td></tr>
+  <tr><td>dm_open</td><td>INT 0/1</td><td>Whether DM signal was detected in bio</td></tr>
+  <tr><td>has_email</td><td>INT 0/1</td><td>Whether an email was found in bio</td></tr>
+  <tr><td>contact_email</td><td>TEXT</td><td>Extracted email address (if any)</td></tr>
+  <tr><td>ai_model</td><td>TEXT</td><td>Which AI model scored this account</td></tr>
+  <tr><td>ai_reason</td><td>TEXT</td><td>AI's reasoning note</td></tr>
+  <tr><td>run_id</td><td>INT</td><td>Which agent run last updated this record</td></tr>
+  <tr><td>first_seen</td><td>TEXT</td><td>When this account was first collected</td></tr>
+  <tr><td>last_updated</td><td>TEXT</td><td>When this record was last refreshed</td></tr>
+</table>
+
+<h3>Other Tables</h3>
+<table>
+  <tr><th>Table</th><th>Purpose</th></tr>
+  <tr><td>keywords</td><td>Own keyword list — add/remove/toggle active via Keywords page</td></tr>
+  <tr><td>runs</td><td>Every agent run logged with status, account counts, timestamps</td></tr>
+  <tr><td>users</td><td>Admin accounts — email + bcrypt-hashed password</td></tr>
+  <tr><td>agent_config</td><td>System settings — last_run timestamp, auto_run_enabled flag</td></tr>
+</table>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<h2 id="sse">18. SSE Events — Real-Time Streaming to Browser</h2>
+<p>The browser connects to the backend via <code>EventSource</code> (Server-Sent Events). As the agent runs, events stream live so the user sees results appear in real time.</p>
+<table>
+  <tr><th>Event name</th><th>When it fires</th><th>Key data</th></tr>
+  <tr><td><code>status</code></td><td>Every progress step</td><td>step (searching/fetching/pacing/filtering/ai_scoring), message, progress %</td></tr>
+  <tr><td><code>search_done</code></td><td>After each keyword search</td><td>query, found count, new handles count</td></tr>
+  <tr><td><code>account</code></td><td>After each account is scored and saved</td><td>Full account object with all scores, type, track, contact info</td></tr>
+  <tr><td><code>fetch_error</code></td><td>When a profile fetch fails</td><td>handle, HTTP status code, error message</td></tr>
+  <tr><td><code>quota_exhausted</code></td><td>After 3 consecutive 429s</td><td>Message explaining quota is used up and when it resets</td></tr>
+  <tr><td><code>complete</code></td><td>When the run finishes</td><td>accounts added, accounts updated, error count, run ID</td></tr>
+</table>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<h2 id="direct">19. Direct Handle Fetch — Friend's Influencer List</h2>
+<p>The friend's database contains 42 pre-curated influencer handles (e.g. @swyx, @karpathy, @ggerganov). These are fetched <strong>directly</strong> at the end of every run — no keyword search step needed.</p>
+<ul>
+  <li>Same minimum bar validation applies (followers, tweets, name, bio checks)</li>
+  <li>Same AI batch scoring applies (only new handles)</li>
+  <li>Results saved to OUR Turso database only — friend's DB is never written to</li>
+  <li>SSE events emitted with <code>source: 'friend_list'</code> in the account data</li>
+</ul>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<h2 id="quota">20. Quota Exhaustion — When the API Runs Out</h2>
+<p>RapidAPI keys have monthly request limits. When quota runs out:</p>
+<ol>
+  <li>API returns HTTP 429 (Too Many Requests)</li>
+  <li>That key enters a 75-second cooldown</li>
+  <li>Other key takes over immediately</li>
+  <li>If both keys get 429 back-to-back three times → quota is exhausted</li>
+  <li>System stops the run gracefully — saves all data collected so far</li>
+  <li>Emits <code>quota_exhausted</code> SSE event with explanation</li>
+  <li>Quota resets at midnight UTC</li>
+</ol>
+<div class="box-gold">
+  <strong>How to avoid hitting quota:</strong> Run the agent fewer times per month. The auto-cron (once per month on the 1st) is the intended cadence. Manual runs during the month burn through quota faster.
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<h2 id="endpoints">21. All API Endpoints</h2>
+<table>
+  <tr><th>Method</th><th>Path</th><th>Auth</th><th>What it does</th></tr>
+  <tr><td>GET</td><td>/api/health</td><td>Public</td><td>Backend status, key availability, DB connection</td></tr>
+  <tr><td>POST</td><td>/api/auth/login</td><td>Public</td><td>Email + password → returns JWT token (7-day expiry)</td></tr>
+  <tr><td>GET</td><td>/api/run-demo</td><td>JWT</td><td>SSE stream — starts the full agent pipeline</td></tr>
+  <tr><td>GET</td><td>/api/accounts</td><td>JWT</td><td>All accounts with optional filters (track, tier, min_score, limit)</td></tr>
+  <tr><td>GET</td><td>/api/accounts/influencers</td><td>JWT</td><td>Track A accounts only (collab pipeline)</td></tr>
+  <tr><td>GET</td><td>/api/accounts/pr-pages</td><td>JWT</td><td>Track B accounts only (ads audience)</td></tr>
+  <tr><td>GET</td><td>/api/accounts/:handle</td><td>JWT</td><td>Single account by handle</td></tr>
+  <tr><td>GET</td><td>/api/keywords</td><td>JWT</td><td>Own keyword list from DB</td></tr>
+  <tr><td>POST</td><td>/api/keywords</td><td>JWT</td><td>Add new keyword to own list</td></tr>
+  <tr><td>PATCH</td><td>/api/keywords/:id</td><td>JWT</td><td>Toggle keyword active/inactive</td></tr>
+  <tr><td>DELETE</td><td>/api/keywords/:id</td><td>JWT</td><td>Remove keyword from own list</td></tr>
+  <tr><td>GET</td><td>/api/keywords/friend</td><td>JWT</td><td>View friend's keywords (read-only — never modifiable)</td></tr>
+  <tr><td>GET</td><td>/api/dashboard/stats</td><td>JWT</td><td>KPI totals, account type/tier breakdown, top 10 accounts, run history</td></tr>
+  <tr><td>GET</td><td>/api/settings</td><td>JWT</td><td>Config status (key presence — no actual key values ever returned)</td></tr>
+  <tr><td>POST</td><td>/api/settings/test-openrouter</td><td>JWT</td><td>Test AI connection with a live call</td></tr>
+  <tr><td>POST</td><td>/api/settings/keys/test</td><td>JWT</td><td>Test both RapidAPI keys with a live call</td></tr>
+  <tr><td>GET</td><td>/api/settings/test-friend-db</td><td>JWT</td><td>Test read connection to friend's database</td></tr>
+  <tr><td>PATCH</td><td>/api/settings/:key</td><td>JWT</td><td>Update non-sensitive config (e.g. auto_run_enabled)</td></tr>
+</table>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<h2 id="security">22. Security</h2>
+<table>
+  <tr><th>Measure</th><th>Details</th></tr>
+  <tr><td>JWT authentication</td><td>All data endpoints require a Bearer token. 7-day expiry.</td></tr>
+  <tr><td>Password hashing</td><td>bcrypt with 12 salt rounds — passwords never stored in plain text.</td></tr>
+  <tr><td>Registration disabled</td><td>Public /register endpoint returns 403. Admin account is created from .env on startup only.</td></tr>
+  <tr><td>API keys in .env</td><td>All keys (RapidAPI, OpenRouter, Turso, JWT secret) live in backend/.env only. Never in frontend code, never in any API response.</td></tr>
+  <tr><td>Rate limiting</td><td>20 auth attempts per 15 minutes. 120 API calls per minute. express-rate-limit.</td></tr>
+  <tr><td>Security headers</td><td>Helmet.js — X-Content-Type-Options, X-Frame-Options, X-XSS-Protection.</td></tr>
+  <tr><td>CORS</td><td>Restricted to configured ALLOWED_ORIGINS + *.vercel.app preview URLs only.</td></tr>
+  <tr><td>SSE authentication</td><td>Token passed via _token query param (EventSource API cannot send custom headers).</td></tr>
+  <tr><td>Settings page</td><td>Never returns raw key values — only shows "set/not set" status and masked previews.</td></tr>
+  <tr><td>Friend DB</td><td>Only SELECT queries ever run against the friend's database. INSERT/UPDATE/DELETE are architecturally impossible.</td></tr>
+</table>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<h2 id="stack">23. Tech Stack &amp; Deployment</h2>
+<table>
+  <tr><th>Layer</th><th>Technology</th><th>URL / Notes</th></tr>
+  <tr><td>Frontend</td><td>React 18 + Vite 5 + React Router v6</td><td>https://pr-x-agent.vercel.app — auto-deploys on git push</td></tr>
+  <tr><td>Backend</td><td>Node.js 22 + Express 4</td><td>https://pr-x-agent.onrender.com — auto-deploys on git push</td></tr>
+  <tr><td>Own Database</td><td>Turso (libSQL / SQLite edge)</td><td>Free tier — 5 tables, persistent storage</td></tr>
+  <tr><td>Friend Database</td><td>Turso (read-only connection)</td><td>1,506 keywords + 42 handles, never written to</td></tr>
+  <tr><td>AI Scoring</td><td>OpenRouter → Claude Opus 4.5</td><td>Batch size 6, fallback to keyword heuristics if unavailable</td></tr>
+  <tr><td>X Data</td><td>RapidAPI twitter-api45</td><td>2 keys, 6 RPM each, proactive rate limiter</td></tr>
+  <tr><td>Scheduler</td><td>node-cron</td><td>Runs inside the Render backend — 1st of month, 02:00 UTC</td></tr>
+  <tr><td>Auth</td><td>JWT + bcryptjs</td><td>Stateless — works across split Render/Vercel deployment</td></tr>
+  <tr><td>Repository</td><td>GitHub</td><td>github.com/Yathukrishnan/PR_X_AGENT</td></tr>
+</table>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<h2 id="costs">24. Costs</h2>
+<table>
+  <tr><th>Service</th><th>Estimated Monthly Cost</th><th>Notes</th></tr>
+  <tr><td>RapidAPI (twitter-api45)</td><td>$0 free tier / $10–50 paid</td><td>Free: 500 req/month. Need ~6,000/month for a full run (358 queries × ~17 profiles each)</td></tr>
+  <tr><td>OpenRouter (Claude Opus 4.5)</td><td>~$1–3</td><td>~300 new accounts/run × batched at 6 = ~50 AI calls</td></tr>
+  <tr><td>Turso</td><td>Free</td><td>Free tier: 500 databases, 9GB storage</td></tr>
+  <tr><td>Render (backend)</td><td>Free / $7/month</td><td>Free tier spins down after inactivity. $7 for always-on</td></tr>
+  <tr><td>Vercel (frontend)</td><td>Free</td><td>Hobby tier covers this project easily</td></tr>
+  <tr><td><strong>Total</strong></td><td><strong>~$1–60/month</strong></td><td>Depends on RapidAPI plan chosen</td></tr>
+</table>
+
+<br><hr>
+<p style="text-align: center; color: #888; font-size: 9.5pt;">
+  KiteAI X Agent — System Documentation &nbsp;|&nbsp;
+  Generated from source code &nbsp;|&nbsp;
+  github.com/Yathukrishnan/PR_X_AGENT
+</p>
+
+</body>
+</html>

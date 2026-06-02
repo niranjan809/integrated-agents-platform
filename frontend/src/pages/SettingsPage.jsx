@@ -115,7 +115,7 @@ export default function SettingsPage() {
         method: 'PATCH',
         body: JSON.stringify({ value: val ? '1' : '0' }),
       });
-      flash(`Monthly auto-run ${val ? 'enabled' : 'disabled'}`, 'success');
+      flash(`Weekly auto-run ${val ? 'enabled' : 'disabled'}`, 'success');
     } catch (err) {
       flash(err.message, 'error');
     }
@@ -200,7 +200,7 @@ export default function SettingsPage() {
           <div className="api-key-row">
             <div className="api-key-info">
               <span className="api-key-name">OpenRouter API</span>
-              <span className="api-key-desc">Powers AI scoring — D2 & D3 dimensions (Haiku model)</span>
+              <span className="api-key-desc">AI scoring — Claude Opus 4.5, batch 6 accounts/call</span>
             </div>
             <div className={`key-status-pill ${orKeySet ? 'set' : 'unset'}`}>
               {orKeySet ? '✓ Set in .env' : '✗ Not set'}
@@ -215,7 +215,7 @@ export default function SettingsPage() {
           <div className="api-key-row">
             <div className="api-key-info">
               <span className="api-key-name">Turso Database (own)</span>
-              <span className="api-key-desc">Persistent storage — accounts, keywords, runs</span>
+              <span className="api-key-desc">Persistent storage — accounts, keywords, runs, users</span>
             </div>
             <div className="key-status-pill set">✓ Connected</div>
           </div>
@@ -224,17 +224,22 @@ export default function SettingsPage() {
             <div className="api-key-info">
               <span className="api-key-name">Friend's Turso DB</span>
               <span className="api-key-desc">
-                Read-only keyword source — 1506 keywords + 42 influencer handles
-                {config?.friend_db_set && <span style={{ color: '#00C896' }}> · Never written to</span>}
+                Read-only — 1506 keywords + 42 influencer handles. Never written to.
               </span>
             </div>
             <div className={`key-status-pill ${config?.friend_db_set ? 'set' : 'unset'}`}>
               {config?.friend_db_set ? '✓ Configured' : '✗ Not set'}
             </div>
-            {config?.friend_db_set && (
-              <FriendDbTestButton apiFetch={apiFetch} />
-            )}
+            {config?.friend_db_set && <FriendDbTestButton apiFetch={apiFetch} />}
           </div>
+        </div>
+
+        {/* Quota info */}
+        <div className="env-hint" style={{ marginTop: 14 }}>
+          <strong>Quota plan:</strong> Paid key — 100,000 req/month shared ·
+          Cap per run: <strong>{config?.max_requests_per_run ?? 5000}</strong> requests ·
+          4 weekly runs ≈ 20,000/month used (20% of shared quota, leaves room for other users) ·
+          Anti-bot: ±3s jitter + human breaks every 20–35 requests + shuffled query order
         </div>
 
         {!orKeySet && (
@@ -304,8 +309,8 @@ export default function SettingsPage() {
       <div className="settings-card">
         <div className="settings-card-header">
           <div>
-            <h2>Auto-Run Schedule</h2>
-            <p>Weekly refresh every Monday + full run on the 1st of every month — both at 02:00 UTC.</p>
+            <h2>Weekly Auto-Run</h2>
+            <p>Agent runs automatically every Monday at 02:00 UTC. Accounts updated within the last 6 days are skipped to protect shared API quota.</p>
           </div>
           <label className="toggle-switch">
             <input type="checkbox" checked={autoRun} onChange={e => toggleAutoRun(e.target.checked)} />
@@ -316,22 +321,26 @@ export default function SettingsPage() {
         <div className="schedule-info">
           <div className="sched-row"><span>Last run</span><span>{config?.last_run || 'Never'}</span></div>
           <div className="sched-row"><span>Next run</span><span>{config?.next_run || '—'}</span></div>
-          <div className="sched-row"><span>Weekly refresh</span><span>0 2 * * 1 — every Monday 02:00 UTC</span></div>
-          <div className="sched-row"><span>Monthly full run</span><span>0 2 1 * * — 1st of month 02:00 UTC</span></div>
-          <div className="sched-row"><span>Request cap / run</span><span>5,000 calls (protects shared quota)</span></div>
-          <div className="sched-row"><span>Skip recent</span><span>Accounts updated within 6 days are skipped on weekly runs</span></div>
+          <div className="sched-row"><span>Schedule</span><span>0 2 * * 1 — every Monday 02:00 UTC</span></div>
+          <div className="sched-row"><span>Request cap</span><span>{config?.max_requests_per_run ?? 5000} calls/run (set MAX_REQUESTS_PER_RUN in .env)</span></div>
+          <div className="sched-row"><span>Skip recent</span><span>Accounts updated &lt; 6 days ago are skipped (saves quota on re-runs)</span></div>
+          <div className="sched-row"><span>Anti-bot</span><span>±3s jitter · human breaks every 20–35 requests · shuffled query order · varied count 40-50</span></div>
         </div>
       </div>
 
       {/* ── Security ─────────────────────────────────────────────────────────── */}
       <div className="settings-card security-note">
-        <h2>🔒 Security Summary</h2>
+        <h2>🔒 Security</h2>
         <ul>
-          <li>All API keys live in <code>backend/.env</code> — never in frontend code or any API response.</li>
-          <li>Every data endpoint requires a valid JWT (7-day expiry). Only <code>/auth/login</code>, <code>/auth/register</code>, and <code>/health</code> are public.</li>
-          <li>RapidAPI auto-switches to backup key on 429/403 — zero manual action needed.</li>
-          <li>Rate limiting: 20 auth attempts / 15 min · 120 API calls / min.</li>
-          <li>CORS is restricted to configured frontend origins only.</li>
+          <li><strong>API keys:</strong> All keys in <code>backend/.env</code> only — never in frontend, never in any API response, never logged.</li>
+          <li><strong>Auth:</strong> JWT tokens (7-day expiry) required on all data endpoints. Only <code>/auth/login</code> and <code>/health</code> are public. Register endpoint is disabled.</li>
+          <li><strong>Passwords:</strong> Hashed with bcrypt-12 before storage — never stored or transmitted as plain text.</li>
+          <li><strong>Rate limiting:</strong> 20 auth attempts / 15 min · 120 API calls / min (express-rate-limit).</li>
+          <li><strong>CORS:</strong> Restricted to <code>ALLOWED_ORIGINS</code> env var + <code>*.vercel.app</code> preview domains.</li>
+          <li><strong>Anti-bot (paid API):</strong> ±3s random jitter, human breaks every 20-35 requests, shuffled query order, varied result count (40-50). Makes traffic look human.</li>
+          <li><strong>Quota protection:</strong> Hard cap of {config?.max_requests_per_run ?? 5000} API calls per run. After cap → graceful stop, all data saved.</li>
+          <li><strong>Friend DB:</strong> Strict read-only — only SELECT queries run, INSERT/UPDATE/DELETE architecturally impossible.</li>
+          <li><strong>Security headers:</strong> Helmet.js — X-Content-Type-Options, X-Frame-Options, X-XSS-Protection, COEP disabled for cross-origin API.</li>
         </ul>
       </div>
     </div>

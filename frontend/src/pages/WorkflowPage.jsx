@@ -332,23 +332,65 @@ export default function WorkflowPage() {
         {/* STEP 3 — SEARCH PHASE */}
         <Card color={C.blue} step={3} title="SEARCH PHASE — Query X for Handles">
           <InfoBox color={C.blue} style={{ marginBottom: 12 }}>
-            For each query in the merged list:<br />
-            1. Emit <Tag color={C.blue}>status</Tag> — "Searching X for: {'{query}'}"<br />
-            2. Call <Code>callAPI('search.php', {'{ query, count: 50 }'} )</Code><br />
-            3. Returns up to <strong>50 tweet objects</strong> from the timeline.<br />
-            4. Extract <Code>user.screen_name</Code> from each tweet → unique handles.<br />
-            5. Cross-query dedup via a <Code>seenThisRun</Code> Set (persists for the whole run).<br />
-            6. Emit <Tag color={C.green}>search_done</Tag> with <Code>{'{ query, found, fetching, handles, tweets_returned, duration_ms }'}</Code>
+            For each query, count is varied 40–50 (anti-bot pattern variation).<br />
+            Handles already seen this run are skipped via <Code>seenThisRun</Code> Set.
           </InfoBox>
-          <Row gap={8} style={{ marginBottom: 10 }}>
-            <Tag color={C.green}>Example: query "ai voice assistant" → 50 tweets → 15 new handles</Tag>
+
+          {/* ── Exact API Request String ── */}
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: C.muted, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 1 }}>
+              Exact API Request — Search
+            </div>
+            <div style={{ background: '#0d1117', border: `1px solid ${C.border}`, borderRadius: 6, padding: '12px 14px', fontFamily: 'monospace', fontSize: 11, lineHeight: 1.9 }}>
+              <div><span style={{ color: C.green }}>GET</span> <span style={{ color: '#79c0ff' }}>https://twitter-api45.p.rapidapi.com/search.php</span></div>
+              <div style={{ color: C.muted, marginTop: 6 }}>Query Parameters:</div>
+              <div style={{ paddingLeft: 16 }}>
+                <span style={{ color: C.gold }}>query</span><span style={{ color: C.muted }}> = </span><span style={{ color: '#a5d6ff' }}>"ai voice assistant"</span><br />
+                <span style={{ color: C.gold }}>count</span><span style={{ color: C.muted }}> = </span><span style={{ color: '#a5d6ff' }}>47</span><span style={{ color: C.muted }}> (varies 40–50, anti-bot)</span>
+              </div>
+              <div style={{ color: C.muted, marginTop: 6 }}>Headers:</div>
+              <div style={{ paddingLeft: 16 }}>
+                <span style={{ color: C.gold }}>X-RapidAPI-Key</span><span style={{ color: C.muted }}>:  </span><span style={{ color: '#a5d6ff' }}>YOUR_RAPIDAPI_KEY_HERE</span><br />
+                <span style={{ color: C.gold }}>X-RapidAPI-Host</span><span style={{ color: C.muted }}>: </span><span style={{ color: '#a5d6ff' }}>twitter-api45.p.rapidapi.com</span>
+              </div>
+              <div style={{ color: C.muted, marginTop: 8, fontSize: 10 }}>Full URL string:</div>
+              <div style={{ color: '#58a6ff', wordBreak: 'break-all', marginTop: 2 }}>
+                https://twitter-api45.p.rapidapi.com/search.php?query=ai+voice+assistant&count=47
+              </div>
+            </div>
+          </div>
+
+          {/* ── What comes back ── */}
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: C.muted, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 1 }}>
+              Response — What We Extract
+            </div>
+            <div style={{ background: '#0d1117', border: `1px solid ${C.border}`, borderRadius: 6, padding: '12px 14px', fontFamily: 'monospace', fontSize: 11, lineHeight: 1.9 }}>
+              <div><span style={{ color: C.purple }}>{'{'}</span></div>
+              <div style={{ paddingLeft: 16 }}>
+                <span style={{ color: C.blue }}>"timeline"</span><span style={{ color: C.muted }}>: [</span>
+              </div>
+              <div style={{ paddingLeft: 32 }}>
+                <span style={{ color: C.muted }}>{'{ '}</span><span style={{ color: C.blue }}>"screen_name"</span><span style={{ color: C.muted }}>: </span><span style={{ color: '#a5d6ff' }}>"vapidev"</span><span style={{ color: C.muted }}>,  </span><span style={{ color: C.muted, fontSize: 10 }}>← WE KEEP THIS</span>
+              </div>
+              <div style={{ paddingLeft: 32 }}>
+                <span style={{ color: C.blue }}>"full_text"</span><span style={{ color: C.muted }}>: </span><span style={{ color: '#a5d6ff' }}>"Excited about voice AI..."</span><span style={{ color: C.muted }}>, </span><span style={{ color: C.muted, fontSize: 10 }}>← ignored</span>
+              </div>
+              <div style={{ paddingLeft: 32 }}>
+                <span style={{ color: C.blue }}>"retweet_count"</span><span style={{ color: C.muted }}>: 12, </span><span style={{ color: C.muted, fontSize: 10 }}>← ignored</span>
+              </div>
+              <div style={{ paddingLeft: 16 }}><span style={{ color: C.muted }}>{'}'}</span>, <span style={{ color: C.muted }}>...up to 50 tweets</span></div>
+              <div style={{ paddingLeft: 16 }}><span style={{ color: C.muted }}>]</span></div>
+              <div><span style={{ color: C.purple }}>{'}'}</span></div>
+            </div>
+          </div>
+
+          <Row gap={8} style={{ marginBottom: 6 }}>
+            <Tag color={C.green}>Result: query "ai voice assistant" → 47 tweets → 15 new handles extracted</Tag>
           </Row>
           <Row gap={8}>
             <InfoBox color={C.red} style={{ flex: 1 }}>
-              <strong style={{ color: C.red }}>On failure:</strong> emit <Tag color={C.red}>error</Tag> event with
-              <Code>{'{ step, message, status }'}</Code>,
-              set <Code>health.flags.limited</Code> or <Code>health.flags.blocked</Code>,
-              then <Code>continue</Code> to next query.
+              <strong style={{ color: C.red }}>On failure:</strong> emit <Tag color={C.red}>error</Tag> event, flag limited/blocked, <Code>continue</Code> to next query.
             </InfoBox>
           </Row>
         </Card>
@@ -356,36 +398,29 @@ export default function WorkflowPage() {
         <Arrow />
 
         {/* STEP 4 — RATE LIMITER */}
-        <Card color={C.gold} step={4} title="RATE LIMITER — Key Rotation, Jitter, Cooldowns">
+        <Card color={C.gold} step={4} title="RATE LIMITER + ANTI-BOT — Paid Key, Proactive Pacing">
           <Row gap={16} style={{ marginBottom: 12 }}>
             <InfoBox color={C.gold} style={{ flex: 1 }}>
-              <div style={{ fontWeight: 700, marginBottom: 6, color: C.gold }}>Proactive Pacing</div>
-              <KV k="SAFE_RPM" v="6 per key" />
-              <KV k="MIN_GAP_MS" v="10,000 ms between requests per key" />
-              <KV k="JITTER_MS" v="±600 ms (uniform random)" />
-              <KV k="Keys" v="Key1 + Key2 (alternating via acquireKey())" />
-              <div style={{ marginTop: 6, fontSize: 11, color: C.muted }}>
-                Computes <Code>readyAt[i] = max(lastFiredAt + 10000, cooldownUntil)</Code> for each key.
-                Picks key with <em>earliest</em> ready time; sleeps if wait &gt; 500ms.
-              </div>
+              <div style={{ fontWeight: 700, marginBottom: 6, color: C.gold }}>Proactive Pacing (paid key only)</div>
+              <KV k="Key" v="KeyPaid only — free keys removed" />
+              <KV k="PAID_RPM" v="3 req/min (conservative for shared key)" />
+              <KV k="MIN_GAP_MS" v="20,000 ms between requests (3 RPM)" />
+              <KV k="JITTER_MS" v="±3,000 ms — large randomness, unpredictable" />
+              <KV k="Cap/run" v="5,000 requests max then graceful stop" />
             </InfoBox>
-            <InfoBox color={C.red} style={{ flex: 1 }}>
-              <div style={{ fontWeight: 700, marginBottom: 6, color: C.red }}>Error Penalties</div>
-              <KV k="429 Too Many Requests" v="cooldown +75,000 ms; globalConsecutive429++" vColor={C.red} />
-              <KV k="403 Forbidden" v="cooldown +3,600,000 ms (1 hr); notSubscribed=true" vColor={C.red} />
-              <KV k="Other errors" v="exponential backoff min(120s, 8s × 2^(errors−1))" vColor={C.gold} />
-              <div style={{ marginTop: 8, fontSize: 11, color: C.red, fontWeight: 600 }}>
-                Quota Exhausted: globalConsecutive429 &ge; 3 across ALL keys
-                → throw QuotaExhaustedError → emit quota_exhausted → stop run.
-              </div>
+            <InfoBox color={C.purple} style={{ flex: 1 }}>
+              <div style={{ fontWeight: 700, marginBottom: 6, color: C.purple }}>Anti-Bot Measures</div>
+              <KV k="Jitter" v="±3s random spread — no mechanical pattern" vColor={C.purple} />
+              <KV k="Human breaks" v="30-60s pause every 20-35 requests" vColor={C.purple} />
+              <KV k="Query shuffle" v="Order randomised on every run" vColor={C.purple} />
+              <KV k="Count variation" v="search count varies 40-50, not always 50" vColor={C.purple} />
+              <KV k="Skip recent" v="accounts updated &lt;6 days skipped" vColor={C.purple} />
             </InfoBox>
           </Row>
-          <InfoBox color={C.blue}>
-            <strong>Immediate failover:</strong> On 429 or 403, immediately check if the <em>other</em> key is free.
-            If free, wait 800ms + jitter and retry once with that key. Success clears both
-            <Code>globalConsecutive429</Code> and <Code>k.consecutiveErrors</Code> via <Code>clearErrors(k)</Code>.<br />
-            <strong>SSE keepalive:</strong> During rate-limit sleeps, <Code>sleepWithPing()</Code> fires every 8s,
-            writing raw <Code>{': ping\\n\\n'}</Code> SSE comment lines to keep the TCP connection alive.
+          <InfoBox color={C.red}>
+            <strong>Error handling:</strong>
+            429 → 75s cooldown · 403 → 60min cooldown · 3 consecutive 429s → QuotaExhaustedError → run stops, data saved.<br />
+            <strong>SSE keepalive:</strong> <Code>{': ping\\n\\n'}</Code> sent every 8s during sleeps to keep browser connection alive.
           </InfoBox>
         </Card>
 
@@ -394,13 +429,33 @@ export default function WorkflowPage() {
         {/* STEP 5 — PROFILE FETCH */}
         <Card color={C.blue} step={5} title="PROFILE FETCH — Fetch Each Handle via screenname.php">
           <InfoBox color={C.blue} style={{ marginBottom: 12 }}>
-            Phase 1 of the pipeline. For each unique handle (0–80% progress):<br />
-            1. Emit <Tag color={C.blue}>status</Tag> — "Fetching @handle (N/total)"<br />
-            2. Call <Code>callAPI('screenname.php', {'{ screenname: handle }'} )</Code><br />
-            3. On failure: emit <Tag color={C.red}>fetch_error</Tag> with
-            <Code>{'{ handle, index, total, status, error, health }'}</Code>, skip handle.<br />
-            4. On success: pass raw user object to <Code>scoreAndClassify(u)</Code> → push to <Code>fetchedAccounts[]</Code>.
+            One API call per handle. Rate-limited to 3 RPM (20s gap) with ±3s jitter + human breaks.
+            Handles updated within 6 days are skipped to save quota on weekly re-runs.
           </InfoBox>
+
+          {/* ── Exact API Request String ── */}
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: C.muted, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 1 }}>
+              Exact API Request — Profile Fetch
+            </div>
+            <div style={{ background: '#0d1117', border: `1px solid ${C.border}`, borderRadius: 6, padding: '12px 14px', fontFamily: 'monospace', fontSize: 11, lineHeight: 1.9 }}>
+              <div><span style={{ color: C.green }}>GET</span> <span style={{ color: '#79c0ff' }}>https://twitter-api45.p.rapidapi.com/screenname.php</span></div>
+              <div style={{ color: C.muted, marginTop: 6 }}>Query Parameters:</div>
+              <div style={{ paddingLeft: 16 }}>
+                <span style={{ color: C.gold }}>screenname</span><span style={{ color: C.muted }}> = </span><span style={{ color: '#a5d6ff' }}>"vapidev"</span><span style={{ color: C.muted }}> (no @ symbol)</span>
+              </div>
+              <div style={{ color: C.muted, marginTop: 6 }}>Headers:</div>
+              <div style={{ paddingLeft: 16 }}>
+                <span style={{ color: C.gold }}>X-RapidAPI-Key</span><span style={{ color: C.muted }}>:  </span><span style={{ color: '#a5d6ff' }}>YOUR_RAPIDAPI_KEY_HERE</span><br />
+                <span style={{ color: C.gold }}>X-RapidAPI-Host</span><span style={{ color: C.muted }}>: </span><span style={{ color: '#a5d6ff' }}>twitter-api45.p.rapidapi.com</span>
+              </div>
+              <div style={{ color: C.muted, marginTop: 8, fontSize: 10 }}>Full URL string:</div>
+              <div style={{ color: '#58a6ff', marginTop: 2 }}>
+                https://twitter-api45.p.rapidapi.com/screenname.php?screenname=vapidev
+              </div>
+            </div>
+          </div>
+
           <div style={{ fontSize: 12, fontWeight: 600, color: C.muted, marginBottom: 8 }}>
             Fields extracted from screenname.php response:
           </div>

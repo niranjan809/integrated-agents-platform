@@ -794,45 +794,54 @@ async function runAgent({ queries, directHandles = [], triggeredBy = 'manual', s
         ai_reason: null,
       };
 
-      // ── Promotion classification ──────────────────────────────────────────
-      // Priority: AI batch result → bio keyword → tweet analysis → unknown
+      // ── Promotion classification (runs during fetch, no separate step needed) ─
+      // Step 1: AI batch already checked bio → returns promotion_type if found
+      // Step 2: Bio keyword check (free, instant)
+      // Step 3: Tweet analysis for new Track A accounts where bio is inconclusive
       let promoType       = ai?.promotion_type       || 'unknown';
       let promoConfidence = ai?.promotion_confidence || 0;
       let promoSignals    = ai?.promotion_signals    || [];
 
-      // If AI batch didn't classify promotion, try bio keywords (free)
-      if (promoType === 'unknown' && finalTrack === 'A') {
-        const bioResult = classifyFromBio(a.bio, a.name, finalType);
-        if (bioResult && bioResult.promotion_type !== 'unknown') {
-          promoType       = bioResult.promotion_type;
-          promoConfidence = bioResult.promotion_confidence;
-          promoSignals    = bioResult.promotion_signals;
+      if (finalTrack === 'A' && !isDup) {
+        // Bio keyword check (overrides if AI missed it)
+        if (promoType === 'unknown') {
+          const bioResult = classifyFromBio(a.bio, a.name, finalType);
+          if (bioResult && bioResult.promotion_type !== 'unknown') {
+            promoType       = bioResult.promotion_type;
+            promoConfidence = bioResult.promotion_confidence;
+            promoSignals    = bioResult.promotion_signals;
+          }
+        }
 
-          // If bio says explicit → done. If inferred → fetch tweets to verify/upgrade.
-          if (bioResult.needs_tweet_check && !isDup && health.calls < MAX_REQUESTS_PER_RUN - 50) {
-            emit('status', { step: 'tweet_check', message: `Checking tweets for @${a.handle} (paid promo verification)` });
-            const tweetSearch = await callAPI('search',
-              { query: `from:${a.handle}`, count: 10, type: 'Latest' }, pace, keepAlive);
-            health.calls++; health.totalMs += tweetSearch.duration_ms;
-            if (tweetSearch.success) {
-              const instructions = tweetSearch.data?.result?.timeline?.instructions || [];
-              const entries = (instructions.find(i => i.type === 'TimelineAddEntries')?.entries || []);
-              const tweets = [];
-              for (const e of entries) {
-                try {
-                  const t = e.content?.itemContent?.tweet_results?.result?.legacy?.full_text;
-                  if (t && !t.startsWith('RT @')) tweets.push(t.slice(0, 200));
-                } catch {}
-              }
-              if (tweets.length > 0) {
-                const tweetAI = await aiAnalyseTweets(a.handle, a.bio, tweets);
-                if (tweetAI) {
-                  // Upgrade if tweets show stronger signal
-                  if (tweetAI.promotion_type === 'explicit' || promoType !== 'explicit') {
-                    promoType       = tweetAI.promotion_type;
-                    promoConfidence = Math.max(promoConfidence, tweetAI.promotion_confidence);
-                    promoSignals    = [...promoSignals, ...tweetAI.promotion_signals].slice(0, 3);
-                  }
+        // Tweet analysis: run for ALL new Track A accounts still unknown after bio check
+        // (explicit from bio → skip tweet fetch, already confirmed)
+        const needsTweetCheck = promoType !== 'explicit' && health.calls < MAX_REQUESTS_PER_RUN - 50;
+        if (needsTweetCheck) {
+          emit('status', { step: 'tweet_check', message: `Tweet check @${a.handle}` });
+          const tweetRes = await callAPI('search',
+            { query: `from:${a.handle}`, count: 10, type: 'Latest' }, pace, keepAlive);
+          health.calls++; health.totalMs += tweetRes.duration_ms;
+
+          if (tweetRes.success) {
+            const instr   = tweetRes.data?.result?.timeline?.instructions || [];
+            const entries = (instr.find(i => i.type === 'TimelineAddEntries')?.entries || []);
+            const tweets  = [];
+            for (const e of entries) {
+              try {
+                const t = e.content?.itemContent?.tweet_results?.result?.legacy?.full_text;
+                if (t && !t.startsWith('RT @')) tweets.push(t.slice(0, 200));
+              } catch {}
+            }
+            if (tweets.length > 0) {
+              const tweetAI = await aiAnalyseTweets(a.handle, a.bio, tweets);
+              if (tweetAI && tweetAI.promotion_type !== 'unknown') {
+                // Upgrade: take stronger of bio result vs tweet result
+                if (tweetAI.promotion_type === 'explicit' ||
+                   (promoType !== 'explicit' && tweetAI.promotion_type === 'inferred') ||
+                    promoType === 'unknown') {
+                  promoType       = tweetAI.promotion_type;
+                  promoConfidence = Math.max(promoConfidence, tweetAI.promotion_confidence);
+                  promoSignals    = [...promoSignals, ...tweetAI.promotion_signals].slice(0, 3);
                 }
               }
             }

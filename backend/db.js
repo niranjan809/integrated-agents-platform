@@ -177,12 +177,23 @@ async function initDB() {
   for (const m of migrations) {
     try { await db.execute(m); }
     catch (e) {
-      // "duplicate column name" means it already exists — safe to ignore
       if (!e.message?.toLowerCase().includes('duplicate') &&
           !e.message?.toLowerCase().includes('already exists')) {
         console.warn('  Migration warning:', e.message);
       }
     }
+  }
+
+  // ── Backfill existing accounts that have NULL promotion_type ─────────────────
+  // Accounts scored before this feature was added need 'unknown' as default
+  const nullPromo = await db.execute(
+    `SELECT COUNT(*) as n FROM accounts WHERE promotion_type IS NULL`
+  );
+  if (Number(nullPromo.rows[0].n) > 0) {
+    await db.execute(
+      `UPDATE accounts SET promotion_type = 'unknown', promotion_confidence = 0 WHERE promotion_type IS NULL`
+    );
+    console.log(`  Backfilled ${nullPromo.rows[0].n} accounts with promotion_type='unknown'`);
   }
 
   // Seed keywords if table is empty

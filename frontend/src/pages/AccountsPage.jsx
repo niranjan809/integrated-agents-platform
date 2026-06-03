@@ -325,15 +325,17 @@ export default function AccountsPage({ mode }) {
       if (typeFilter && a.account_type !== typeFilter) return false;
       if (dmFilter    && !a.dm_open)                          return false;
       if (emailFilter && !a.has_email)                        return false;
-      if (promoFilter && a.promotion_type !== promoFilter)    return false;
+      // treat null/undefined as 'unknown' for filter matching
+      const pt = a.promotion_type || 'unknown';
+      if (promoFilter && pt !== promoFilter) return false;
       return true;
     });
     // Sort: explicit promoters first, then inferred, then others — within each group by score
     if (sortBy === 'score') {
       const promoOrder = { explicit: 0, inferred: 1, none: 2, unknown: 3 };
       out = [...out].sort((a, b) => {
-        const pa = promoOrder[a.promotion_type] ?? 3;
-        const pb = promoOrder[b.promotion_type] ?? 3;
+        const pa = promoOrder[a.promotion_type || 'unknown'] ?? 3;
+        const pb = promoOrder[b.promotion_type || 'unknown'] ?? 3;
         if (pa !== pb) return pa - pb;
         return (b.overall || 0) - (a.overall || 0);
       });

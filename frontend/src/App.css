@@ -366,6 +366,19 @@ body { background: var(--bg); color: var(--text); font-family: 'Inter', 'Segoe U
 .contact-chip.active-dm    { background: rgba(0,200,150,.12); border-color: var(--green); color: var(--green); }
 .contact-chip.active-email { background: rgba(29,155,240,.12); border-color: var(--blue); color: var(--blue); }
 
+/* Promotion type badges */
+.promo-tag-exp  { background: rgba(0,200,150,.15); color: var(--green); border: 1px solid rgba(0,200,150,.4); }
+.promo-tag-inf  { background: rgba(249,168,37,.12); color: var(--gold); border: 1px solid rgba(249,168,37,.4); }
+.cp-promo-row   { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+.promo-badge    { padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; }
+.promo-badge.promo-explicit { background: rgba(0,200,150,.15); color: var(--green); }
+.promo-badge.promo-inferred { background: rgba(249,168,37,.12); color: var(--gold); }
+.promo-badge.promo-none     { background: rgba(255,68,68,.1); color: var(--red); }
+.promo-badge.promo-unknown  { background: rgba(255,255,255,.06); color: var(--text2); }
+.promo-conf     { font-size: 11px; color: var(--text2); }
+.promo-signals  { display: flex; flex-direction: column; gap: 3px; margin-top: 6px; }
+.promo-signal   { font-size: 11px; color: var(--text2); }
+
 /* ── Keywords page ────────────────────────────────────────────────────────── */
 .add-keyword-form   { display: flex; gap: 12px; margin-bottom: 20px; }
 .kw-input           { flex: 1; padding: 10px 14px; background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 14px; outline: none; }

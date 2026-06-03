@@ -163,6 +163,34 @@ function ContactPanel({ account }) {
         </div>
       )}
 
+      {/* Promotion Type */}
+      {account.promotion_type && account.promotion_type !== 'unknown' && (
+        <div className="cp-section">
+          <div className="cp-section-label">Paid Promotion Status</div>
+          <div className="cp-promo-row">
+            <span className={`promo-badge promo-${account.promotion_type}`}>
+              {account.promotion_type === 'explicit'  ? '✅ Confirmed Paid Promoter'  :
+               account.promotion_type === 'inferred'  ? '~ Likely Paid Promoter'      :
+               account.promotion_type === 'none'      ? '✗ Not a Paid Promoter'       : '? Unknown'}
+            </span>
+            {account.promotion_confidence > 0 && (
+              <span className="promo-conf">{account.promotion_confidence}% confidence</span>
+            )}
+          </div>
+          {account.promotion_signals && (() => {
+            try {
+              const signals = typeof account.promotion_signals === 'string'
+                ? JSON.parse(account.promotion_signals) : account.promotion_signals;
+              return signals?.length > 0 ? (
+                <div className="promo-signals">
+                  {signals.map((s, i) => <span key={i} className="promo-signal">• {s}</span>)}
+                </div>
+              ) : null;
+            } catch { return null; }
+          })()}
+        </div>
+      )}
+
     </div>
   );
 }
@@ -212,7 +240,6 @@ function AccountRow({ account, rank }) {
           {account.overall}
         </div>
 
-        {/* Contact badges — !! converts DB integers (0/1) to boolean to avoid rendering "0" as text */}
         <div className="arf-tags">
           {!!account.dm_open    && <span className="badge green" title="DM Open">DM</span>}
           {!!account.has_email  && <span className="badge blue"  title="Has Email">✉</span>}
@@ -221,6 +248,9 @@ function AccountRow({ account, rank }) {
               className="badge link" onClick={e => e.stopPropagation()}>↗</a>
           )}
           {!!account.contact_email && <span className="badge blue" title={account.contact_email}>@</span>}
+          {/* Promotion type badge */}
+          {account.promotion_type === 'explicit'  && <span className="badge promo-tag-exp" title="Confirmed paid promoter">💰 A1</span>}
+          {account.promotion_type === 'inferred'  && <span className="badge promo-tag-inf" title={`Likely paid promoter (${account.promotion_confidence}%)`}>~ A2</span>}
         </div>
 
         <div className="arf-expand-btn">{expanded ? '▲' : '▼'}</div>
@@ -242,9 +272,11 @@ export default function AccountsPage({ mode }) {
   const [scoreTier,  setScoreTier] = useState('all');
   const [reachTier,  setReachTier] = useState('');
   const [typeFilter, setTypeFilter]= useState('');
-  const [dmFilter,   setDmFilter]  = useState(false);
-  const [emailFilter,setEmailFilter]=useState(false);
-  const [sortBy,     setSortBy]    = useState('score');
+  const [dmFilter,    setDmFilter]    = useState(false);
+  const [emailFilter, setEmailFilter] = useState(false);
+  const [promoFilter, setPromoFilter] = useState(''); // '' | 'explicit' | 'inferred' | 'none' | 'unknown'
+  const [sortBy,      setSortBy]      = useState('score');
+  const [cleaning,    setCleaning]    = useState(false);
 
   const endpoint = mode === 'all'
     ? '/api/accounts?limit=1000'
@@ -291,18 +323,44 @@ export default function AccountsPage({ mode }) {
       if (st.key !== 'all' && (a.overall < st.min || a.overall > st.max)) return false;
       if (reachTier  && a.tier !== reachTier)         return false;
       if (typeFilter && a.account_type !== typeFilter) return false;
-      if (dmFilter   && !a.dm_open)                   return false;
-      if (emailFilter && !a.has_email)                 return false;
+      if (dmFilter    && !a.dm_open)                          return false;
+      if (emailFilter && !a.has_email)                        return false;
+      if (promoFilter && a.promotion_type !== promoFilter)    return false;
       return true;
     });
-    if (sortBy === 'score')     out = [...out].sort((a,b)=>(b.overall||0)-(a.overall||0));
+    // Sort: explicit promoters first, then inferred, then others — within each group by score
+    if (sortBy === 'score') {
+      const promoOrder = { explicit: 0, inferred: 1, none: 2, unknown: 3 };
+      out = [...out].sort((a, b) => {
+        const pa = promoOrder[a.promotion_type] ?? 3;
+        const pb = promoOrder[b.promotion_type] ?? 3;
+        if (pa !== pb) return pa - pb;
+        return (b.overall || 0) - (a.overall || 0);
+      });
+    }
     if (sortBy === 'followers') out = [...out].sort((a,b)=>(b.followers||0)-(a.followers||0));
     if (sortBy === 'name')      out = [...out].sort((a,b)=>(a.name||'').localeCompare(b.name||''));
     return out;
-  }, [accounts, search, scoreTier, reachTier, typeFilter, dmFilter, emailFilter, sortBy]);
+  }, [accounts, search, scoreTier, reachTier, typeFilter, dmFilter, emailFilter, promoFilter, sortBy]);
 
-  const dmCount    = accounts.filter(a => a.dm_open).length;
-  const emailCount = accounts.filter(a => a.has_email).length;
+  const dmCount       = accounts.filter(a => a.dm_open).length;
+  const emailCount    = accounts.filter(a => a.has_email).length;
+  const confirmedPaid = accounts.filter(a => a.promotion_type === 'explicit').length;
+  const likelyPaid    = accounts.filter(a => a.promotion_type === 'inferred').length;
+
+  async function runCleanup() {
+    if (!confirm('Delete all accounts with overall < 20 AND AI relevance < 15 (non-relevant accounts)?')) return;
+    setCleaning(true);
+    try {
+      const r = await apiFetch('/api/accounts/cleanup', { method: 'DELETE' });
+      const d = await r.json();
+      alert(`Deleted ${d.deleted} non-relevant accounts. ${d.remaining} remaining.`);
+      // Reload
+      const fresh = await apiFetch(endpoint).then(x => x.json());
+      setAccounts(fresh.accounts || []);
+    } catch (err) { alert('Cleanup failed: ' + err.message); }
+    setCleaning(false);
+  }
 
   if (loading) return <div className="page-loader"><div className="spinner" /></div>;
   if (error)   return <div className="page" style={{padding:32}}><div className="page-error">{error}</div><button className="btn-primary" style={{marginTop:16}} onClick={()=>{ setLoading(true); setError(''); apiFetch(endpoint).then(r=>r.json()).then(d=>{setAccounts(d.accounts||[]);setLoading(false);}).catch(e=>{setError(e.message);setLoading(false);}); }}>Retry</button></div>;
@@ -312,8 +370,18 @@ export default function AccountsPage({ mode }) {
       <div className="page-header">
         <div>
           <h1>{title}</h1>
-          <p className="page-sub">{filtered.length} of {accounts.length} accounts</p>
+          <p className="page-sub">
+            {filtered.length} of {accounts.length} accounts
+            {mode === 'influencers' && confirmedPaid > 0 && (
+              <> · <span style={{color:'#00C896'}}>💰 {confirmedPaid} confirmed paid</span>
+                 · <span style={{color:'#F9A825'}}>~ {likelyPaid} likely paid</span></>
+            )}
+          </p>
         </div>
+        <button className="btn-ghost" onClick={runCleanup} disabled={cleaning}
+          title="Delete accounts with overall &lt; 20 AND AI relevance &lt; 15">
+          {cleaning ? '🗑 Cleaning…' : '🗑 Clean Non-Relevant'}
+        </button>
       </div>
 
       {accounts.length > 0 && <StatsBar accounts={accounts} />}
@@ -335,6 +403,32 @@ export default function AccountsPage({ mode }) {
 
       {/* Filters */}
       <div className="filter-panel">
+        {/* Promotion type filter — Track A1/A2 */}
+        {mode === 'influencers' && (
+          <div className="filter-row">
+            <span className="filter-group-label">Track</span>
+            <div className="filter-chips">
+              <button className={`filter-chip${!promoFilter?' active':''}`} onClick={() => setPromoFilter('')}>
+                All <span className="chip-count">{accounts.length}</span>
+              </button>
+              <button className={`filter-chip${promoFilter==='explicit'?' active':''}`}
+                style={promoFilter==='explicit'?{borderColor:'#00C896',color:'#00C896'}:{}}
+                onClick={() => setPromoFilter(p => p==='explicit'?'':'explicit')}>
+                💰 A1 Confirmed Paid <span className="chip-count">{confirmedPaid}</span>
+              </button>
+              <button className={`filter-chip${promoFilter==='inferred'?' active':''}`}
+                style={promoFilter==='inferred'?{borderColor:'#F9A825',color:'#F9A825'}:{}}
+                onClick={() => setPromoFilter(p => p==='inferred'?'':'inferred')}>
+                ~ A2 Likely Paid <span className="chip-count">{likelyPaid}</span>
+              </button>
+              <button className={`filter-chip${promoFilter==='none'?' active':''}`}
+                onClick={() => setPromoFilter(p => p==='none'?'':'none')}>
+                ✗ Not Paid <span className="chip-count">{accounts.filter(a=>a.promotion_type==='none').length}</span>
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Contact quick filters */}
         <div className="filter-row">
           <span className="filter-group-label">Contact</span>
@@ -342,14 +436,12 @@ export default function AccountsPage({ mode }) {
             <button
               className={`filter-chip contact-chip${dmFilter?' active-dm':''}`}
               onClick={() => setDmFilter(f => !f)}>
-              💬 DM Open
-              <span className="chip-count">{dmCount}</span>
+              💬 DM Open <span className="chip-count">{dmCount}</span>
             </button>
             <button
               className={`filter-chip contact-chip${emailFilter?' active-email':''}`}
               onClick={() => setEmailFilter(f => !f)}>
-              ✉ Has Email
-              <span className="chip-count">{emailCount}</span>
+              ✉ Has Email <span className="chip-count">{emailCount}</span>
             </button>
           </div>
         </div>

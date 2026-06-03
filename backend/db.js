@@ -164,8 +164,15 @@ async function initDB() {
   // ── Column migrations — add new columns to existing tables safely ──────────
   // ALTER TABLE fails silently if column already exists (we catch the error)
   const migrations = [
-    `ALTER TABLE accounts ADD COLUMN ai_model  TEXT`,
-    `ALTER TABLE accounts ADD COLUMN ai_reason TEXT`,
+    `ALTER TABLE accounts ADD COLUMN ai_model           TEXT`,
+    `ALTER TABLE accounts ADD COLUMN ai_reason          TEXT`,
+    // Track A promotion detection columns
+    `ALTER TABLE accounts ADD COLUMN promotion_type       TEXT DEFAULT 'unknown'`,
+    // explicit | inferred | none | unknown
+    `ALTER TABLE accounts ADD COLUMN promotion_confidence INTEGER DEFAULT 0`,
+    // 0-100 — how confident we are about the promotion classification
+    `ALTER TABLE accounts ADD COLUMN promotion_signals    TEXT`,
+    // JSON array of detected signals e.g. '["#ad found","discount code pattern"]'
   ];
   for (const m of migrations) {
     try { await db.execute(m); }

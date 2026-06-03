@@ -422,12 +422,15 @@ async function upsertAccount(account, runId) {
   });
   const isDup = rows.length > 0;
 
+  const promoSignals = JSON.stringify(account.promotion_signals || []);
   if (isDup) {
     await db.execute({
       sql: `UPDATE accounts SET name=?, bio=?, followers=?, following=?, tweets=?,
             verified=?, avatar=?, website=?, location=?, tier=?, account_type=?,
             track=?, d2=?, d3=?, d4=?, d5=?, overall=?, dm_open=?, has_email=?,
-            contact_email=?, ai_model=?, ai_reason=?, last_updated=datetime('now'), run_id=?
+            contact_email=?, ai_model=?, ai_reason=?,
+            promotion_type=?, promotion_confidence=?, promotion_signals=?,
+            last_updated=datetime('now'), run_id=?
             WHERE handle=?`,
       args: [account.name, account.bio, account.followers, account.following, account.tweets,
              account.verified ? 1 : 0, account.avatar, account.website, account.location,
@@ -435,14 +438,16 @@ async function upsertAccount(account, runId) {
              account.d2, account.d3, account.d4, account.d5, account.overall,
              account.dmOpen ? 1 : 0, account.hasEmail ? 1 : 0,
              account.contactEmail || null, account.ai_model || null, account.ai_reason || null,
+             account.promotion_type || 'unknown', account.promotion_confidence || 0, promoSignals,
              runId, account.handle.toLowerCase()],
     });
   } else {
     await db.execute({
       sql: `INSERT INTO accounts (handle, name, bio, followers, following, tweets, verified,
             avatar, website, location, tier, account_type, track, d2, d3, d4, d5, overall,
-            dm_open, has_email, contact_email, ai_model, ai_reason, run_id)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+            dm_open, has_email, contact_email, ai_model, ai_reason,
+            promotion_type, promotion_confidence, promotion_signals, run_id)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       args: [account.handle.toLowerCase(), account.name, account.bio,
              account.followers, account.following, account.tweets,
              account.verified ? 1 : 0, account.avatar, account.website, account.location,
@@ -450,6 +455,7 @@ async function upsertAccount(account, runId) {
              account.d2, account.d3, account.d4, account.d5, account.overall,
              account.dmOpen ? 1 : 0, account.hasEmail ? 1 : 0,
              account.contactEmail || null, account.ai_model || null, account.ai_reason || null,
+             account.promotion_type || 'unknown', account.promotion_confidence || 0, promoSignals,
              runId],
     });
   }
@@ -489,8 +495,40 @@ async function runAgent({ queries, directHandles = [], triggeredBy = 'manual', s
   globalConsecutive429  = 0;    // reset quota counter for a fresh run
   requestsSinceBreak   = 0;    // reset human-break counter
 
-  // Shuffle query order every run â€” prevents bot-pattern detection
-  queries = [...queries].sort(() => Math.random() - 0.5);
+  // ── Step 1: Build compound OR queries (4-5 keywords per call) ────────────────
+  // “vapi OR elevenlabs OR deepgram OR retell” = 1 call instead of 4
+  // Dramatically reduces search calls, frees budget for profile fetches
+  function buildCompoundQueries(rawQueries) {
+    const GROUP = 4;
+    const groups = [];
+    for (let i = 0; i < rawQueries.length; i += GROUP) {
+      const chunk = rawQueries.slice(i, i + GROUP);
+      const wrapped = chunk.map(q => q.includes(' ') ? `”${q}”` : q);
+      groups.push(wrapped.join(' OR '));
+    }
+    return groups;
+  }
+
+  // ── Step 2: Weekly rotation — run 1/4 of queries per week ────────────────────
+  // Week 1: indices 0,4,8...  Week 2: indices 1,5,9...  etc.
+  // Spreads discovery evenly and quadruples profile-fetch budget per run
+  function applyWeeklyRotation(compoundQueries) {
+    if (triggeredBy === 'manual') return compoundQueries; // manual = full run
+    const weekSlot = Math.floor((new Date().getDate() - 1) / 7) % 4;
+    return compoundQueries.filter((_, i) => i % 4 === weekSlot);
+  }
+
+  const compoundQueries = applyWeeklyRotation(buildCompoundQueries(queries));
+  const totalCompound   = compoundQueries.length;
+  emit('status', { step: 'init',
+    message: `${queries.length} keywords → ${totalCompound} compound queries${triggeredBy !== 'manual' ? ' (weekly rotation: 1/4)' : ''}`,
+    progress: 0 });
+
+  // Cross-query handle frequency — handles appearing in multiple searches get fetched first
+  const handleFrequency = new Map();
+
+  // Shuffle compound queries — anti-bot pattern variation
+  const shuffledQueries = [...compoundQueries].sort(() => Math.random() - 0.5);
 
   const sendHealth = () => emit('health', {
     ...calcHealth(health.calls, health.successes, health.errors, health.totalMs, health.flags),
@@ -499,12 +537,11 @@ async function runAgent({ queries, directHandles = [], triggeredBy = 'manual', s
   });
 
   try { // catches QuotaExhaustedError from acquireKey
-  for (const query of queries) {
-    emit('status', { step: 'search', message: `Searching X for: "${query}"`, progress: 0 });
+  for (const query of shuffledQueries) {
+    if (isLocalAborted()) break;
+    emit('status', { step: 'search', message: `Searching: “${query}”`, progress: 0 });
 
-    // Vary count 40-50 per search â€” not always exactly 50 (anti-bot pattern variation)
-    const searchCount = 40 + Math.floor(Math.random() * 11);
-    // twitter241: /search endpoint with type=Top, varied count
+    const searchCount = 40 + Math.floor(Math.random() * 11); // anti-bot count variation
     const searchRes = await callAPI('search', { query, count: searchCount, type: 'Top' }, paceWithBreak, keepAlive);
     health.calls++; health.totalMs += searchRes.duration_ms;
     durations.push(searchRes.duration_ms);
@@ -515,13 +552,33 @@ async function runAgent({ queries, directHandles = [], triggeredBy = 'manual', s
       if (s === 403) health.flags.blocked = true;
       health.errors++;
       sendHealth();
-      emit('error', { step: 'search', message: `Search failed for "${query}"`, status: s });
+      emit('error', { step: 'search', message: `Search failed for “${query}”`, status: s });
       continue;
     }
     health.successes++;
 
-    // twitter241: extract handles from timeline entries
-    const rawHandles = extractHandles241(searchRes.data);
+    // Extract handles from page 1
+    let rawHandles = extractHandles241(searchRes.data);
+
+    // ── PAGINATION: grab page 2 if cursor available and budget allows ─────────
+    const cursor = searchRes.data?.cursor?.bottom;
+    if (cursor && health.calls < MAX_REQUESTS_PER_RUN * 0.7 && !isLocalAborted()) {
+      const page2 = await callAPI('search',
+        { query, count: searchCount, type: 'Top', cursor },
+        paceWithBreak, keepAlive);
+      health.calls++; health.totalMs += page2.duration_ms;
+      if (page2.success) {
+        health.successes++;
+        rawHandles = [...rawHandles, ...extractHandles241(page2.data)];
+      }
+    }
+
+    // Update cross-query frequency map — handles appearing in multiple queries = higher priority
+    for (const h of rawHandles) {
+      const hl = h.toLowerCase();
+      handleFrequency.set(hl, (handleFrequency.get(hl) || 0) + 1);
+    }
+
     const seenQuery  = new Set();
     const handles    = [];
     for (const h of rawHandles) {
@@ -543,11 +600,14 @@ async function runAgent({ queries, directHandles = [], triggeredBy = 'manual', s
         })).rows.map(r => r.handle)
       : [];
     const recentSet = new Set(freshInDb);
-    const targets = handles.filter(h => {
-      if (recentSet.has(h.toLowerCase())) { skipCount++; seenThisRun.add(h.toLowerCase()); return false; }
-      return true;
-    });
-    if (skipCount > 0) emit('status', { step: 'skipped_recent', message: `Skipped ${skipCount} handles updated within last 6 days (saving quota)` });
+    const targets = handles
+      .filter(h => {
+        if (recentSet.has(h.toLowerCase())) { skipCount++; seenThisRun.add(h.toLowerCase()); return false; }
+        return true;
+      })
+      // Sort by cross-query frequency desc — accounts appearing in multiple searches fetched first
+      .sort((a, b) => (handleFrequency.get(b.toLowerCase()) || 0) - (handleFrequency.get(a.toLowerCase()) || 0));
+    if (skipCount > 0) emit('status', { step: 'skipped_recent', message: `Skipped ${skipCount} handles updated in last 6 days` });
 
     emit('search_done', {
       query, found: handles.length, fetching: targets.length, handles: targets,
@@ -729,8 +789,11 @@ async function runAgent({ queries, directHandles = [], triggeredBy = 'manual', s
         dmOpen:       sc.dmOpen,
         hasEmail:     sc.hasEmail,
         contactEmail: sc.contactEmail,
-        ai_model:     ai?.model || null,
-        ai_reason:    null,
+        ai_model:              ai?.model || null,
+        ai_reason:             null,
+        promotion_type:        ai?.promotion_type       || 'unknown',
+        promotion_confidence:  ai?.promotion_confidence || 0,
+        promotion_signals:     ai?.promotion_signals    || [],
       };
 
       const savedDup = await upsertAccount(account, runId);
@@ -831,6 +894,9 @@ async function runAgent({ queries, directHandles = [], triggeredBy = 'manual', s
             account_type: finalType, track: finalTrack, d2: finalD2, d3: finalD3, d4: sc.d4, d5: sc.d5,
             overall: finalOverall, dmOpen: sc.dmOpen, hasEmail: sc.hasEmail, contactEmail: sc.contactEmail,
             ai_model: ai?.model || null, ai_reason: null,
+            promotion_type:       ai?.promotion_type       || 'unknown',
+            promotion_confidence: ai?.promotion_confidence || 0,
+            promotion_signals:    ai?.promotion_signals    || [],
           };
           const savedDup = await upsertAccount(account, runId);
           if (savedDup) duplicatesSkipped++; else accountsAdded++;

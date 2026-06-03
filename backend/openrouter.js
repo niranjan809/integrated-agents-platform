@@ -78,11 +78,20 @@ D3 AI Relevance (0-100): 90+=voice AI/LLM/Vapi/ElevenLabs builder; 65-89=AI foun
 type: "Influencer" | "PR Page" | "AI Media" | "Brand Page" | "Account"
 track: "A"=collab pipeline | "B"=ads audience only
 
+PROMOTION DETECTION (for Track A accounts):
+promotion_type:
+  "explicit" = bio clearly states paid work: "DM for sponsorships", "collab@email", "media kit", "paid partnerships", rates, business email
+  "inferred" = profile PATTERN suggests paid work without saying it: creator/reviewer + multiple brand-friendly content signals, discount code mentions, "gifted by", lifestyle + product review pattern
+  "none"     = clearly not a paid promoter: pure technical/researcher, journalist, corporate brand
+  "unknown"  = insufficient signals to determine
+promotion_confidence: 0-100 (how sure you are)
+promotion_signals: array of up to 3 specific signals you detected (short phrases)
+
 ACCOUNTS:
 ${lines}
 
 Return ONLY a JSON array with ${accounts.length} objects in the SAME ORDER. No markdown.
-Example: [{"d2":72,"d3":85,"type":"Influencer","track":"A"},...]`;
+Example: [{"d2":72,"d3":85,"type":"Influencer","track":"A","promotion_type":"inferred","promotion_confidence":75,"promotion_signals":["lifestyle creator pattern","brand-friendly content","product review style"]}]`;
 
   const result = await callOpenRouter(
     [{ role: 'user', content: prompt }],
@@ -108,6 +117,9 @@ Example: [{"d2":72,"d3":85,"type":"Influencer","track":"A"},...]`;
         d3:    Math.max(0, Math.min(100, Number(item.d3)  || 0)),
         type:  item.type  || null,
         track: item.track || null,
+        promotion_type:       ['explicit','inferred','none','unknown'].includes(item.promotion_type) ? item.promotion_type : 'unknown',
+        promotion_confidence: Math.max(0, Math.min(100, Number(item.promotion_confidence) || 0)),
+        promotion_signals:    Array.isArray(item.promotion_signals) ? item.promotion_signals.slice(0,3) : [],
         model: result.model,
       };
     });

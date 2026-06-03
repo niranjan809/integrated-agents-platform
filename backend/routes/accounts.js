@@ -60,6 +60,37 @@ router.get('/pr-pages', async (req, res) => {
   }
 });
 
+// DELETE /api/accounts/cleanup — remove non-relevant accounts
+// Criteria: overall < 20 AND d3 < 15 (no AI relevance + very low overall)
+router.delete('/cleanup', async (req, res) => {
+  try {
+    const preview = await db.execute(
+      `SELECT COUNT(*) as n FROM accounts WHERE overall < 20 AND d3 < 15`
+    );
+    const count = preview.rows[0].n;
+    await db.execute(
+      `DELETE FROM accounts WHERE overall < 20 AND d3 < 15`
+    );
+    const remaining = await db.execute('SELECT COUNT(*) as n FROM accounts');
+    res.json({ deleted: Number(count), remaining: Number(remaining.rows[0].n) });
+  } catch (err) {
+    res.status(500).json({ error: 'Cleanup failed' });
+  }
+});
+
+// DELETE /api/accounts/:handle — delete a specific account
+router.delete('/:handle', async (req, res) => {
+  try {
+    await db.execute({
+      sql:  'DELETE FROM accounts WHERE handle = ?',
+      args: [req.params.handle.toLowerCase()],
+    });
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to delete account' });
+  }
+});
+
 // GET /api/accounts/:handle — single account
 router.get('/:handle', async (req, res) => {
   try {

@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 
 const MODEL_LABELS = {
-  'anthropic/claude-opus-4-5': 'Active — top model, best classification accuracy',
+  'google/gemini-2.5-flash':  'Primary — fast, cheap, excellent for classification',
+  'anthropic/claude-haiku-4-5': 'Fallback — if Gemini unavailable',
 };
 
 const STATUS_LABELS = {
@@ -202,7 +203,7 @@ export default function SettingsPage() {
           <div className="api-key-row">
             <div className="api-key-info">
               <span className="api-key-name">OpenRouter API</span>
-              <span className="api-key-desc">AI scoring — Claude Opus 4.5, batched 6 accounts/call, no fallbacks</span>
+              <span className="api-key-desc">AI scoring — Gemini 2.5 Flash (primary), Claude Haiku (fallback), batch 6 accounts/call</span>
             </div>
             <div className={`key-status-pill ${orKeySet ? 'set' : 'unset'}`}>
               {orKeySet ? '✓ Set in .env' : '✗ Not set'}

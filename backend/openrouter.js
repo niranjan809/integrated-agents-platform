@@ -1,11 +1,14 @@
 const axios = require('axios');
 
 // ── Model config ──────────────────────────────────────────────────────────────
-// Top model: Claude Opus 4.5 — most capable, best classification accuracy
-const SCORING_MODEL = 'anthropic/claude-opus-4-5';
+// Gemini 2.5 Flash — fast, cheap, excellent for structured classification tasks.
+// Used for ALL AI scoring: D2/D3, type/track, promotion detection, tweet analysis.
+// Fallback to Claude Haiku if Gemini unavailable.
+const SCORING_MODEL = 'google/gemini-2.5-flash';
 
 const MODEL_CHAIN = [
-  'anthropic/claude-opus-4-5',
+  'google/gemini-2.5-flash',         // primary — fast + cheap
+  'anthropic/claude-haiku-4-5',      // fallback
 ];
 
 // Batch size — how many accounts to score in one AI call
@@ -21,8 +24,8 @@ async function callOpenRouter(messages, { maxTokens = 400, temperature = 0.1, mo
   const key = getKey();
   if (!key) return { success: false, error: 'OPENROUTER_API_KEY not set in .env' };
 
-  // Only Opus 4.5 — best classification accuracy
-  const tryModels = [SCORING_MODEL];
+  // Try Gemini 2.5 Flash first, fall back to Haiku if unavailable
+  const tryModels = model === SCORING_MODEL ? MODEL_CHAIN : [model];
 
   for (const m of tryModels) {
     try {

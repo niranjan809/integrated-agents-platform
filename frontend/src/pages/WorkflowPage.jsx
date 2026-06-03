@@ -258,7 +258,7 @@ export default function WorkflowPage() {
   KEYWORD SCORING (instant) ─── D4 (authority: verified+ratio+followers) + D5 (reach tier)
        │
        ▼
-  AI BATCH SCORING (6/call, Claude Opus 4.5) ──► D2 · D3 · type · track · promotion_type
+  AI BATCH SCORING (6/call, Gemini 2.5 Flash) ──► D2 · D3 · type · track · promotion_type
        │
        ▼
   PROMOTION CLASSIFICATION (per Track A account, inline during fetch)
@@ -572,11 +572,12 @@ export default function WorkflowPage() {
         <Arrow />
 
         {/* STEP 7 — AI BATCH SCORING */}
-        <Card color={C.gold} step={7} title="AI BATCH SCORING — Claude Opus 4.5 via OpenRouter (6 accounts / call)">
+        <Card color={C.gold} step={7} title="AI BATCH SCORING — Gemini 2.5 Flash via OpenRouter (6 accounts / call)">
           <Row gap={16} style={{ marginBottom: 12 }}>
             <InfoBox color={C.gold} style={{ flex: 1 }}>
               <div style={{ fontWeight: 700, marginBottom: 6, color: C.gold }}>Batch Setup</div>
-              <KV k="Model" v="anthropic/claude-opus-4-5 (SCORING_MODEL)" vColor={C.gold} />
+              <KV k="Primary model" v="google/gemini-2.5-flash" vColor={C.gold} />
+              <KV k="Fallback model" v="anthropic/claude-haiku-4-5" vColor={C.muted} />
               <KV k="Batch size" v="BATCH_SIZE = 6 accounts per call" />
               <KV k="Progress" v="80% → 95% of run progress bar" />
               <KV k="Pre-check" v="Handles already in DB are skipped (no re-scoring)" />

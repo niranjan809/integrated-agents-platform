@@ -1,4 +1,4 @@
-﻿import { useState, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAgent } from '../context/AgentContext';
 
@@ -12,11 +12,11 @@ function AccountCard({ account }) {
         <div className="ac-identity">
           <div className="ac-name">
             {account.name}
-            {account.verified && <span className="verified-badge"> âœ“</span>}
+            {!!account.verified && <span className="verified-badge"> &#10003;</span>}
           </div>
           <div className="ac-handle">@{account.handle}</div>
-          <div className="ac-meta">{account.tier} Â· {account.account_type} Â· Track {account.track}</div>
-          {account.ai_reason && <div className="ac-ai-reason">ðŸ¤– {account.ai_reason}</div>}
+          <div className="ac-meta">{account.tier} &middot; {account.account_type} &middot; Track {account.track}</div>
+          {account.ai_reason && <div className="ac-ai-reason">AI: {account.ai_reason}</div>}
         </div>
         <div className="ac-score" style={{ color: scoreColor(account.overall) }}>
           {account.overall}
@@ -26,10 +26,10 @@ function AccountCard({ account }) {
       {account.bio && <div className="ac-bio">{account.bio}</div>}
       <div className="ac-dims">
         {[
-          ['D2', 'Collab',   account.d2, true],
-          ['D3', 'AI Rel.',  account.d3, true],
-          ['D4', 'Auth.',    account.d4, false],
-          ['D5', 'Reach',    account.d5, false],
+          ['D2', 'Collab',  account.d2, true],
+          ['D3', 'AI Rel.', account.d3, true],
+          ['D4', 'Auth.',   account.d4, false],
+          ['D5', 'Reach',   account.d5, false],
         ].map(([k, l, v, ai]) => (
           <div key={k} className="dim">
             <div className="dim-label">{k} {l}{ai && <span className="dim-ai">AI</span>}</div>
@@ -44,7 +44,7 @@ function AccountCard({ account }) {
         <span>{(account.followers || 0).toLocaleString()} followers</span>
         {account.dmOpen   && <span className="badge green">DM Open</span>}
         {account.hasEmail && <span className="badge blue">Has Email</span>}
-        {account.website  && <a href={account.website} target="_blank" rel="noreferrer" className="badge link">Website â†—</a>}
+        {account.website  && <a href={account.website} target="_blank" rel="noreferrer" className="badge link">Website</a>}
         {account.ai_model && (
           <span className="badge purple" title={account.ai_model}>
             {account.ai_model.split('/')[1]?.split('-').slice(0, 2).join('-') || 'AI'}
@@ -63,11 +63,10 @@ const PRESETS = [
 
 export default function AgentRunner() {
   const { running, accounts, stepLog, progress, summary, connErr, stats, startRun, stopRun } = useAgent();
-  const navigate  = useNavigate();
+  const navigate = useNavigate();
   const [query, setQuery] = useState('');
   const logRef = useRef(null);
 
-  // Auto-scroll log
   const scrollLog = () => {
     if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
   };
@@ -78,8 +77,8 @@ export default function AgentRunner() {
         <div>
           <h1>Run Agent</h1>
           <p className="page-sub">
-            Fetches all active keywords â€” results saved to database.
-            {running && <span className="running-note"> You can navigate away â€” the run continues in the background.</span>}
+            Fetches all active keywords - results saved to database.
+            {running && <span className="running-note"> You can navigate away - the run continues in the background.</span>}
           </p>
         </div>
         {running && (
@@ -93,22 +92,21 @@ export default function AgentRunner() {
         )}
       </div>
 
-      {connErr && <div className="conn-error">âš ï¸ {connErr}</div>}
+      {connErr && <div className="conn-error">&#9888; {connErr}</div>}
 
-      {/* Controls */}
       <div className="agent-controls">
         <div className="search-row">
           <input
             className="search-input"
-            placeholder="Custom query â€” or leave blank to run all 61 active keywords"
+            placeholder="Custom query - or leave blank to run all active keywords"
             value={query}
             onChange={e => setQuery(e.target.value)}
             disabled={running}
             onKeyDown={e => e.key === 'Enter' && !running && startRun(query)}
           />
           {running
-            ? <button className="btn-danger" onClick={stopRun}>â–  Stop</button>
-            : <button className="btn-primary" onClick={() => startRun(query)}>âš¡ Run Agent</button>
+            ? <button className="btn-danger" onClick={stopRun}>Stop</button>
+            : <button className="btn-primary" onClick={() => startRun(query)}>Run Agent</button>
           }
         </div>
         <div className="presets">
@@ -122,7 +120,6 @@ export default function AgentRunner() {
         </div>
       </div>
 
-      {/* Progress */}
       {(running || progress > 0) && (
         <div className="progress-bar-wrap">
           <div className="progress-bar" style={{ width: `${progress}%` }} />
@@ -130,28 +127,32 @@ export default function AgentRunner() {
         </div>
       )}
 
-      {/* Summary */}
       {summary && !running && (
         <div className="summary-banner">
-          âœ… Run complete â€”{' '}
-          <strong>{summary.accountsAdded ?? 0} new accounts</strong> added,{' '}
-          <strong>{summary.duplicatesSkipped ?? 0} updated</strong> in database.{' '}
-          <button className="link-btn" onClick={() => navigate('/')}>View Dashboard â†’</button>
+          Run complete - <strong>{summary.accountsAdded ?? 0} new</strong> added,{' '}
+          <strong>{summary.duplicatesSkipped ?? 0} updated</strong>.{' '}
+          DB total: <strong>{summary.totalAccountsInDB ?? '?'}</strong>
+          {(summary.confirmedPaid ?? 0) > 0 && (
+            <span style={{color:'#00C896'}}> &middot; {summary.confirmedPaid} confirmed paid (A1)</span>
+          )}
+          {(summary.likelyPaid ?? 0) > 0 && (
+            <span style={{color:'#F9A825'}}> &middot; {summary.likelyPaid} likely paid (A2)</span>
+          )}
+          {' '}<button className="link-btn" onClick={() => navigate('/')}>View Dashboard</button>
         </div>
       )}
 
       <div className="agent-body">
-        {/* Live log â€” persists even after navigation */}
-        <div className="step-log" ref={logRef} onScroll={() => {}}>
+        <div className="step-log" ref={logRef}>
           <div className="log-title">
             Agent Log
             {stepLog.length > 0 && (
-              <button className="log-scroll-btn" onClick={scrollLog}>â†“ Latest</button>
+              <button className="log-scroll-btn" onClick={scrollLog}>Latest</button>
             )}
           </div>
           {stepLog.length === 0 && (
             <div className="log-empty">
-              {running ? 'Startingâ€¦' : 'Ready â€” click Run Agent to start'}
+              {running ? 'Starting...' : 'Ready - click Run Agent to start'}
             </div>
           )}
           {stepLog.map((l, i) => (
@@ -159,7 +160,6 @@ export default function AgentRunner() {
           ))}
         </div>
 
-        {/* Results */}
         <div className="results-col">
           {accounts.length > 0 && (
             <div className="results-header">
@@ -172,7 +172,7 @@ export default function AgentRunner() {
           ))}
           {!running && accounts.length === 0 && stepLog.length > 0 && (
             <div className="empty-state">
-              No new accounts found â€” all results were already in the database.
+              No new accounts found - all results were already in the database.
             </div>
           )}
         </div>

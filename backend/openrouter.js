@@ -129,4 +129,33 @@ Example: [{"d2":72,"d3":85,"type":"Influencer","track":"A","promotion_type":"inf
   }
 }
 
-module.exports = { callOpenRouter, aiScoreBatch, getKey, MODEL_CHAIN, BATCH_SIZE, SCORING_MODEL };
+/**
+ * Analyse tweet content to determine promotion type.
+ * Called for accounts where bio analysis was inconclusive.
+ * Returns { promotion_type, confidence, signals } or null on failure.
+ */
+async function aiAnalyseTweets(handle, bio, tweets) {
+  const { buildTweetAnalysisPrompt } = require('./promotionClassifier');
+  const key = getKey();
+  if (!key || !tweets.length) return null;
+
+  const prompt = buildTweetAnalysisPrompt(handle, bio, tweets);
+  const result = await callOpenRouter(
+    [{ role: 'user', content: prompt }],
+    { maxTokens: 200, temperature: 0.1 }
+  );
+
+  if (!result.success) return null;
+  try {
+    const clean  = result.content.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(clean);
+    return {
+      promotion_type:       ['explicit','inferred','none'].includes(parsed.promotion_type) ? parsed.promotion_type : 'unknown',
+      promotion_confidence: Math.max(0, Math.min(100, Number(parsed.confidence) || 0)),
+      promotion_signals:    Array.isArray(parsed.signals) ? parsed.signals.slice(0, 3) : [],
+      source: 'tweet_analysis',
+    };
+  } catch { return null; }
+}
+
+module.exports = { callOpenRouter, aiScoreBatch, aiAnalyseTweets, getKey, MODEL_CHAIN, BATCH_SIZE, SCORING_MODEL };

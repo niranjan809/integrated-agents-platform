@@ -6,7 +6,8 @@ const helmet       = require('helmet');
 const rateLimit    = require('express-rate-limit');
 const cron         = require('node-cron');
 const { db, initDB } = require('./db');
-const { aiScoreBatch, BATCH_SIZE, SCORING_MODEL } = require('./openrouter');
+const { aiScoreBatch, aiAnalyseTweets, BATCH_SIZE, SCORING_MODEL } = require('./openrouter');
+const { classifyFromBio } = require('./promotionClassifier');
 const { getFriendSearchQueries, getFriendInfluencerHandles, testFriendDb } = require('./friendDb');
 
 const app  = express();
@@ -789,12 +790,59 @@ async function runAgent({ queries, directHandles = [], triggeredBy = 'manual', s
         dmOpen:       sc.dmOpen,
         hasEmail:     sc.hasEmail,
         contactEmail: sc.contactEmail,
-        ai_model:              ai?.model || null,
-        ai_reason:             null,
-        promotion_type:        ai?.promotion_type       || 'unknown',
-        promotion_confidence:  ai?.promotion_confidence || 0,
-        promotion_signals:     ai?.promotion_signals    || [],
+        ai_model:  ai?.model || null,
+        ai_reason: null,
       };
+
+      // ── Promotion classification ──────────────────────────────────────────
+      // Priority: AI batch result → bio keyword → tweet analysis → unknown
+      let promoType       = ai?.promotion_type       || 'unknown';
+      let promoConfidence = ai?.promotion_confidence || 0;
+      let promoSignals    = ai?.promotion_signals    || [];
+
+      // If AI batch didn't classify promotion, try bio keywords (free)
+      if (promoType === 'unknown' && finalTrack === 'A') {
+        const bioResult = classifyFromBio(a.bio, a.name, finalType);
+        if (bioResult && bioResult.promotion_type !== 'unknown') {
+          promoType       = bioResult.promotion_type;
+          promoConfidence = bioResult.promotion_confidence;
+          promoSignals    = bioResult.promotion_signals;
+
+          // If bio says explicit → done. If inferred → fetch tweets to verify/upgrade.
+          if (bioResult.needs_tweet_check && !isDup && health.calls < MAX_REQUESTS_PER_RUN - 50) {
+            emit('status', { step: 'tweet_check', message: `Checking tweets for @${a.handle} (paid promo verification)` });
+            const tweetSearch = await callAPI('search',
+              { query: `from:${a.handle}`, count: 10, type: 'Latest' }, pace, keepAlive);
+            health.calls++; health.totalMs += tweetSearch.duration_ms;
+            if (tweetSearch.success) {
+              const instructions = tweetSearch.data?.result?.timeline?.instructions || [];
+              const entries = (instructions.find(i => i.type === 'TimelineAddEntries')?.entries || []);
+              const tweets = [];
+              for (const e of entries) {
+                try {
+                  const t = e.content?.itemContent?.tweet_results?.result?.legacy?.full_text;
+                  if (t && !t.startsWith('RT @')) tweets.push(t.slice(0, 200));
+                } catch {}
+              }
+              if (tweets.length > 0) {
+                const tweetAI = await aiAnalyseTweets(a.handle, a.bio, tweets);
+                if (tweetAI) {
+                  // Upgrade if tweets show stronger signal
+                  if (tweetAI.promotion_type === 'explicit' || promoType !== 'explicit') {
+                    promoType       = tweetAI.promotion_type;
+                    promoConfidence = Math.max(promoConfidence, tweetAI.promotion_confidence);
+                    promoSignals    = [...promoSignals, ...tweetAI.promotion_signals].slice(0, 3);
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+
+      account.promotion_type       = promoType;
+      account.promotion_confidence = promoConfidence;
+      account.promotion_signals    = promoSignals;
 
       const savedDup = await upsertAccount(account, runId);
       if (savedDup) duplicatesSkipped++; else accountsAdded++;
@@ -926,9 +974,22 @@ async function runAgent({ queries, directHandles = [], triggeredBy = 'manual', s
   });
   await db.execute({ sql: `UPDATE agent_config SET value=datetime('now'), updated_at=datetime('now') WHERE key='last_run'`, args: [] });
 
-  const summary = { runId, accountsAdded, duplicatesSkipped, errors: health.errors,
+  // Get promotion counts for run history
+  const [totalStats, promoStats] = await Promise.all([
+    db.execute(`SELECT COUNT(*) as total FROM accounts`),
+    db.execute(`SELECT promotion_type, COUNT(*) as n FROM accounts WHERE track='A' GROUP BY promotion_type`),
+  ]);
+  const promoMap = {};
+  for (const r of promoStats.rows) promoMap[r.promotion_type] = Number(r.n);
+
+  const summary = {
+    runId, accountsAdded, duplicatesSkipped, errors: health.errors,
     quotaExhausted: runStatus === 'quota_exhausted',
-    health: calcHealth(health.calls, health.successes, health.errors, health.totalMs, health.flags) };
+    totalAccountsInDB: Number(totalStats.rows[0].total),
+    confirmedPaid: promoMap['explicit'] || 0,
+    likelyPaid:    promoMap['inferred'] || 0,
+    health: calcHealth(health.calls, health.successes, health.errors, health.totalMs, health.flags),
+  };
   emit('complete', summary);
   return summary;
 }

@@ -165,7 +165,9 @@ export function AgentProvider({ children }) {
         if (d.quotaExhausted) {
           addLog(`⚠️ Run stopped early — API quota exhausted. ${d.accountsAdded ?? 0} new accounts saved.`, 'warn');
         } else {
-          addLog(`✅ Run complete — ${d.accountsAdded ?? 0} new · ${d.duplicatesSkipped ?? 0} updated · ${d.errors ?? 0} errors`, 'success');
+          const paidMsg = d.confirmedPaid > 0 ? ` · 💰 ${d.confirmedPaid} confirmed paid` : '';
+          const likelyMsg = d.likelyPaid > 0 ? ` · ~ ${d.likelyPaid} likely paid` : '';
+          addLog(`✅ Run complete — ${d.accountsAdded ?? 0} new · ${d.duplicatesSkipped ?? 0} updated · DB total: ${d.totalAccountsInDB ?? '?'}${paidMsg}${likelyMsg}`, 'success');
         }
         setProgress(100);
         doneCallbacks.current.forEach(cb => { try { cb(d); } catch {} });

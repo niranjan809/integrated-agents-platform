@@ -405,27 +405,23 @@ export default function AccountsPage({ mode }) {
 
       {/* Filters */}
       <div className="filter-panel">
-        {/* Promotion type filter — Track A1/A2 */}
-        {mode === 'influencers' && (
+        {/* Promotion filter — A1 Confirmed / A2 Likely only (no Not Paid / Unknown) */}
+        {mode === 'influencers' && (confirmedPaid > 0 || likelyPaid > 0) && (
           <div className="filter-row">
-            <span className="filter-group-label">Track</span>
+            <span className="filter-group-label">Paid Status</span>
             <div className="filter-chips">
               <button className={`filter-chip${!promoFilter?' active':''}`} onClick={() => setPromoFilter('')}>
                 All <span className="chip-count">{accounts.length}</span>
               </button>
               <button className={`filter-chip${promoFilter==='explicit'?' active':''}`}
-                style={promoFilter==='explicit'?{borderColor:'#00C896',color:'#00C896'}:{}}
+                style={promoFilter==='explicit'?{borderColor:'#00C896',color:'#00C896',background:'rgba(0,200,150,.08)'}:{}}
                 onClick={() => setPromoFilter(p => p==='explicit'?'':'explicit')}>
-                💰 A1 Confirmed Paid <span className="chip-count">{confirmedPaid}</span>
+                💰 A1 — Confirmed Paid <span className="chip-count" style={{background: promoFilter==='explicit'?'#00C896':''}}>{confirmedPaid}</span>
               </button>
               <button className={`filter-chip${promoFilter==='inferred'?' active':''}`}
-                style={promoFilter==='inferred'?{borderColor:'#F9A825',color:'#F9A825'}:{}}
+                style={promoFilter==='inferred'?{borderColor:'#F9A825',color:'#F9A825',background:'rgba(249,168,37,.08)'}:{}}
                 onClick={() => setPromoFilter(p => p==='inferred'?'':'inferred')}>
-                ~ A2 Likely Paid <span className="chip-count">{likelyPaid}</span>
-              </button>
-              <button className={`filter-chip${promoFilter==='none'?' active':''}`}
-                onClick={() => setPromoFilter(p => p==='none'?'':'none')}>
-                ✗ Not Paid <span className="chip-count">{accounts.filter(a=>a.promotion_type==='none').length}</span>
+                ~ A2 — Likely Paid <span className="chip-count" style={{background: promoFilter==='inferred'?'#F9A825':''}}>{likelyPaid}</span>
               </button>
             </div>
           </div>

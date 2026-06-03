@@ -236,37 +236,43 @@ export default function WorkflowPage() {
           color: C.text,
           fontFamily: 'monospace',
           whiteSpace: 'pre',
-        }}>{`  TRIGGER (manual / cron)
+        }}>{`  TRIGGER (manual click OR weekly cron: Monday 02:00 IST)
        │
        ▼
-  KEYWORD LOADING ─── own DB (61) + friend DB (1506 kws, 42 handles) ──► merged queries
+  KEYWORD LOADING ─── 61 own + up to 300 friend DB = 358 queries
+       │               Build compound OR queries (4 per call): "vapi OR elevenlabs OR deepgram"
+       │               Weekly rotation: 1/4 per auto-run  |  Manual: full 90 compound queries
+       ▼
+  SEARCH PHASE ─── /search?query=vapi+OR+elevenlabs+OR+deepgram&count=47&type=Top
+       │            Cross-query frequency tracking  |  Pagination (page 2 via cursor)
+       │            Rate: 3 RPM KeyPaid  |  ±3s jitter  |  human breaks  |  5,000 cap
+       ▼
+  PROFILE FETCH ─── /user?username=vapidev ──► twitter241 nested JSON
+       │             result.core.name  |  result.legacy.description (bio)
+       │             result.legacy.followers_count  |  result.is_blue_verified
+       │             6-day skip: handles updated <6 days ago → skip (saves quota)
+       ▼
+  VALIDATION ─── followers≥100 · tweets≥1 · name not empty · (bio if <500 followers)
+       │          post-score gate: overall<10 → discard
+       ▼
+  KEYWORD SCORING (instant) ─── D4 (authority: verified+ratio+followers) + D5 (reach tier)
        │
        ▼
-  SEARCH PHASE ─── callAPI(search.php, {query, count:50}) ──► up to 50 tweets ──► extract handles
-       │                                     │
-       │          Rate Limiter: 6 RPM/key    │   Key1 ⟷ Key2 alternating
-       │          MIN_GAP=10 000ms  ±600ms jitter
-       ▼
-  PROFILE FETCH ─── callAPI(screenname.php) ──► name, bio, followers, following, verified …
+  AI BATCH SCORING (6/call, Claude Opus 4.5) ──► D2 · D3 · type · track · promotion_type
        │
        ▼
-  VALIDATION ─── followers≥100 · tweets≥1 · has name · (bio if <500) ──► discard bots/empty
-       │
+  PROMOTION CLASSIFICATION (per Track A account, inline during fetch)
+       │  Phase 1: Bio keywords (free) ──► A1 if explicit signal, or exclusion (ambassador)
+       │  Phase 2: Tweet fetch /search?query=from:handle&count=10&type=Latest
+       │           Claude reads tweets ──► A1 (explicit) or A2 (inferred) or unknown
        ▼
-  KEYWORD SCORING (instant) ─── D4 (influence signals) + D5 (reach tier)
-       │
+  SCORE MERGE ─── Overall = D2×25% + D3×25% + D4×20% + D5×30%
+       │           Track A sort: A1 (💰) → A2 (~) → Unknown  |  Track B: ads audience
        ▼
-  AI BATCH SCORING (6/call) ─── Claude Opus 4.5 via OpenRouter ──► D2 (collab intent) + D3 (AI relevance)
-       │                                                             + type + track (A/B)
+  DB UPSERT ─── Turso  |  handle UNIQUE → INSERT or UPDATE
+       │         promotion_type · promotion_confidence · promotion_signals saved
        ▼
-  SCORE MERGE  ──  Overall = D2×25% + D3×25% + D4×20% + D5×30%
-       │
-       ▼
-  DB UPSERT ─── Turso (libSQL) ──► accounts table  (handle UNIQUE → INSERT or UPDATE)
-       │                 └──────► runs row  (status, counts, completed_at)
-       │
-       ▼
-  SSE STREAM ─── status · search_done · account · fetch_error · quota_exhausted · complete`}</pre>
+  SSE COMPLETE ─── accountsAdded · duplicatesSkipped · totalInDB · confirmedPaid · likelyPaid`}</pre>
       </div>
 
       {/* ── Steps ───────────────────────────────────────────────── */}
@@ -320,10 +326,18 @@ export default function WorkflowPage() {
               <strong>STRICT:</strong> SELECT only — no INSERT/UPDATE/DELETE ever.
             </InfoBox>
           </Row>
-          <InfoBox color={C.blue}>
-            <strong>Merge logic:</strong> own active keywords + friend's search queries (deduped, own take priority).
-            Friend's 42 influencer handles go to the <em>direct handles</em> queue (fetched after all search queries, no search API call).
-            Result: up to ~300 combined search queries + up to 42 direct handles per run.
+          <InfoBox color={C.blue} style={{ marginBottom: 10 }}>
+            <strong>Merge:</strong> own 61 + friend 300 = ~358 unique queries (deduped) + 42 direct handles.
+            Queries are shuffled randomly each run (anti-bot pattern variation).
+          </InfoBox>
+          <InfoBox color={C.purple}>
+            <div style={{ fontWeight: 700, marginBottom: 6, color: C.purple }}>Compound OR Query Building (NEW)</div>
+            Instead of 358 separate search calls, keywords are grouped 4 per call:<br />
+            <Code>"vapi OR elevenlabs OR deepgram OR retell ai"</Code> = 1 call instead of 4<br /><br />
+            358 keywords ÷ 4 = <strong>~90 compound queries</strong> (saves ~268 API calls → freed for profile fetches)<br /><br />
+            <strong>Weekly rotation (auto-runs):</strong> only 1/4 of queries per run using <Code>i % 4 === weekSlot</Code><br />
+            Week 1: indices 0,4,8… | Week 2: 1,5,9… | etc. = 4× more profile budget per run<br />
+            Manual runs always use full ~90 compound queries.
           </InfoBox>
         </Card>
 
@@ -332,20 +346,20 @@ export default function WorkflowPage() {
         {/* STEP 3 — SEARCH PHASE */}
         <Card color={C.blue} step={3} title="SEARCH PHASE — Query X for Handles">
           <InfoBox color={C.blue} style={{ marginBottom: 12 }}>
-            For each query, count is varied 40–50 (anti-bot pattern variation).<br />
-            Handles already seen this run are skipped via <Code>seenThisRun</Code> Set.
+            Each call is a compound OR query (4-5 keywords). Count varies 40–50. Page 2 fetched via cursor.
+            Handles sorted by cross-query frequency — accounts seen in 3+ searches fetched first.
           </InfoBox>
 
           {/* ── Exact API Request String ── */}
           <div style={{ marginBottom: 16 }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: C.muted, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 1 }}>
-              Exact API Request — Search
+              Exact API Request — Compound OR Search
             </div>
             <div style={{ background: '#0d1117', border: `1px solid ${C.border}`, borderRadius: 6, padding: '12px 14px', fontFamily: 'monospace', fontSize: 11, lineHeight: 1.9 }}>
-              <div><span style={{ color: C.green }}>GET</span> <span style={{ color: '#79c0ff' }}>https://twitter241.p.rapidapi.com/search.php</span></div>
+              <div><span style={{ color: C.green }}>GET</span> <span style={{ color: '#79c0ff' }}>https://twitter241.p.rapidapi.com/search</span></div>
               <div style={{ color: C.muted, marginTop: 6 }}>Query Parameters:</div>
               <div style={{ paddingLeft: 16 }}>
-                <span style={{ color: C.gold }}>query</span><span style={{ color: C.muted }}> = </span><span style={{ color: '#a5d6ff' }}>"ai voice assistant"</span><br />
+                <span style={{ color: C.gold }}>query</span><span style={{ color: C.muted }}> = </span><span style={{ color: '#a5d6ff' }}>"vapi OR elevenlabs OR deepgram OR retell ai"</span><br />
                 <span style={{ color: C.gold }}>count</span><span style={{ color: C.muted }}> = </span><span style={{ color: '#a5d6ff' }}>47</span><span style={{ color: C.muted }}> (varies 40–50, anti-bot)</span>
               </div>
               <div style={{ color: C.muted, marginTop: 6 }}>Headers:</div>
@@ -355,7 +369,7 @@ export default function WorkflowPage() {
               </div>
               <div style={{ color: C.muted, marginTop: 8, fontSize: 10 }}>Full URL string:</div>
               <div style={{ color: '#58a6ff', wordBreak: 'break-all', marginTop: 2 }}>
-                https://twitter241.p.rapidapi.com/search?query=ai+voice+assistant&count=47&type=Top
+                https://twitter241.p.rapidapi.com/search?query=vapi+OR+elevenlabs+OR+deepgram+OR+%22retell+ai%22&count=47&type=Top
               </div>
             </div>
           </div>
@@ -386,8 +400,13 @@ export default function WorkflowPage() {
           </div>
 
           <Row gap={8} style={{ marginBottom: 6 }}>
-            <Tag color={C.green}>Result: query "ai voice assistant" → 47 tweets → 15 new handles extracted</Tag>
+            <Tag color={C.green}>Result: compound query → up to 47 handles page 1 + 47 page 2 = ~80-90 unique handles per compound query</Tag>
           </Row>
+          <InfoBox color={C.purple} style={{ marginBottom: 10 }}>
+            <strong>Page 2 (cursor pagination):</strong> After page 1, extract <Code>response.cursor.bottom</Code> and make a second call:<br />
+            <Code>?query=vapi+OR+elevenlabs...&count=47&type=Top&cursor=DAACCgACHJ...</Code><br />
+            If budget allows, doubles handles discovered per compound query.
+          </InfoBox>
           <Row gap={8}>
             <InfoBox color={C.red} style={{ flex: 1 }}>
               <strong style={{ color: C.red }}>On failure:</strong> emit <Tag color={C.red}>error</Tag> event, flag limited/blocked, <Code>continue</Code> to next query.
@@ -451,7 +470,7 @@ export default function WorkflowPage() {
               </div>
               <div style={{ color: C.muted, marginTop: 8, fontSize: 10 }}>Full URL string:</div>
               <div style={{ color: '#58a6ff', marginTop: 2 }}>
-                https://twitter241.p.rapidapi.com/user?username=vapidev
+                https://twitter241.p.rapidapi.com/user?username=vapidev    (no @ symbol)
               </div>
             </div>
           </div>
@@ -729,57 +748,78 @@ export default function WorkflowPage() {
         <Arrow />
 
         {/* TRACK A PROMOTION CLASSIFICATION — A1 / A2 */}
-        <Card color={C.purple} title="TRACK A PROMOTION CLASSIFICATION — A1 Confirmed / A2 Likely">
+        <Card color={C.purple} title="TRACK A PROMOTION CLASSIFICATION — A1 / A2 (Inline During Fetch)">
           <InfoBox color={C.purple} style={{ marginBottom: 14 }}>
-            After Track A is assigned, each account goes through a 3-phase promotion classifier
-            to determine if they are <strong>available for paid collaborations with KiteAI</strong>.
-            This runs with zero extra API calls for most accounts.
+            Every new Track A account is classified inline during the agent run — no separate step.
+            3 phases run automatically. The key question: <strong>is this account available for paid collab with KiteAI?</strong>
           </InfoBox>
 
           <Row gap={12} style={{ marginBottom: 14 }}>
             <InfoBox color={C.green} style={{ flex: 1 }}>
-              <div style={{ fontWeight:700, color:C.green, marginBottom:6 }}>💰 A1 — Confirmed Available</div>
-              Bio explicitly signals openness to NEW paid work:<br />
-              <Code>"DM for collabs"</Code> · <Code>"DM for paid promo"</Code> · <Code>"open to brand deals"</Code><br />
-              <Code>"media kit"</Code> · <Code>"UGC creator"</Code> · <Code>collab@email</Code><br />
-              <Code>#ad</Code> / <Code>#sponsored</Code> in bio<br /><br />
-              <strong style={{color:C.red}}>NOT A1:</strong> "brand ambassador for X" (exclusive, single-brand)
+              <div style={{ fontWeight:700, color:C.green, marginBottom:6 }}>💰 A1 — Confirmed (bio explicit)</div>
+              Bio signals they are OPEN to new paid work with any brand:<br />
+              <Code>"DM for collabs"</Code> · <Code>"DM for paid promo"</Code><br />
+              <Code>"open to brand deals"</Code> · <Code>"media kit"</Code><br />
+              <Code>"UGC creator"</Code> · <Code>collab@email.com</Code><br />
+              <Code>#ad</Code> in bio · <Code>"sponsored content"</Code><br /><br />
+              <strong>Skip tweet fetch</strong> — bio already confirms, saves 1 API call
             </InfoBox>
             <InfoBox color={C.gold} style={{ flex: 1 }}>
-              <div style={{ fontWeight:700, color:C.gold, marginBottom:6 }}>~ A2 — Likely Available</div>
-              Tweet content patterns suggest paid work without explicit bio signal:<br />
-              <Code>#ad</Code> / <Code>#sponsored</Code> in tweets · discount codes<br />
-              "use code X" · "I partnered with [Brand]" · "gifted by"<br />
-              Product reviews + CTAs across multiple brands<br /><br />
-              Detected via <Code>from:username</Code> tweet search + Claude analysis
+              <div style={{ fontWeight:700, color:C.gold, marginBottom:6 }}>~ A2 — Likely (tweet analysis)</div>
+              No explicit bio signal → fetch 10 tweets → Claude reads for:<br />
+              <Code>#ad</Code> · <Code>#sponsored</Code> · <Code>#gifted</Code><br />
+              "use code X" · discount codes<br />
+              "I partnered with [Brand]" · "gifted by [Brand]"<br />
+              Multiple different brand reviews + CTA<br /><br />
+              <strong>1 extra API call</strong> per inconclusive account
             </InfoBox>
           </Row>
 
-          <div style={{ background:'#0d1117', borderRadius:6, padding:'12px 14px', fontFamily:'monospace', fontSize:11, lineHeight:1.9 }}>
-            <div style={{ color:C.gold, marginBottom:6 }}>Exclusion check (runs FIRST):</div>
+          <div style={{ background:'#0d1117', borderRadius:6, padding:'12px 14px', fontFamily:'monospace', fontSize:11, lineHeight:1.9, marginBottom:12 }}>
+            <div style={{ color:C.red, marginBottom:6, fontWeight:700 }}>EXCLUSION CHECK (runs first — no A1/A2 assigned):</div>
             <div style={{ paddingLeft:16, color:'#a5d6ff' }}>
-              "Official X ambassador" → skip A1/A2 (exclusive, not available for us)<br />
-              "Ambassador @brand" → skip<br />
-              "Brand ambassador FOR X" → skip<br />
+              "Ambassador @glider__ &bull; @cyfrin" → EXCLUDED (works for specific brands)<br />
+              "Official Raycon Ambassador"           → EXCLUDED (single-brand exclusive)<br />
+              "Brand ambassador for [Brand]"         → EXCLUDED (can't promote our product)<br />
+              These people are locked to one brand — not available for KiteAI collab<br />
             </div>
-            <div style={{ color:C.gold, marginTop:8, marginBottom:6 }}>Phase 1 — Bio keyword (free, instant):</div>
+            <div style={{ color:C.gold, marginTop:10, marginBottom:6, fontWeight:700 }}>TWEET FETCH REQUEST (when bio inconclusive):</div>
             <div style={{ paddingLeft:16, color:'#a5d6ff' }}>
-              Match EXPLICIT_PATTERNS in bio → A1 immediately<br />
-              Match INFERRED_STRONG/SOFT patterns → A2, needs tweet check<br />
-              No match → fetch tweets for deeper analysis<br />
+              GET https://twitter241.p.rapidapi.com/search?query=from%3Ahasantoxr&count=10&type=Latest<br />
+              URL-encoded: from:hasantoxr → from%3Ahasantoxr<br />
             </div>
-            <div style={{ color:C.gold, marginTop:8, marginBottom:6 }}>Phase 2 — Tweet analysis (1 API call per account):</div>
+            <div style={{ color:C.gold, marginTop:10, marginBottom:6, fontWeight:700 }}>UPGRADE LOGIC:</div>
             <div style={{ paddingLeft:16, color:'#a5d6ff' }}>
-              GET /search?query=from:username&count=10&type=Latest<br />
-              Claude Opus reads tweets → returns promotion_type + signals<br />
-              Bio "inferred" + tweet "explicit" → upgraded to A1<br />
+              Bio says 'inferred' + tweets say 'explicit' → upgrade to A1<br />
+              Bio says 'unknown' + tweets say 'inferred' → set to A2<br />
+              Bio says 'explicit' → A1, skip tweet fetch entirely<br />
+              After both checks still unknown → save to DB as unknown (hidden from A1/A2 filter)<br />
             </div>
           </div>
 
+          <table style={{ width:'100%', borderCollapse:'collapse', fontSize:11 }}>
+            <thead><tr><th style={{background:'#1a56a0',color:'#fff',padding:'5pt 8pt',textAlign:'left'}}>Bio says</th>
+              <th style={{background:'#1a56a0',color:'#fff',padding:'5pt 8pt',textAlign:'left'}}>Result</th>
+              <th style={{background:'#1a56a0',color:'#fff',padding:'5pt 8pt',textAlign:'left'}}>Action</th></tr></thead>
+            <tbody>
+              {[
+                ['"DM for collabs"',           '💰 A1',       'Contact directly'],
+                ['"open to paid sponsorships"','💰 A1',       'Contact directly'],
+                ['"Ambassador @glider__"',     '❌ Excluded', 'Single-brand, skip A1/A2'],
+                ['Bio unclear → #ad in tweets','~ A2',        'Contact (likely paid)'],
+                ['No signals in bio OR tweets','? Unknown',   'Saved to DB, hidden from filter'],
+              ].map(([bio,res,act],i) => (
+                <tr key={i}><td style={{padding:'4pt 8pt',border:'1px solid #ccc',background:i%2?'#f0f5ff':'#fff'}}>{bio}</td>
+                  <td style={{padding:'4pt 8pt',border:'1px solid #ccc',background:i%2?'#f0f5ff':'#fff',fontWeight:700}}>{res}</td>
+                  <td style={{padding:'4pt 8pt',border:'1px solid #ccc',background:i%2?'#f0f5ff':'#fff',color:'#555'}}>{act}</td></tr>
+              ))}
+            </tbody>
+          </table>
+
           <InfoBox color={C.muted} style={{ marginTop:12, fontSize:11 }}>
-            <strong>Track A sorting order:</strong> A1 (explicit) first → A2 (inferred) → Unknown.
-            Within each group, sorted by overall score descending.
-            "Not Paid" and "Unknown" are hidden from the Track A filter — only A1 and A2 are shown.
+            <strong>DB sort order (Track A endpoint):</strong><br />
+            <Code>ORDER BY CASE promotion_type WHEN 'explicit' THEN 0 WHEN 'inferred' THEN 1 ELSE 2 END, overall DESC</Code><br />
+            A1 first → A2 → Unknown. UI filter shows only A1 and A2 chips (Unknown hidden).
           </InfoBox>
         </Card>
 

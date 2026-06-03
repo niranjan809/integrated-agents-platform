@@ -11,6 +11,7 @@ const NAV = [
   { to: '/keywords',    icon: '🔑', label: 'Keywords'    },
   { to: '/settings',    icon: '⚙',  label: 'Settings'    },
   { to: '/workflow',    icon: '⬡',  label: 'Workflow'    },
+  { to: '/prompts',     icon: '✦',  label: 'Prompts'     },
 ];
 
 export default function Sidebar() {

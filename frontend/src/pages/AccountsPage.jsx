@@ -277,6 +277,9 @@ export default function AccountsPage({ mode }) {
   const [promoFilter, setPromoFilter] = useState(''); // '' | 'explicit' | 'inferred' | 'none' | 'unknown'
   const [sortBy,      setSortBy]      = useState('score');
   const [cleaning,    setCleaning]    = useState(false);
+  const [classifying, setClassifying] = useState(false);
+  const [classifyLog, setClassifyLog] = useState([]);
+  const [classifyDone,setClassifyDone]= useState(null);
 
   const endpoint = mode === 'all'
     ? '/api/accounts?limit=1000'
@@ -364,6 +367,40 @@ export default function AccountsPage({ mode }) {
     setCleaning(false);
   }
 
+  function startClassifyUnknown() {
+    if (classifying) return;
+    setClassifying(true);
+    setClassifyLog([]);
+    setClassifyDone(null);
+    const token = localStorage.getItem('kiteai_token');
+    const API = (import.meta.env.VITE_API_URL || 'http://localhost:3001').replace(/\/$/, '');
+    const es = new EventSource(`${API}/api/accounts/classify-unknown?_token=${token}`);
+    es.addEventListener('start', e => {
+      try { const d=JSON.parse(e.data); setClassifyLog([d.message]); } catch {}
+    });
+    es.addEventListener('progress', e => {
+      try {
+        const d = JSON.parse(e.data);
+        const pct = Math.round((d.current/d.total)*100);
+        const icon = d.result==='explicit' ? '💰' : d.result==='inferred' ? '~' : d.result==='fetching_tweets' ? '⟳' : '?';
+        setClassifyLog(prev => [`[${pct}%] ${icon} @${d.handle} → ${d.result} | A1:${d.a1} A2:${d.a2}`, ...prev.slice(0,29)]);
+      } catch {}
+    });
+    es.addEventListener('complete', e => {
+      try { const d=JSON.parse(e.data); setClassifyDone(d); } catch {}
+      setClassifying(false);
+      es.close();
+      // Reload accounts
+      apiFetch(endpoint).then(r=>r.json()).then(d=>setAccounts(d.accounts||[]));
+    });
+    es.addEventListener('error', e => {
+      try { const d=JSON.parse(e.data); setClassifyLog(prev=>[`Error: ${d.message}`, ...prev]); } catch {}
+      setClassifying(false);
+      es.close();
+    });
+    es.onerror = () => { if (classifying) { setClassifying(false); es.close(); } };
+  }
+
   if (loading) return <div className="page-loader"><div className="spinner" /></div>;
   if (error)   return <div className="page" style={{padding:32}}><div className="page-error">{error}</div><button className="btn-primary" style={{marginTop:16}} onClick={()=>{ setLoading(true); setError(''); apiFetch(endpoint).then(r=>r.json()).then(d=>{setAccounts(d.accounts||[]);setLoading(false);}).catch(e=>{setError(e.message);setLoading(false);}); }}>Retry</button></div>;
 
@@ -387,6 +424,41 @@ export default function AccountsPage({ mode }) {
       </div>
 
       {accounts.length > 0 && <StatsBar accounts={accounts} />}
+
+      {/* Classify Unknown Panel — Track A only */}
+      {mode === 'influencers' && (
+        <div className="classify-panel">
+          <div className="classify-header">
+            <div>
+              <span className="classify-title">Tweet Analysis — Classify Unknown Accounts</span>
+              <span className="classify-sub">
+                {accounts.filter(a=>(a.promotion_type||'unknown')==='unknown').length} accounts need tweet analysis to determine paid status
+              </span>
+            </div>
+            {!classifying ? (
+              <button className="btn-primary" onClick={startClassifyUnknown}
+                disabled={accounts.filter(a=>(a.promotion_type||'unknown')==='unknown').length===0}>
+                Analyse Tweets (up to 200)
+              </button>
+            ) : (
+              <div style={{display:'flex',alignItems:'center',gap:10}}>
+                <span className="live-dot" />
+                <span style={{fontSize:12,color:'var(--green)'}}>Analysing...</span>
+              </div>
+            )}
+          </div>
+          {classifyDone && (
+            <div className="classify-result">
+              Done: 💰 {classifyDone.a1} A1 confirmed &middot; ~ {classifyDone.a2} A2 likely &middot; {classifyDone.skip} still unknown
+            </div>
+          )}
+          {classifyLog.length > 0 && (
+            <div className="classify-log">
+              {classifyLog.map((l,i) => <div key={i} className="classify-log-line">{l}</div>)}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Score tier tabs */}
       <div className="score-tier-tabs">

@@ -728,6 +728,63 @@ export default function WorkflowPage() {
 
         <Arrow />
 
+        {/* TRACK A PROMOTION CLASSIFICATION — A1 / A2 */}
+        <Card color={C.purple} title="TRACK A PROMOTION CLASSIFICATION — A1 Confirmed / A2 Likely">
+          <InfoBox color={C.purple} style={{ marginBottom: 14 }}>
+            After Track A is assigned, each account goes through a 3-phase promotion classifier
+            to determine if they are <strong>available for paid collaborations with KiteAI</strong>.
+            This runs with zero extra API calls for most accounts.
+          </InfoBox>
+
+          <Row gap={12} style={{ marginBottom: 14 }}>
+            <InfoBox color={C.green} style={{ flex: 1 }}>
+              <div style={{ fontWeight:700, color:C.green, marginBottom:6 }}>💰 A1 — Confirmed Available</div>
+              Bio explicitly signals openness to NEW paid work:<br />
+              <Code>"DM for collabs"</Code> · <Code>"DM for paid promo"</Code> · <Code>"open to brand deals"</Code><br />
+              <Code>"media kit"</Code> · <Code>"UGC creator"</Code> · <Code>collab@email</Code><br />
+              <Code>#ad</Code> / <Code>#sponsored</Code> in bio<br /><br />
+              <strong style={{color:C.red}}>NOT A1:</strong> "brand ambassador for X" (exclusive, single-brand)
+            </InfoBox>
+            <InfoBox color={C.gold} style={{ flex: 1 }}>
+              <div style={{ fontWeight:700, color:C.gold, marginBottom:6 }}>~ A2 — Likely Available</div>
+              Tweet content patterns suggest paid work without explicit bio signal:<br />
+              <Code>#ad</Code> / <Code>#sponsored</Code> in tweets · discount codes<br />
+              "use code X" · "I partnered with [Brand]" · "gifted by"<br />
+              Product reviews + CTAs across multiple brands<br /><br />
+              Detected via <Code>from:username</Code> tweet search + Claude analysis
+            </InfoBox>
+          </Row>
+
+          <div style={{ background:'#0d1117', borderRadius:6, padding:'12px 14px', fontFamily:'monospace', fontSize:11, lineHeight:1.9 }}>
+            <div style={{ color:C.gold, marginBottom:6 }}>Exclusion check (runs FIRST):</div>
+            <div style={{ paddingLeft:16, color:'#a5d6ff' }}>
+              "Official X ambassador" → skip A1/A2 (exclusive, not available for us)<br />
+              "Ambassador @brand" → skip<br />
+              "Brand ambassador FOR X" → skip<br />
+            </div>
+            <div style={{ color:C.gold, marginTop:8, marginBottom:6 }}>Phase 1 — Bio keyword (free, instant):</div>
+            <div style={{ paddingLeft:16, color:'#a5d6ff' }}>
+              Match EXPLICIT_PATTERNS in bio → A1 immediately<br />
+              Match INFERRED_STRONG/SOFT patterns → A2, needs tweet check<br />
+              No match → fetch tweets for deeper analysis<br />
+            </div>
+            <div style={{ color:C.gold, marginTop:8, marginBottom:6 }}>Phase 2 — Tweet analysis (1 API call per account):</div>
+            <div style={{ paddingLeft:16, color:'#a5d6ff' }}>
+              GET /search?query=from:username&count=10&type=Latest<br />
+              Claude Opus reads tweets → returns promotion_type + signals<br />
+              Bio "inferred" + tweet "explicit" → upgraded to A1<br />
+            </div>
+          </div>
+
+          <InfoBox color={C.muted} style={{ marginTop:12, fontSize:11 }}>
+            <strong>Track A sorting order:</strong> A1 (explicit) first → A2 (inferred) → Unknown.
+            Within each group, sorted by overall score descending.
+            "Not Paid" and "Unknown" are hidden from the Track A filter — only A1 and A2 are shown.
+          </InfoBox>
+        </Card>
+
+        <Arrow />
+
         {/* STEP 9 — DEDUPLICATION */}
         <Card color={C.green} step={9} title="DEDUPLICATION — seenThisRun + DB UNIQUE Constraint">
           <Row gap={16}>

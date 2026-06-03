@@ -366,6 +366,15 @@ body { background: var(--bg); color: var(--text); font-family: 'Inter', 'Segoe U
 .contact-chip.active-dm    { background: rgba(0,200,150,.12); border-color: var(--green); color: var(--green); }
 .contact-chip.active-email { background: rgba(29,155,240,.12); border-color: var(--blue); color: var(--blue); }
 
+/* Classify unknown panel */
+.classify-panel    { background: var(--bg2); border: 1px solid rgba(249,168,37,.3); border-radius: 10px; padding: 16px 20px; margin-bottom: 20px; }
+.classify-header   { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 8px; }
+.classify-title    { font-size: 13px; font-weight: 700; color: var(--gold); display: block; margin-bottom: 2px; }
+.classify-sub      { font-size: 11px; color: var(--text2); display: block; }
+.classify-result   { font-size: 12px; color: var(--green); padding: 8px 0; border-top: 1px solid var(--border); margin-top: 8px; }
+.classify-log      { max-height: 140px; overflow-y: auto; margin-top: 10px; border-top: 1px solid var(--border); padding-top: 8px; }
+.classify-log-line { font-size: 11px; color: var(--text2); font-family: monospace; padding: 1px 0; }
+
 /* Promotion type badges */
 .promo-tag-exp  { background: rgba(0,200,150,.15); color: var(--green); border: 1px solid rgba(0,200,150,.4); }
 .promo-tag-inf  { background: rgba(249,168,37,.12); color: var(--gold); border: 1px solid rgba(249,168,37,.4); }
@@ -569,6 +578,27 @@ body { background: var(--bg); color: var(--text); font-family: 'Inter', 'Segoe U
 .cp-score-bar       { height: 5px; background: var(--bg3); border-radius: 3px; overflow: hidden; margin-bottom: 4px; }
 .cp-score-desc      { font-size: 10px; color: var(--text2); }
 .cp-ai-reason       { font-size: 13px; color: var(--purple); line-height: 1.6; padding: 10px 12px; background: rgba(167,139,250,.08); border-radius: 8px; border-left: 3px solid var(--purple); }
+
+/* ── Prompts page ─────────────────────────────────────────────────────────── */
+.prompts-page         { max-width: 1200px; }
+.prompts-layout       { display: grid; grid-template-columns: 220px 1fr; gap: 24px; }
+.prompts-nav          { display: flex; flex-direction: column; gap: 2px; position: sticky; top: 20px; height: fit-content; }
+.prompts-nav-item     { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px; background: var(--bg2); border: 1px solid var(--border); border-left: 3px solid var(--border); border-radius: 6px; color: var(--text2); font-size: 12px; font-weight: 600; cursor: pointer; text-align: left; transition: all .15s; }
+.prompts-nav-item:hover { border-left-color: var(--blue); color: var(--text); }
+.prompts-nav-item.active { background: rgba(29,155,240,.06); }
+.prompts-nav-label    { flex: 1; }
+.prompts-nav-count    { padding: 1px 6px; background: var(--bg3); border-radius: 10px; font-size: 10px; }
+.prompts-content      { min-width: 0; }
+.prompts-section-header { border-left: 4px solid var(--blue); padding-left: 14px; margin-bottom: 20px; }
+.prompts-section-header h2 { margin: 0 0 4px; font-size: 18px; }
+.prompts-section-header p  { margin: 0; color: var(--text2); font-size: 13px; }
+.prompt-card          { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 16px; overflow: hidden; }
+.prompt-card-header   { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--border); }
+.prompt-card-title    { font-size: 13px; font-weight: 700; margin-bottom: 3px; }
+.prompt-card-context  { font-size: 11px; color: var(--text2); }
+.prompt-copy-btn      { padding: 5px 12px; background: var(--bg3); border: 1px solid var(--border); border-radius: 6px; color: var(--text2); font-size: 11px; cursor: pointer; white-space: nowrap; flex-shrink: 0; transition: all .15s; }
+.prompt-copy-btn:hover { border-color: var(--blue); color: var(--blue); }
+.prompt-body          { margin: 0; padding: 14px 16px; font-family: 'Courier New', monospace; font-size: 11px; line-height: 1.8; color: #a5d6ff; background: #0d1117; white-space: pre-wrap; word-break: break-word; }
 
 /* ── Responsive ───────────────────────────────────────────────────────────── */
 @media (max-width: 1100px) {

@@ -10,6 +10,7 @@ import AccountsPage   from './pages/AccountsPage';
 import KeywordsPage   from './pages/KeywordsPage';
 import SettingsPage   from './pages/SettingsPage';
 import WorkflowPage   from './pages/WorkflowPage';
+import PromptsPage    from './pages/PromptsPage';
 
 function AppLayout() {
   return (
@@ -27,6 +28,7 @@ function AppLayout() {
             <Route path="/keywords"    element={<KeywordsPage />} />
             <Route path="/settings"    element={<SettingsPage />} />
             <Route path="/workflow"    element={<WorkflowPage />} />
+            <Route path="/prompts"     element={<PromptsPage />} />
             <Route path="*"            element={<Navigate to="/" replace />} />
           </Routes>
         </main>

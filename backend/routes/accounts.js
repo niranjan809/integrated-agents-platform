@@ -1,6 +1,9 @@
 const express         = require('express');
+const axios           = require('axios');
 const { db }          = require('../db');
 const { requireAuth } = require('../middleware/auth');
+const { classifyFromBio, buildTweetAnalysisPrompt } = require('../promotionClassifier');
+const { callOpenRouter } = require('../openrouter');
 
 const router = express.Router();
 router.use(requireAuth);
@@ -58,6 +61,108 @@ router.get('/pr-pages', async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch PR pages' });
   }
+});
+
+// GET /api/accounts/classify-unknown — SSE stream: fetch tweets + AI classify unknown Track A accounts
+router.get('/classify-unknown', async (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.write('retry: 0\n\n');
+  res.flushHeaders();
+
+  const emit = (event, data) => { try { res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`); } catch {} };
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+  const apiKey  = process.env.RAPIDAPI_KEY_PAID;
+  const apiHost = process.env.RAPIDAPI_HOST || 'twitter241.p.rapidapi.com';
+  const DELAY   = 22000; // 3 RPM
+
+  try {
+    const { rows } = await db.execute(
+      `SELECT handle, name, bio, account_type, followers FROM accounts
+       WHERE track='A' AND (promotion_type='unknown' OR promotion_type IS NULL)
+       ORDER BY overall DESC LIMIT 200` // cap at 200 per session
+    );
+
+    emit('start', { total: rows.length, message: `Classifying ${rows.length} unknown Track A accounts via tweet analysis` });
+
+    let a1=0, a2=0, skip=0;
+
+    for (let i = 0; i < rows.length; i++) {
+      const a = rows[i];
+
+      // First try bio (free)
+      const bioResult = classifyFromBio(a.bio, a.name, a.account_type);
+      if (bioResult && bioResult.promotion_type !== 'unknown' && !bioResult.needs_tweet_check) {
+        await db.execute({ sql:`UPDATE accounts SET promotion_type=?,promotion_confidence=?,promotion_signals=? WHERE handle=?`,
+          args:[bioResult.promotion_type, bioResult.promotion_confidence, JSON.stringify(bioResult.promotion_signals||[]), a.handle] });
+        if (bioResult.promotion_type==='explicit') a1++; else skip++;
+        emit('progress', { current: i+1, total: rows.length, handle: a.handle, result: bioResult.promotion_type, a1, a2 });
+        continue;
+      }
+
+      // Rate limit gap
+      if (i > 0) await sleep(DELAY);
+
+      // Fetch tweets
+      emit('progress', { current: i+1, total: rows.length, handle: a.handle, result: 'fetching_tweets', a1, a2 });
+      let tweets = [];
+      try {
+        const resp = await axios.get(`https://${apiHost}/search`, {
+          params: { query: `from:${a.handle}`, count: 10, type: 'Latest' },
+          headers: { 'X-RapidAPI-Key': apiKey, 'X-RapidAPI-Host': apiHost },
+          timeout: 15000,
+        });
+        const instructions = resp.data?.result?.timeline?.instructions || [];
+        const entries = (instructions.find(i => i.type === 'TimelineAddEntries')?.entries || []);
+        for (const e of entries) {
+          try { const t = e.content?.itemContent?.tweet_results?.result?.legacy?.full_text;
+            if (t && !t.startsWith('RT @')) tweets.push(t.slice(0, 200)); } catch {}
+        }
+      } catch {}
+
+      if (!tweets.length && (!bioResult || bioResult.promotion_type === 'unknown')) {
+        skip++;
+        emit('progress', { current: i+1, total: rows.length, handle: a.handle, result: 'no_tweets', a1, a2 });
+        continue;
+      }
+
+      // AI analysis
+      const prompt = buildTweetAnalysisPrompt(a.handle, a.bio, tweets);
+      const aiRes = await callOpenRouter([{ role:'user', content: prompt }], { maxTokens: 200, temperature: 0.1 });
+
+      let result = bioResult || { promotion_type:'unknown', promotion_confidence:0, promotion_signals:[] };
+      if (aiRes.success) {
+        try {
+          const parsed = JSON.parse(aiRes.content.replace(/```json|```/g,'').trim());
+          const aiType = ['explicit','inferred','none'].includes(parsed.promotion_type) ? parsed.promotion_type : 'unknown';
+          // Upgrade: if bio says inferred and tweets say explicit → explicit
+          if (result.promotion_type==='inferred' && aiType==='explicit') result.promotion_type='explicit';
+          else if (aiType !== 'unknown') result.promotion_type = aiType;
+          result.promotion_confidence = Math.max(result.promotion_confidence, Number(parsed.confidence)||0);
+          result.promotion_signals    = [...(result.promotion_signals||[]), ...(parsed.signals||[])].slice(0,3);
+        } catch {}
+      }
+
+      if (result.promotion_type !== 'unknown') {
+        await db.execute({ sql:`UPDATE accounts SET promotion_type=?,promotion_confidence=?,promotion_signals=? WHERE handle=?`,
+          args:[result.promotion_type, result.promotion_confidence, JSON.stringify(result.promotion_signals||[]), a.handle] });
+        if (result.promotion_type==='explicit') a1++;
+        else if (result.promotion_type==='inferred') a2++;
+        else skip++;
+      } else { skip++; }
+
+      emit('progress', { current: i+1, total: rows.length, handle: a.handle, result: result.promotion_type, a1, a2 });
+    }
+
+    emit('complete', { a1, a2, skip, total: rows.length,
+      message: `Done — ${a1} A1 confirmed, ${a2} A2 likely, ${skip} still unknown` });
+  } catch (err) {
+    emit('error', { message: err.message });
+  }
+  res.end();
 });
 
 // DELETE /api/accounts/cleanup — remove non-relevant accounts

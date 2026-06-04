@@ -161,4 +161,63 @@ async function aiAnalyseTweets(handle, bio, tweets) {
   } catch { return null; }
 }
 
-module.exports = { callOpenRouter, aiScoreBatch, aiAnalyseTweets, getKey, MODEL_CHAIN, BATCH_SIZE, SCORING_MODEL };
+/**
+ * Evidence-based paid-promoter detector (the upgraded tweet analysis).
+ * 1. Cheap regex scan of posts (free) → disclosure / code / affiliate / brand signals
+ * 2. AI verdict with rubric + few-shot, REQUIRED to quote evidence
+ * 3. Quality backstop: a hard disclosure tag is never downgraded below explicit;
+ *    if the AI call fails, fall back to the regex signals.
+ * Returns { promotion_type, promotion_confidence, promotion_signals, brands, source } or null.
+ */
+async function analysePaidPattern(handle, bio, tweets) {
+  const { scanPostsForSignals, buildPaidPatternPrompt } = require('./promotionClassifier');
+  const key = getKey();
+  if (!tweets || !tweets.length) return null;
+
+  const signals = scanPostsForSignals(tweets);
+
+  // Regex-only fallback used when there's no AI key or the AI call fails
+  const regexVerdict = () => {
+    if (signals.hasExplicit)
+      return { promotion_type: 'explicit', promotion_confidence: 80, promotion_signals: signals.evidence.slice(0, 3), brands: signals.brands, source: 'regex' };
+    if (signals.hasStrong && signals.brandCount >= 2)
+      return { promotion_type: 'inferred', promotion_confidence: 65, promotion_signals: signals.evidence.slice(0, 3), brands: signals.brands, source: 'regex' };
+    if (signals.promoPosts >= 2 && signals.brandCount >= 2)
+      return { promotion_type: 'inferred', promotion_confidence: 55, promotion_signals: signals.evidence.slice(0, 3), brands: signals.brands, source: 'regex' };
+    return null;
+  };
+
+  if (!key) return regexVerdict();
+
+  const prompt = buildPaidPatternPrompt(handle, bio, tweets, signals);
+  const result = await callOpenRouter([{ role: 'user', content: prompt }], { maxTokens: 320, temperature: 0.1 });
+  if (!result.success) return regexVerdict();
+
+  try {
+    const clean  = result.content.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(clean);
+    let type = ['explicit', 'inferred', 'none', 'unknown'].includes(parsed.promotion_type) ? parsed.promotion_type : 'unknown';
+    let conf = Math.max(0, Math.min(100, Number(parsed.confidence) || 0));
+    let sigs = Array.isArray(parsed.signals) ? parsed.signals.slice(0, 3) : [];
+
+    // Quality backstop — a real disclosure tag must never be rated below explicit
+    if (signals.hasExplicit && type !== 'explicit') {
+      type = 'explicit';
+      conf = Math.max(conf, 80);
+      if (!sigs.length) sigs = signals.evidence.slice(0, 3);
+    }
+
+    return {
+      promotion_type:       type,
+      promotion_confidence: conf,
+      promotion_signals:    sigs,
+      brands:               Array.isArray(parsed.brands) ? parsed.brands.slice(0, 8) : signals.brands,
+      source:               'tweet_pattern',
+      model:                result.model,
+    };
+  } catch {
+    return regexVerdict();
+  }
+}
+
+module.exports = { callOpenRouter, aiScoreBatch, aiAnalyseTweets, analysePaidPattern, getKey, MODEL_CHAIN, BATCH_SIZE, SCORING_MODEL };

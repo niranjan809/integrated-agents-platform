@@ -1,5 +1,7 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
+
+const API = (import.meta.env.VITE_API_URL || 'http://localhost:3001').replace(/\/$/, '');
 
 const SCORE_TIERS = [
   { key: 'all',     label: 'All',     color: '#7DA4BE', min: 0,  max: 100 },
@@ -262,6 +264,122 @@ function AccountRow({ account, rank }) {
   );
 }
 
+// ── Resolve Unknowns panel ─────────────────────────────────────────────────────
+// Re-analyses unbadged Track A accounts (unknown / not-paid) with the evidence-
+// based paid-pattern detector, promoting real promoters into A1/A2. Streams live.
+function ResolveUnknownsPanel({ onDone }) {
+  const { apiFetch } = useAuth();
+  const [stats,    setStats]    = useState(null);
+  const [running,  setRunning]  = useState(false);
+  const [tally,    setTally]    = useState({ toA1: 0, toA2: 0, toNone: 0, stillUnknown: 0, processed: 0, total: 0 });
+  const [current,  setCurrent]  = useState('');
+  const [progress, setProgress] = useState(0);
+  const [done,     setDone]     = useState(null);
+  const [err,      setErr]      = useState('');
+  const esRef = useRef(null);
+
+  const loadStats = useCallback(() => {
+    apiFetch('/api/accounts/promotion-stats').then(r => r.json()).then(setStats).catch(() => {});
+  }, [apiFetch]);
+
+  useEffect(() => { loadStats(); }, [loadStats]);
+  useEffect(() => () => esRef.current?.close(), []);
+
+  function start() {
+    const n = stats?.resolvable || 0;
+    if (running || !n) return;
+    if (!confirm(
+      `Analyse ${n} unbadged Track A accounts (unknown + not-paid)?\n\n` +
+      `This reads each account's recent posts and promotes the real paid promoters ` +
+      `into A1 / A2. It uses up to ~${n} API calls at the safe anti-bot rate, so it ` +
+      `can take a while. You can leave this page — progress is saved as it goes.`
+    )) return;
+
+    const token = localStorage.getItem('kiteai_token');
+    if (!token) { setErr('Not authenticated — please log in again.'); return; }
+
+    setRunning(true); setDone(null); setErr('');
+    setTally({ toA1: 0, toA2: 0, toNone: 0, stillUnknown: 0, processed: 0, total: n });
+    setProgress(0); setCurrent('Starting…');
+
+    const es = new EventSource(`${API}/api/resolve-unknowns?scope=all&_token=${encodeURIComponent(token)}`);
+    esRef.current = es;
+    let completed = false;
+
+    es.addEventListener('start',  e => { try { const d = JSON.parse(e.data); setTally(t => ({ ...t, total: d.total })); } catch {} });
+    es.addEventListener('status', e => { try { const d = JSON.parse(e.data); if (d.message) setCurrent(d.message); if (d.progress != null) setProgress(d.progress); } catch {} });
+    es.addEventListener('account', e => { try { const d = JSON.parse(e.data); if (d.tally) setTally(d.tally); } catch {} });
+    es.addEventListener('quota_exhausted', e => { try { const d = JSON.parse(e.data); setErr(d.message); } catch {} });
+    es.addEventListener('complete', e => {
+      try { const d = JSON.parse(e.data); setDone(d); } catch {}
+      completed = true; setRunning(false); setProgress(100);
+      esRef.current = null; es.close();
+      loadStats(); onDone?.();
+    });
+    es.onerror = () => {
+      if (completed) { es.close(); return; }
+      if (esRef.current === es) { setErr('Connection lost — backend stopped responding.'); setRunning(false); esRef.current = null; }
+      es.close();
+    };
+  }
+
+  function stop() { esRef.current?.close(); esRef.current = null; setRunning(false); setCurrent('Stopped'); }
+
+  if (!stats) return null;
+  const resolvable = stats.resolvable || 0;
+  const tile = (label, value, color) => (
+    <div style={{ textAlign: 'center', minWidth: 64 }}>
+      <div style={{ fontSize: 22, fontWeight: 700, color }}>{value}</div>
+      <div style={{ fontSize: 11, color: 'var(--text2)' }}>{label}</div>
+    </div>
+  );
+
+  return (
+    <div className="dash-card" style={{ marginBottom: 16, borderColor: 'rgba(192,132,252,.4)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+        <div>
+          <h3 style={{ margin: 0 }}>✦ Resolve Unbadged Accounts</h3>
+          <p className="page-sub" style={{ margin: '4px 0 0' }}>
+            Re-read recent posts of the <strong style={{ color: '#C084FC' }}>{resolvable}</strong> unbadged Track A accounts
+            ({stats.unknown} unknown + {stats.none} not-paid) and promote real promoters into A1/A2.
+            Current: <span style={{ color: '#00C896' }}>A1 {stats.a1}</span> · <span style={{ color: '#F9A825' }}>A2 {stats.a2}</span>.
+          </p>
+        </div>
+        {!running
+          ? <button className="btn-primary" disabled={!resolvable} onClick={start}
+              style={{ background: '#C084FC' }}>
+              {resolvable ? `Resolve ${resolvable} accounts` : 'Nothing to resolve 🎉'}
+            </button>
+          : <button className="btn-ghost" onClick={stop}>■ Stop</button>}
+      </div>
+
+      {(running || done) && (
+        <div style={{ marginTop: 14 }}>
+          <div className="progress-bar-wrap" style={{ height: 6 }}>
+            <div style={{ width: `${progress}%`, height: '100%', background: '#C084FC', borderRadius: 3, transition: 'width .3s' }} />
+          </div>
+          <div style={{ display: 'flex', gap: 18, alignItems: 'center', marginTop: 12, flexWrap: 'wrap' }}>
+            {tile('→ A1', tally.toA1, '#00C896')}
+            {tile('→ A2', tally.toA2, '#F9A825')}
+            {tile('→ Not paid', tally.toNone, '#888')}
+            {tile('Still unknown', tally.stillUnknown, '#666')}
+            <div style={{ width: 1, alignSelf: 'stretch', background: 'var(--border)' }} />
+            {tile('Processed', `${tally.processed}/${tally.total}`, 'var(--blue)')}
+          </div>
+          {running && <div className="page-sub" style={{ marginTop: 8 }}>⏳ {current}</div>}
+          {done && !err && (
+            <div className="dash-new-banner" style={{ margin: '12px 0 0' }}>
+              ✅ Done — promoted <strong>{done.toA1} → A1</strong>, <strong>{done.toA2} → A2</strong>,
+              {' '}{done.toNone} marked not-paid, {done.stillUnknown} still unknown (of {done.processed} analysed).
+            </div>
+          )}
+        </div>
+      )}
+      {err && <div className="conn-error" style={{ marginTop: 12, marginBottom: 0 }}>⛔ {err}</div>}
+    </div>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function AccountsPage({ mode }) {
   const { apiFetch } = useAuth();
@@ -350,6 +468,10 @@ export default function AccountsPage({ mode }) {
   const confirmedPaid = accounts.filter(a => a.promotion_type === 'explicit').length;
   const likelyPaid    = accounts.filter(a => a.promotion_type === 'inferred').length;
 
+  const reloadAccounts = useCallback(() => {
+    apiFetch(endpoint).then(r => r.json()).then(d => setAccounts(d.accounts || [])).catch(() => {});
+  }, [apiFetch, endpoint]);
+
   async function runCleanup() {
     if (!confirm('Delete all accounts with overall < 20 AND AI relevance < 15 (non-relevant accounts)?')) return;
     setCleaning(true);
@@ -385,6 +507,8 @@ export default function AccountsPage({ mode }) {
           {cleaning ? '🗑 Cleaning…' : '🗑 Clean Non-Relevant'}
         </button>
       </div>
+
+      {mode === 'influencers' && <ResolveUnknownsPanel onDone={reloadAccounts} />}
 
       {accounts.length > 0 && <StatsBar accounts={accounts} />}
 

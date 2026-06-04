@@ -6,7 +6,7 @@ const helmet       = require('helmet');
 const rateLimit    = require('express-rate-limit');
 const cron         = require('node-cron');
 const { db, initDB } = require('./db');
-const { aiScoreBatch, aiAnalyseTweets, BATCH_SIZE, SCORING_MODEL } = require('./openrouter');
+const { aiScoreBatch, aiAnalyseTweets, analysePaidPattern, BATCH_SIZE, SCORING_MODEL } = require('./openrouter');
 const { classifyFromBio } = require('./promotionClassifier');
 const { getFriendSearchQueries, getFriendInfluencerHandles, testFriendDb } = require('./friendDb');
 
@@ -308,6 +308,23 @@ async function callAPI(endpoint, params = {}, emitStatus = null, sseKeepAlive = 
     return { success: false, error: err.response?.data || err.message,
              status, duration_ms: elapsed, key_label: k.label };
   }
+}
+
+// Fetch a handle's recent ORIGINAL posts (skips pure retweets). Shared by the
+// live agent's promotion check and the resolve-unknowns backfill job.
+async function fetchRecentTweets(handle, count = 20, paceFn = null, keepAliveFn = null) {
+  const res = await callAPI('search', { query: `from:${handle}`, count, type: 'Latest' }, paceFn, keepAliveFn);
+  if (!res.success) return { tweets: [], duration_ms: res.duration_ms, success: false, status: res.status };
+  const instr   = res.data?.result?.timeline?.instructions || [];
+  const entries = (instr.find(i => i.type === 'TimelineAddEntries')?.entries || []);
+  const tweets  = [];
+  for (const e of entries) {
+    try {
+      const t = e.content?.itemContent?.tweet_results?.result?.legacy?.full_text;
+      if (t && !t.startsWith('RT @')) tweets.push(t.slice(0, 220));
+    } catch {}
+  }
+  return { tweets, duration_ms: res.duration_ms, success: true };
 }
 
 function keyStats() {
@@ -714,13 +731,14 @@ async function runAgent({ queries, directHandles = [], triggeredBy = 'manual', s
     // Duplicates already have scores in DB and don't need re-scoring.
     // Pre-check which handles already exist in DB.
     const existingHandles = new Set();
+    const existingPromo   = new Map(); // handle → current promotion_type (for unknown re-check)
     if (fetchedAccounts.length > 0) {
       const placeholders = fetchedAccounts.map(() => '?').join(',');
       const { rows: existing } = await db.execute({
-        sql:  `SELECT handle FROM accounts WHERE handle IN (${placeholders})`,
+        sql:  `SELECT handle, promotion_type FROM accounts WHERE handle IN (${placeholders})`,
         args: fetchedAccounts.map(a => a.handle),
       });
-      existing.forEach(r => existingHandles.add(r.handle));
+      existing.forEach(r => { existingHandles.add(r.handle); existingPromo.set(r.handle, r.promotion_type); });
     }
 
     const newAccounts = fetchedAccounts.filter(a => !existingHandles.has(a.handle));
@@ -797,13 +815,16 @@ async function runAgent({ queries, directHandles = [], triggeredBy = 'manual', s
       // ── Promotion classification (runs during fetch, no separate step needed) ─
       // Step 1: AI batch already checked bio → returns promotion_type if found
       // Step 2: Bio keyword check (free, instant)
-      // Step 3: Tweet analysis for new Track A accounts where bio is inconclusive
-      let promoType       = ai?.promotion_type       || 'unknown';
+      // Step 3: Evidence-based paid-pattern tweet analysis for Track A accounts
+      //         still unresolved — INCLUDING stale duplicates whose stored type
+      //         is still unknown/none, so the backlog shrinks on every refresh.
+      let promoType       = ai?.promotion_type       || existingPromo.get(a.handle) || 'unknown';
       let promoConfidence = ai?.promotion_confidence || 0;
       let promoSignals    = ai?.promotion_signals    || [];
 
-      if (finalTrack === 'A' && !isDup) {
-        // Bio keyword check (overrides if AI missed it)
+      const dupNeedsRecheck = isDup && ['unknown', 'none'].includes(existingPromo.get(a.handle));
+      if (finalTrack === 'A' && (!isDup || dupNeedsRecheck)) {
+        // Bio keyword check (overrides if AI missed it / for dup re-checks)
         if (promoType === 'unknown') {
           const bioResult = classifyFromBio(a.bio, a.name, finalType);
           if (bioResult && bioResult.promotion_type !== 'unknown') {
@@ -813,36 +834,23 @@ async function runAgent({ queries, directHandles = [], triggeredBy = 'manual', s
           }
         }
 
-        // Tweet analysis: run for ALL new Track A accounts still unknown after bio check
-        // (explicit from bio → skip tweet fetch, already confirmed)
+        // Tweet analysis — run unless bio already proved explicit (no need to confirm)
         const needsTweetCheck = promoType !== 'explicit' && health.calls < MAX_REQUESTS_PER_RUN - 50;
         if (needsTweetCheck) {
-          emit('status', { step: 'tweet_check', message: `Tweet check @${a.handle}` });
-          const tweetRes = await callAPI('search',
-            { query: `from:${a.handle}`, count: 10, type: 'Latest' }, pace, keepAlive);
-          health.calls++; health.totalMs += tweetRes.duration_ms;
+          emit('status', { step: 'tweet_check', message: `Paid-pattern check @${a.handle}` });
+          const { tweets, duration_ms } = await fetchRecentTweets(a.handle, 20, pace, keepAlive);
+          health.calls++; health.totalMs += duration_ms;
 
-          if (tweetRes.success) {
-            const instr   = tweetRes.data?.result?.timeline?.instructions || [];
-            const entries = (instr.find(i => i.type === 'TimelineAddEntries')?.entries || []);
-            const tweets  = [];
-            for (const e of entries) {
-              try {
-                const t = e.content?.itemContent?.tweet_results?.result?.legacy?.full_text;
-                if (t && !t.startsWith('RT @')) tweets.push(t.slice(0, 200));
-              } catch {}
-            }
-            if (tweets.length > 0) {
-              const tweetAI = await aiAnalyseTweets(a.handle, a.bio, tweets);
-              if (tweetAI && tweetAI.promotion_type !== 'unknown') {
-                // Upgrade: take stronger of bio result vs tweet result
-                if (tweetAI.promotion_type === 'explicit' ||
-                   (promoType !== 'explicit' && tweetAI.promotion_type === 'inferred') ||
-                    promoType === 'unknown') {
-                  promoType       = tweetAI.promotion_type;
-                  promoConfidence = Math.max(promoConfidence, tweetAI.promotion_confidence);
-                  promoSignals    = [...promoSignals, ...tweetAI.promotion_signals].slice(0, 3);
-                }
+          if (tweets.length > 0) {
+            const tweetAI = await analysePaidPattern(a.handle, a.bio, tweets);
+            if (tweetAI && tweetAI.promotion_type && tweetAI.promotion_type !== 'unknown') {
+              // Take the stronger of bio vs tweet verdict; a tweet 'none' resolves an unknown
+              if (tweetAI.promotion_type === 'explicit' ||
+                 (promoType !== 'explicit' && tweetAI.promotion_type === 'inferred') ||
+                  promoType === 'unknown') {
+                promoType       = tweetAI.promotion_type;
+                promoConfidence = Math.max(promoConfidence, tweetAI.promotion_confidence);
+                promoSignals    = (tweetAI.promotion_signals?.length ? tweetAI.promotion_signals : promoSignals).slice(0, 3);
               }
             }
           }
@@ -1002,6 +1010,118 @@ async function runAgent({ queries, directHandles = [], triggeredBy = 'manual', s
   emit('complete', summary);
   return summary;
 }
+
+// ── Resolve Unknowns ─────────────────────────────────────────────────────────
+// One-pass backfill: re-analyse Track A accounts that are still unknown/none with
+// the evidence-based paid-pattern detector, promoting real promoters into A1/A2.
+// Re-uses the same rate limiter / anti-bot pacing as the agent.
+async function resolveUnknowns({ scope = 'all', sseRes = null, isAborted = () => false }) {
+  let localAborted = false;
+  const isLocalAborted = () => localAborted || isAborted();
+  const emit = (event, data) => { if (sseRes && !isLocalAborted()) { try { sse(sseRes, event, data); } catch { localAborted = true; } } };
+  const keepAlive = () => { if (sseRes && !isLocalAborted()) { try { sseRes.write(': ping\n\n'); } catch { localAborted = true; } } };
+  const pace = (msg) => emit('status', { step: 'pacing', message: msg });
+  const paceWithBreak = async (msg) => { pace(msg); await humanBreak(pace); };
+
+  // Relevant-first ordering so the most valuable accounts resolve before any cap.
+  const minScore = scope === 'relevant' ? 30 : 0;
+  const { rows } = await db.execute({
+    sql: `SELECT handle, name, bio, account_type, overall, promotion_type
+          FROM accounts
+          WHERE track='A' AND promotion_type IN ('unknown','none') AND overall >= ?
+          ORDER BY overall DESC`,
+    args: [minScore],
+  });
+
+  const health = { calls: 0, successes: 0, errors: 0, totalMs: 0, flags: {} };
+  globalConsecutive429 = 0;
+  requestsSinceBreak   = 0;
+  let toA1 = 0, toA2 = 0, toNone = 0, stillUnknown = 0, processed = 0;
+
+  emit('start', { total: rows.length, scope });
+
+  try {
+    for (let i = 0; i < rows.length; i++) {
+      if (isLocalAborted()) break;
+      if (health.calls >= MAX_REQUESTS_PER_RUN) {
+        emit('status', { step: 'cap_reached', message: `Request cap (${MAX_REQUESTS_PER_RUN}) reached — stopping. Progress saved.` });
+        break;
+      }
+      const acc = rows[i];
+      emit('status', {
+        step: 'analysing',
+        message: `Paid-pattern check @${acc.handle} [${i + 1}/${rows.length}]`,
+        current: i + 1, total: rows.length,
+        progress: Math.round((i / Math.max(rows.length, 1)) * 100),
+        key_stats: keyStats(),
+      });
+
+      const { tweets, success, duration_ms } = await fetchRecentTweets(acc.handle, 20, paceWithBreak, keepAlive);
+      health.calls++; health.totalMs += duration_ms || 0;
+      if (success) health.successes++; else health.errors++;
+
+      let outcome = acc.promotion_type;       // unchanged unless resolved
+      let result  = null;
+      if (tweets.length > 0) {
+        try { result = await analysePaidPattern(acc.handle, acc.bio, tweets); }
+        catch (e) { console.warn('[resolve] analyse error:', e.message); }
+        if (result && result.promotion_type && result.promotion_type !== 'unknown') {
+          outcome = result.promotion_type;
+          await db.execute({
+            sql: `UPDATE accounts SET promotion_type=?, promotion_confidence=?, promotion_signals=?,
+                  last_updated=datetime('now') WHERE handle=?`,
+            args: [outcome, result.promotion_confidence || 0, JSON.stringify(result.promotion_signals || []), acc.handle],
+          });
+        }
+      }
+
+      processed++;
+      if      (outcome === 'explicit') toA1++;
+      else if (outcome === 'inferred') toA2++;
+      else if (outcome === 'none')     toNone++;
+      else                             stillUnknown++;
+
+      emit('account', {
+        handle: acc.handle, name: acc.name, overall: acc.overall,
+        from: acc.promotion_type, to: outcome,
+        signals: result?.promotion_signals || [],
+        tally: { toA1, toA2, toNone, stillUnknown, processed, total: rows.length },
+      });
+    }
+  } catch (err) {
+    if (err.name === 'QuotaExhaustedError') {
+      emit('quota_exhausted', { message: err.message });
+    } else {
+      console.error('[resolve-unknowns] error:', err.message);
+    }
+  }
+
+  const summary = { processed, toA1, toA2, toNone, stillUnknown, total: rows.length };
+  emit('complete', summary);
+  return summary;
+}
+
+// ── SSE: Resolve Unknowns endpoint ───────────────────────────────────────────
+app.get('/api/resolve-unknowns', require('./middleware/auth').requireAuth, async (req, res) => {
+  res.setHeader('Content-Type',      'text/event-stream');
+  res.setHeader('Cache-Control',     'no-cache');
+  res.setHeader('Connection',        'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.write('retry: 0\n\n');
+  res.flushHeaders();
+
+  const scope = req.query.scope === 'relevant' ? 'relevant' : 'all';
+  let aborted = false;
+  req.on('close', () => { aborted = true; });
+
+  try {
+    await resolveUnknowns({ scope, sseRes: res, isAborted: () => aborted });
+  } catch (err) {
+    console.error('[SSE] resolveUnknowns error:', err.message);
+  } finally {
+    if (!res.writableEnded) res.end();
+  }
+});
 
 // â”€â”€ SSE Agent Run endpoint â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 app.get('/api/run-demo', require('./middleware/auth').requireAuth, async (req, res) => {

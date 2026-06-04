@@ -43,6 +43,26 @@ router.get('/influencers', async (req, res) => {
   }
 });
 
+// GET /api/accounts/promotion-stats — Track A breakdown by promotion_type
+router.get('/promotion-stats', async (req, res) => {
+  try {
+    const { rows } = await db.execute(
+      `SELECT promotion_type, COUNT(*) n FROM accounts WHERE track='A' GROUP BY promotion_type`
+    );
+    const m = { explicit: 0, inferred: 0, none: 0, unknown: 0 };
+    rows.forEach(r => { if (r.promotion_type in m) m[r.promotion_type] = Number(r.n); });
+    res.json({
+      a1:         m.explicit,
+      a2:         m.inferred,
+      none:       m.none,
+      unknown:    m.unknown,
+      resolvable: m.none + m.unknown, // candidates for the resolve-unknowns pass
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch promotion stats' });
+  }
+});
+
 // GET /api/accounts/pr-pages — Track B (ads audience)
 router.get('/pr-pages', async (req, res) => {
   try {

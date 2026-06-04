@@ -202,4 +202,116 @@ Return ONLY JSON (no markdown):
 - "none": purely educational/technical/personal, no brand promotion pattern`;
 }
 
-module.exports = { classifyFromBio, buildTweetAnalysisPrompt, EXPLICIT_PATTERNS, EXCLUSIVE_PATTERNS };
+// ══════════════════════════════════════════════════════════════════════════
+// PAID-POST PATTERN DETECTOR
+// Instead of asking "is this account paid?", we define what a PAID POST looks
+// like, scan each recent post for those signals (free regex), then let the AI
+// make an evidence-based verdict. This raises recall without lowering quality:
+// A2 requires a concrete promotional post (code / affiliate link / multi-brand
+// pattern) — never a guess.
+// ══════════════════════════════════════════════════════════════════════════
+
+// Tier 1 — disclosed sponsorship (→ explicit / A1)
+const POST_DISCLOSURE = [
+  /#ad\b/i, /#sponsored\b/i, /#spon\b/i, /#paidpartnership/i, /#paidpartner/i,
+  /#partner\b/i, /#gifted\b/i, /#promotion\b/i, /#sponsor\b/i,
+  /paid partnership/i, /in partnership with/i, /sponsored by/i,
+  /thanks?[^.]{0,25}for sponsoring/i, /\bsponsoring this\b/i, /this (is|video|post)[^.]{0,12}\bad\b/i,
+];
+// Tier 2 — discount / promo codes (→ inferred / A2, or A1 with disclosure)
+const POST_CODE = [
+  /\buse (my )?code\b/i, /\bcode[:]?\s*[A-Z0-9]{3,12}\b/, /\b\d{1,3}%\s*off\b/i,
+  /promo code/i, /discount code/i, /\bcoupon\b/i, /save \d{1,3}%/i,
+];
+// Tier 2 — affiliate / referral links (→ inferred / A2)
+const POST_AFFILIATE = [
+  /[?&](ref|via|aff|affiliate|utm_source|utm_campaign|partner)=/i,
+  /link in bio/i, /shop my/i, /amzn\.to/i, /\bbit\.ly\//i,
+  /\baffiliate link/i, /earn(ed)? a commission/i,
+];
+// Brand giveaways (→ inferred / A2)
+const POST_GIVEAWAY = [
+  /\bgiveaway\b/i, /\brt (to|and|&) (win|enter)/i, /retweet to win/i,
+  /\benter to win\b/i, /tag (a friend|\d+ friends)/i,
+];
+// Call-to-action verbs — paired with a brand @mention = promotional post
+const CTA_VERBS = /\b(try|sign ?up|get yours|check (it|them) out|grab|download|join|shop|buy now|order|claim|book now)\b/i;
+
+/**
+ * Cheap regex scan of recent posts. Returns counts + evidence + brand spread.
+ * No API/AI cost. Used both as a pre-filter and as a quality backstop.
+ */
+function scanPostsForSignals(tweets = []) {
+  const r = { disclosure: 0, code: 0, affiliate: 0, giveaway: 0, brandCta: 0, promoPosts: 0, evidence: [] };
+  const brands = new Set();
+  for (const raw of tweets) {
+    const t = String(raw || '');
+    if (!t) continue;
+    let promo = false;
+    const note = (label) => { if (r.evidence.length < 6) r.evidence.push(`${label}: "${t.slice(0, 90)}"`); };
+
+    if (POST_DISCLOSURE.some(p => p.test(t))) { r.disclosure++; promo = true; note('disclosure'); }
+    if (POST_CODE.some(p => p.test(t)))       { r.code++;       promo = true; note('discount-code'); }
+    if (POST_AFFILIATE.some(p => p.test(t)))  { r.affiliate++;  promo = true; note('affiliate-link'); }
+    if (POST_GIVEAWAY.some(p => p.test(t)))   { r.giveaway++;   promo = true; note('giveaway'); }
+
+    const mentions = t.match(/@\w{2,15}/g) || [];
+    if (mentions.length && CTA_VERBS.test(t)) { r.brandCta++; promo = true; note('brand+CTA'); }
+
+    if (promo) { r.promoPosts++; mentions.forEach(m => brands.add(m.toLowerCase())); }
+  }
+  return {
+    ...r,
+    brandCount: brands.size,
+    brands: [...brands].slice(0, 8),
+    hasExplicit: r.disclosure > 0,
+    hasStrong:   r.disclosure > 0 || r.code > 0 || r.affiliate > 0,
+  };
+}
+
+/**
+ * Build the evidence-based paid-pattern prompt. Few-shot examples teach the
+ * model the shape of a paid post; rules force a quoted-evidence verdict and
+ * exclude own-brand founders (not hireable promoters).
+ */
+function buildPaidPatternPrompt(handle, bio, tweets, signals) {
+  const tweetText = tweets.map((t, i) => `${i + 1}. ${String(t).replace(/\n/g, ' ').slice(0, 220)}`).join('\n');
+  const sig = signals
+    ? `Auto-detected signals → disclosures:${signals.disclosure} codes:${signals.code} affiliate-links:${signals.affiliate} giveaways:${signals.giveaway} brand+CTA:${signals.brandCta} | distinct brands promoted:${signals.brandCount}`
+    : '';
+  return `You are a sponsored-content detector for KiteAI (a voice-AI company that HIRES influencers for PAID promotions).
+
+GOAL: Decide if @${handle} is a paid promoter we could hire — i.e. they take money/products to promote OTHER companies' products.
+
+Bio: "${bio || '(empty)'}"
+${sig}
+
+Recent posts:
+${tweetText || '(no posts available)'}
+
+=== HOW A PAID POST LOOKS (learn this pattern) ===
+PAID:
+  • "Loving my setup from @brandX — use code SAVE20 for 20% off, link in bio  #ad"        → explicit (disclosure + code)
+  • "Huge thanks to @toolY for sponsoring this. Sign up free: site.com/?ref=me"            → explicit (sponsor + affiliate)
+  • "Been testing @appA and @appB this month, both great — try them 👇 (links)"            → inferred (multiple brands + CTA, no tag)
+  • "Giveaway! RT + follow @gadgetZ to win one 🎁"                                          → inferred (brand giveaway)
+NOT PAID:
+  • "Spent the weekend debugging our inference stack — here's what I learned 🧵"            → none (technical)
+  • "We just shipped v2 of OUR product 🚀 try it"                                           → none (promoting THEIR OWN company, not for hire)
+  • "New paper on speech models is wild, breaking it down"                                  → none (researcher/journalist)
+
+=== RULES (do NOT compromise) ===
+- "explicit": ≥1 post has a clear paid DISCLOSURE (#ad / #sponsored / "paid partnership" / "sponsored by") OR a discount code / affiliate link promoting SOMEONE ELSE.
+- "inferred": no explicit tag, but a clear PATTERN — promotes ≥2 DIFFERENT brands with CTAs/links, repeated product-review+link structure, or brand giveaways.
+- "none": purely technical/research/journalism/personal, OR only promotes their OWN product/company (a founder is NOT a hireable promoter).
+- "unknown": too few posts or no signal either way — do NOT guess.
+- EVERY "explicit"/"inferred" verdict MUST quote the exact post text that proves it.
+
+Return ONLY JSON (no markdown):
+{"promotion_type":"explicit"|"inferred"|"none"|"unknown","confidence":0-100,"signals":["<short reason + quoted post>"],"brands":["@brand1","@brand2"]}`;
+}
+
+module.exports = {
+  classifyFromBio, buildTweetAnalysisPrompt, EXPLICIT_PATTERNS, EXCLUSIVE_PATTERNS,
+  scanPostsForSignals, buildPaidPatternPrompt,
+};

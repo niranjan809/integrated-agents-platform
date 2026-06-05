@@ -62,7 +62,7 @@ const PRESETS = [
 ];
 
 export default function AgentRunner() {
-  const { running, accounts, stepLog, progress, summary, connErr, stats, startRun, stopRun } = useAgent();
+  const { running, accounts, stepLog, progress, summary, connErr, stats, apiLog, startRun, stopRun } = useAgent();
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
   const logRef = useRef(null);
@@ -146,6 +146,11 @@ export default function AgentRunner() {
         <div className="step-log" ref={logRef}>
           <div className="log-title">
             Agent Log
+            {apiLog.length > 0 && (
+              <span style={{ marginLeft: 8, color: '#79c0ff', fontWeight: 400, textTransform: 'none' }}>
+                · {apiLog.length} API call{apiLog.length === 1 ? '' : 's'}
+              </span>
+            )}
             {stepLog.length > 0 && (
               <button className="log-scroll-btn" onClick={scrollLog}>Latest</button>
             )}

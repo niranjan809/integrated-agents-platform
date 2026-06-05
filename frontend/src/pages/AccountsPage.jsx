@@ -322,6 +322,7 @@ function ResolveUnknownsPanel({ onDone }) {
   const [progress, setProgress] = useState(0);
   const [done,     setDone]     = useState(null);
   const [err,      setErr]      = useState('');
+  const [apiLog,   setApiLog]   = useState([]); // raw request/response strings
   const esRef = useRef(null);
 
   const loadStats = useCallback(() => {
@@ -344,7 +345,7 @@ function ResolveUnknownsPanel({ onDone }) {
     const token = localStorage.getItem('kiteai_token');
     if (!token) { setErr('Not authenticated — please log in again.'); return; }
 
-    setRunning(true); setDone(null); setErr('');
+    setRunning(true); setDone(null); setErr(''); setApiLog([]);
     setTally({ toA1: 0, toA2: 0, toNone: 0, stillUnknown: 0, genuine: 0, salesy: 0, processed: 0, total: n });
     setProgress(0); setCurrent('Starting…');
 
@@ -355,6 +356,7 @@ function ResolveUnknownsPanel({ onDone }) {
     es.addEventListener('start',  e => { try { const d = JSON.parse(e.data); setTally(t => ({ ...t, total: d.total })); } catch {} });
     es.addEventListener('status', e => { try { const d = JSON.parse(e.data); if (d.message) setCurrent(d.message); if (d.progress != null) setProgress(d.progress); } catch {} });
     es.addEventListener('account', e => { try { const d = JSON.parse(e.data); if (d.tally) setTally(d.tally); } catch {} });
+    es.addEventListener('api_call', e => { try { const d = JSON.parse(e.data); setApiLog(prev => [...prev.slice(-49), d]); } catch {} });
     es.addEventListener('quota_exhausted', e => { try { const d = JSON.parse(e.data); setErr(d.message); } catch {} });
     es.addEventListener('complete', e => {
       try { const d = JSON.parse(e.data); setDone(d); } catch {}
@@ -417,6 +419,22 @@ function ResolveUnknownsPanel({ onDone }) {
             {tile('Processed', `${tally.processed}/${tally.total}`, 'var(--blue)')}
           </div>
           {running && <div className="page-sub" style={{ marginTop: 8 }}>⏳ {current}</div>}
+
+          {/* Live API request/response log */}
+          {apiLog.length > 0 && (
+            <div style={{ marginTop: 12, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8,
+                          padding: '10px 12px', maxHeight: 180, overflowY: 'auto', fontFamily: "'Courier New', monospace", fontSize: 11 }}>
+              <div style={{ color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: 6, fontSize: 10 }}>
+                API Calls ({apiLog.length})
+              </div>
+              {apiLog.slice(-30).map((c, i) => (
+                <div key={i} style={{ padding: '2px 0', lineHeight: 1.4 }}>
+                  <span style={{ color: '#79c0ff' }}>→ {c.request}</span><br />
+                  <span style={{ color: c.ok ? 'var(--green)' : 'var(--red)', paddingLeft: 12 }}>← {c.response}</span>
+                </div>
+              ))}
+            </div>
+          )}
           {done && !err && (
             <div className="dash-new-banner" style={{ margin: '12px 0 0' }}>
               ✅ Done — <strong>{done.toA1} → A1</strong>, <strong>{done.toA2} → A2</strong>

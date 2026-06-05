@@ -172,6 +172,10 @@ function validateKeys() {
   }
 }
 
+// Optional sink for per-request API logging — set by a run (runAgent/resolveUnknowns)
+// so callAPI can stream the raw request string + response status to the UI.
+let apiCallSink = null;
+
 // Track global consecutive 429s â€” 3+ in a row = daily quota exhausted
 let globalConsecutive429 = 0;
 const QUOTA_EXHAUSTED_THRESHOLD = 3;
@@ -267,6 +271,18 @@ function clearErrors(k) {
   k.requests++;
 }
 
+// Build a maskable request string + stream request/response to the UI log
+function logApiCall(endpoint, params, status, ok, ms, keyLabel, errMsg) {
+  if (!apiCallSink) return;
+  let q = Object.entries(params || {}).map(([k, v]) => `${k}=${v}`).join('&');
+  if (q.length > 120) q = q.slice(0, 120) + '…';
+  const request  = `GET /${endpoint}${q ? '?' + q : ''}`;
+  const response = ok
+    ? `${status} OK · ${ms}ms · ${keyLabel}`
+    : `${status || 'ERR'} · ${ms}ms${errMsg ? ' · ' + String(errMsg).slice(0, 70) : ''}`;
+  try { apiCallSink({ request, response, ok: !!ok, status: status || 0 }); } catch {}
+}
+
 async function callAPI(endpoint, params = {}, emitStatus = null, sseKeepAlive = null) {
   const k = await acquireKey(emitStatus, sseKeepAlive);
   const start = Date.now();
@@ -281,6 +297,7 @@ async function callAPI(endpoint, params = {}, emitStatus = null, sseKeepAlive = 
       timeout: 20_000,
     });
     clearErrors(k);
+    logApiCall(endpoint, params, resp.status, true, Date.now() - start, k.label);
     return { success: true, data: resp.data, status: resp.status,
              duration_ms: Date.now() - start, key_label: k.label };
   } catch (err) {
@@ -303,6 +320,7 @@ async function callAPI(endpoint, params = {}, emitStatus = null, sseKeepAlive = 
           });
           other.lastFiredAt = Date.now();
           clearErrors(other);
+          logApiCall(endpoint, params, resp2.status, true, Date.now() - start, other.label);
           return { success: true, data: resp2.data, status: resp2.status,
                    duration_ms: Date.now() - start, key_label: other.label };
         } catch (e2) {
@@ -310,6 +328,8 @@ async function callAPI(endpoint, params = {}, emitStatus = null, sseKeepAlive = 
         }
       }
     }
+    logApiCall(endpoint, params, status, false, elapsed, k.label,
+               typeof err.response?.data === 'string' ? err.response.data : err.message);
     return { success: false, error: err.response?.data || err.message,
              status, duration_ms: elapsed, key_label: k.label };
   }
@@ -509,6 +529,7 @@ async function runAgent({ queries, directHandles = [], triggeredBy = 'manual', s
   };
   const pace = (msg) => emit('status', { step: 'pacing', message: msg });
   const paceWithBreak = async (msg) => { pace(msg); await humanBreak(pace); };
+  apiCallSink = (c) => emit('api_call', c); // stream raw request/response strings to the UI
   const keepAlive = () => {
     if (sseRes && !isLocalAborted()) {
       try { sseRes.write(': ping\n\n'); } catch { localAborted = true; }
@@ -1034,6 +1055,7 @@ async function runAgent({ queries, directHandles = [], triggeredBy = 'manual', s
     health: calcHealth(health.calls, health.successes, health.errors, health.totalMs, health.flags),
   };
   emit('complete', summary);
+  apiCallSink = null;
   return summary;
 }
 
@@ -1048,6 +1070,7 @@ async function resolveUnknowns({ scope = 'all', sseRes = null, isAborted = () =>
   const keepAlive = () => { if (sseRes && !isLocalAborted()) { try { sseRes.write(': ping\n\n'); } catch { localAborted = true; } } };
   const pace = (msg) => emit('status', { step: 'pacing', message: msg });
   const paceWithBreak = async (msg) => { pace(msg); await humanBreak(pace); };
+  apiCallSink = (c) => emit('api_call', c); // stream raw request/response strings to the UI
 
   // Processes: (a) unknown/none accounts to resolve, AND (b) already-A2/A1 accounts
   // not yet authenticity-scored — so existing A2s get a genuine-vs-salesy quality score.
@@ -1152,6 +1175,7 @@ async function resolveUnknowns({ scope = 'all', sseRes = null, isAborted = () =>
 
   const summary = { processed, toA1, toA2, toNone, stillUnknown, genuine, salesy, total: rows.length };
   emit('complete', summary);
+  apiCallSink = null;
   return summary;
 }
 
@@ -1173,6 +1197,7 @@ app.get('/api/resolve-unknowns', require('./middleware/auth').requireAuth, async
   } catch (err) {
     console.error('[SSE] resolveUnknowns error:', err.message);
   } finally {
+    apiCallSink = null;
     if (!res.writableEnded) res.end();
   }
 });
@@ -1229,6 +1254,7 @@ app.get('/api/run-demo', require('./middleware/auth').requireAuth, async (req, r
   } catch (err) {
     console.error('[SSE] Unexpected error in runAgent:', err.message);
   } finally {
+    apiCallSink = null;
     if (!res.writableEnded) res.end();
   }
 });

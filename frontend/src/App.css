@@ -230,6 +230,9 @@ body { background: var(--bg); color: var(--text); font-family: 'Inter', 'Segoe U
 .log-warn          { color: var(--gold); }
 .log-delay         { color: var(--text2); opacity: .6; }
 .log-account       { color: var(--blue); }
+.log-api-req       { color: #79c0ff; font-family: 'Courier New', monospace; font-size: 11px; opacity: .85; }
+.log-api-res       { color: var(--green); font-family: 'Courier New', monospace; font-size: 11px; opacity: .8; padding-left: 10px; }
+.log-api-err       { color: var(--red);   font-family: 'Courier New', monospace; font-size: 11px; padding-left: 10px; }
 .results-col       { min-width: 0; }
 .results-header    { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; font-size: 13px; color: var(--text2); }
 .err-cnt           { color: var(--red); }

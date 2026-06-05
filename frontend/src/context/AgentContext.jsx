@@ -12,6 +12,7 @@ export function AgentProvider({ children }) {
   const [summary,  setSummary]  = useState(null);
   const [connErr,  setConnErr]  = useState('');
   const [stats,    setStats]    = useState({ added: 0, updated: 0, errors: 0 });
+  const [apiLog,   setApiLog]   = useState([]); // raw request/response strings
 
   const esRef          = useRef(null);
   const completedRef   = useRef(false);
@@ -41,6 +42,7 @@ export function AgentProvider({ children }) {
     setSummary(null);
     setConnErr('');
     setStats({ added: 0, updated: 0, errors: 0 });
+    setApiLog([]);
     completedRef.current = false;
 
     const token = localStorage.getItem('kiteai_token');
@@ -113,6 +115,16 @@ export function AgentProvider({ children }) {
         );
         if (account.index && account.total)
           setProgress(Math.round((account.index / account.total) * 100));
+      } catch {}
+    });
+
+    es.addEventListener('api_call', e => {
+      try {
+        const d = JSON.parse(e.data);
+        setApiLog(prev => [...prev.slice(-199), { ...d, ts: Date.now() }]);
+        // also surface in the main log as request → response lines
+        addLog(`→ ${d.request}`, 'api-req');
+        addLog(`← ${d.response}`, d.ok ? 'api-res' : 'api-err');
       } catch {}
     });
 
@@ -195,7 +207,7 @@ export function AgentProvider({ children }) {
 
   return (
     <AgentContext.Provider value={{
-      running, accounts, errCards, stepLog, progress, summary, connErr, stats,
+      running, accounts, errCards, stepLog, progress, summary, connErr, stats, apiLog,
       startRun, stopRun, onRunComplete,
     }}>
       {children}

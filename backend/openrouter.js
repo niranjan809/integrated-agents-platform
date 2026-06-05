@@ -170,27 +170,40 @@ async function aiAnalyseTweets(handle, bio, tweets) {
  * Returns { promotion_type, promotion_confidence, promotion_signals, brands, source } or null.
  */
 async function analysePaidPattern(handle, bio, tweets) {
-  const { scanPostsForSignals, buildPaidPatternPrompt } = require('./promotionClassifier');
+  const { scanPostsForSignals, buildPaidPatternPrompt, scanAuthenticitySignals } = require('./promotionClassifier');
   const key = getKey();
   if (!tweets || !tweets.length) return null;
 
   const signals = scanPostsForSignals(tweets);
+  const auth    = scanAuthenticitySignals(tweets);
+
+  // Attach the regex authenticity backstop to a verdict object (only meaningful for promoters)
+  const withAuth = (v) => {
+    if (!v) return v;
+    const isPromoter = v.promotion_type === 'explicit' || v.promotion_type === 'inferred';
+    return {
+      ...v,
+      authenticity_score:   isPromoter ? auth.hint : 0,
+      authenticity_reason:  isPromoter ? 'regex heuristic (AI unavailable)' : '',
+      authenticity_example: isPromoter ? auth.genuineExample : '',
+    };
+  };
 
   // Regex-only fallback used when there's no AI key or the AI call fails
   const regexVerdict = () => {
     if (signals.hasExplicit)
-      return { promotion_type: 'explicit', promotion_confidence: 80, promotion_signals: signals.evidence.slice(0, 3), brands: signals.brands, source: 'regex' };
+      return withAuth({ promotion_type: 'explicit', promotion_confidence: 80, promotion_signals: signals.evidence.slice(0, 3), brands: signals.brands, source: 'regex' });
     if (signals.hasStrong && signals.brandCount >= 2)
-      return { promotion_type: 'inferred', promotion_confidence: 65, promotion_signals: signals.evidence.slice(0, 3), brands: signals.brands, source: 'regex' };
+      return withAuth({ promotion_type: 'inferred', promotion_confidence: 65, promotion_signals: signals.evidence.slice(0, 3), brands: signals.brands, source: 'regex' });
     if (signals.promoPosts >= 2 && signals.brandCount >= 2)
-      return { promotion_type: 'inferred', promotion_confidence: 55, promotion_signals: signals.evidence.slice(0, 3), brands: signals.brands, source: 'regex' };
+      return withAuth({ promotion_type: 'inferred', promotion_confidence: 55, promotion_signals: signals.evidence.slice(0, 3), brands: signals.brands, source: 'regex' });
     return null;
   };
 
   if (!key) return regexVerdict();
 
   const prompt = buildPaidPatternPrompt(handle, bio, tweets, signals);
-  const result = await callOpenRouter([{ role: 'user', content: prompt }], { maxTokens: 320, temperature: 0.1 });
+  const result = await callOpenRouter([{ role: 'user', content: prompt }], { maxTokens: 420, temperature: 0.1 });
   if (!result.success) return regexVerdict();
 
   try {
@@ -207,11 +220,29 @@ async function analysePaidPattern(handle, bio, tweets) {
       if (!sigs.length) sigs = signals.evidence.slice(0, 3);
     }
 
+    const isPromoter = type === 'explicit' || type === 'inferred';
+    // Blend AI authenticity with the regex hint (AI leads, hint pulls 30%); 0 for non-promoters
+    let authScore = 0, authReason = '', authExample = '';
+    if (isPromoter) {
+      const aiAuth = Number(parsed.authenticity_score);
+      authScore   = Number.isFinite(aiAuth)
+        ? Math.round(Math.max(0, Math.min(100, aiAuth * 0.7 + auth.hint * 0.3)))
+        : auth.hint;
+      authReason  = (parsed.authenticity_reason || '').toString().slice(0, 160);
+      if (!authReason) authReason = authScore >= 60
+        ? 'genuine first-person / specific posts'
+        : 'hype or templated, low personal voice';
+      authExample = (parsed.authenticity_example || auth.genuineExample || '').toString().slice(0, 200);
+    }
+
     return {
       promotion_type:       type,
       promotion_confidence: conf,
       promotion_signals:    sigs,
       brands:               Array.isArray(parsed.brands) ? parsed.brands.slice(0, 8) : signals.brands,
+      authenticity_score:   authScore,
+      authenticity_reason:  authReason,
+      authenticity_example: authExample,
       source:               'tweet_pattern',
       model:                result.model,
     };

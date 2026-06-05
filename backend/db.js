@@ -173,6 +173,13 @@ async function initDB() {
     // 0-100 — how confident we are about the promotion classification
     `ALTER TABLE accounts ADD COLUMN promotion_signals    TEXT`,
     // JSON array of detected signals e.g. '["#ad found","discount code pattern"]'
+    // Authenticity / content-quality of a promoter's posts (genuine creator vs salesy/templated)
+    `ALTER TABLE accounts ADD COLUMN authenticity_score   INTEGER`,
+    // 0-100 — how genuine & high-quality their product/promo content reads (NULL = not yet scored)
+    `ALTER TABLE accounts ADD COLUMN authenticity_reason  TEXT`,
+    // short why-text for the authenticity score
+    `ALTER TABLE accounts ADD COLUMN authenticity_example TEXT`,
+    // the single most genuine post quoted as evidence
   ];
   for (const m of migrations) {
     try { await db.execute(m); }

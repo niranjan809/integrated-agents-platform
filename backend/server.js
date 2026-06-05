@@ -75,6 +75,11 @@ const JITTER_MS = 6000; // Â±3 000ms random spread
 // Per-run request cap â€” protects shared paid quota
 const MAX_REQUESTS_PER_RUN = Number(process.env.MAX_REQUESTS_PER_RUN) || 5000;
 
+// Authenticity threshold — A2 promoters scoring >= this read as genuine creators;
+// below it they're salesy/templated (separate "low-quality" bucket). Keep in sync
+// with the same constant in routes/accounts.js and the frontend.
+const GENUINE_THRESHOLD = 60;
+
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 function jitter()  { return Math.floor(Math.random() * JITTER_MS) - JITTER_MS / 2; }
 
@@ -441,6 +446,12 @@ async function upsertAccount(account, runId) {
   const isDup = rows.length > 0;
 
   const promoSignals = JSON.stringify(account.promotion_signals || []);
+  // Authenticity is optional — null means "not scored this pass", so on UPDATE we
+  // COALESCE to keep any existing score rather than wiping it on a plain refresh.
+  const aScore   = (account.authenticity_score === undefined || account.authenticity_score === null)
+                   ? null : Number(account.authenticity_score);
+  const aReason  = account.authenticity_reason  || null;
+  const aExample = account.authenticity_example || null;
   if (isDup) {
     await db.execute({
       sql: `UPDATE accounts SET name=?, bio=?, followers=?, following=?, tweets=?,
@@ -448,6 +459,9 @@ async function upsertAccount(account, runId) {
             track=?, d2=?, d3=?, d4=?, d5=?, overall=?, dm_open=?, has_email=?,
             contact_email=?, ai_model=?, ai_reason=?,
             promotion_type=?, promotion_confidence=?, promotion_signals=?,
+            authenticity_score=COALESCE(?, authenticity_score),
+            authenticity_reason=COALESCE(?, authenticity_reason),
+            authenticity_example=COALESCE(?, authenticity_example),
             last_updated=datetime('now'), run_id=?
             WHERE handle=?`,
       args: [account.name, account.bio, account.followers, account.following, account.tweets,
@@ -457,6 +471,7 @@ async function upsertAccount(account, runId) {
              account.dmOpen ? 1 : 0, account.hasEmail ? 1 : 0,
              account.contactEmail || null, account.ai_model || null, account.ai_reason || null,
              account.promotion_type || 'unknown', account.promotion_confidence || 0, promoSignals,
+             aScore, aReason, aExample,
              runId, account.handle.toLowerCase()],
     });
   } else {
@@ -464,8 +479,9 @@ async function upsertAccount(account, runId) {
       sql: `INSERT INTO accounts (handle, name, bio, followers, following, tweets, verified,
             avatar, website, location, tier, account_type, track, d2, d3, d4, d5, overall,
             dm_open, has_email, contact_email, ai_model, ai_reason,
-            promotion_type, promotion_confidence, promotion_signals, run_id)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+            promotion_type, promotion_confidence, promotion_signals,
+            authenticity_score, authenticity_reason, authenticity_example, run_id)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       args: [account.handle.toLowerCase(), account.name, account.bio,
              account.followers, account.following, account.tweets,
              account.verified ? 1 : 0, account.avatar, account.website, account.location,
@@ -474,7 +490,7 @@ async function upsertAccount(account, runId) {
              account.dmOpen ? 1 : 0, account.hasEmail ? 1 : 0,
              account.contactEmail || null, account.ai_model || null, account.ai_reason || null,
              account.promotion_type || 'unknown', account.promotion_confidence || 0, promoSignals,
-             runId],
+             aScore, aReason, aExample, runId],
     });
   }
   return isDup;
@@ -821,6 +837,7 @@ async function runAgent({ queries, directHandles = [], triggeredBy = 'manual', s
       let promoType       = ai?.promotion_type       || existingPromo.get(a.handle) || 'unknown';
       let promoConfidence = ai?.promotion_confidence || 0;
       let promoSignals    = ai?.promotion_signals    || [];
+      let authScore = null, authReason = null, authExample = null; // genuine-creator quality
 
       const dupNeedsRecheck = isDup && ['unknown', 'none'].includes(existingPromo.get(a.handle));
       if (finalTrack === 'A' && (!isDup || dupNeedsRecheck)) {
@@ -852,6 +869,12 @@ async function runAgent({ queries, directHandles = [], triggeredBy = 'manual', s
                 promoConfidence = Math.max(promoConfidence, tweetAI.promotion_confidence);
                 promoSignals    = (tweetAI.promotion_signals?.length ? tweetAI.promotion_signals : promoSignals).slice(0, 3);
               }
+              // Capture authenticity (genuine-creator quality) for promoters
+              if ((promoType === 'explicit' || promoType === 'inferred') && tweetAI.authenticity_score != null) {
+                authScore   = tweetAI.authenticity_score;
+                authReason  = tweetAI.authenticity_reason;
+                authExample = tweetAI.authenticity_example;
+              }
             }
           }
         }
@@ -860,6 +883,9 @@ async function runAgent({ queries, directHandles = [], triggeredBy = 'manual', s
       account.promotion_type       = promoType;
       account.promotion_confidence = promoConfidence;
       account.promotion_signals    = promoSignals;
+      account.authenticity_score   = authScore;
+      account.authenticity_reason  = authReason;
+      account.authenticity_example = authExample;
 
       const savedDup = await upsertAccount(account, runId);
       if (savedDup) duplicatesSkipped++; else accountsAdded++;
@@ -1023,12 +1049,17 @@ async function resolveUnknowns({ scope = 'all', sseRes = null, isAborted = () =>
   const pace = (msg) => emit('status', { step: 'pacing', message: msg });
   const paceWithBreak = async (msg) => { pace(msg); await humanBreak(pace); };
 
+  // Processes: (a) unknown/none accounts to resolve, AND (b) already-A2/A1 accounts
+  // not yet authenticity-scored — so existing A2s get a genuine-vs-salesy quality score.
+  // Once scored, an account is no longer re-selected → resumable & idempotent.
   // Relevant-first ordering so the most valuable accounts resolve before any cap.
   const minScore = scope === 'relevant' ? 30 : 0;
   const { rows } = await db.execute({
-    sql: `SELECT handle, name, bio, account_type, overall, promotion_type
+    sql: `SELECT handle, name, bio, account_type, overall, promotion_type, authenticity_score
           FROM accounts
-          WHERE track='A' AND promotion_type IN ('unknown','none') AND overall >= ?
+          WHERE track='A' AND overall >= ?
+            AND ( promotion_type IN ('unknown','none')
+                  OR (promotion_type IN ('inferred','explicit') AND authenticity_score IS NULL) )
           ORDER BY overall DESC`,
     args: [minScore],
   });
@@ -1036,7 +1067,7 @@ async function resolveUnknowns({ scope = 'all', sseRes = null, isAborted = () =>
   const health = { calls: 0, successes: 0, errors: 0, totalMs: 0, flags: {} };
   globalConsecutive429 = 0;
   requestsSinceBreak   = 0;
-  let toA1 = 0, toA2 = 0, toNone = 0, stillUnknown = 0, processed = 0;
+  let toA1 = 0, toA2 = 0, toNone = 0, stillUnknown = 0, genuine = 0, salesy = 0, processed = 0;
 
   emit('start', { total: rows.length, scope });
 
@@ -1060,32 +1091,55 @@ async function resolveUnknowns({ scope = 'all', sseRes = null, isAborted = () =>
       health.calls++; health.totalMs += duration_ms || 0;
       if (success) health.successes++; else health.errors++;
 
-      let outcome = acc.promotion_type;       // unchanged unless resolved
+      let outcome = acc.promotion_type;       // unchanged unless re-analysis resolves it
       let result  = null;
+      let newAuth = null, authReason = null, authExample = null;
       if (tweets.length > 0) {
         try { result = await analysePaidPattern(acc.handle, acc.bio, tweets); }
         catch (e) { console.warn('[resolve] analyse error:', e.message); }
-        if (result && result.promotion_type && result.promotion_type !== 'unknown') {
-          outcome = result.promotion_type;
+
+        const promotionResolved = result && result.promotion_type && result.promotion_type !== 'unknown';
+        if (promotionResolved) outcome = result.promotion_type;
+
+        // Trust authenticity only when the result itself rates the account a promoter
+        const resultIsPromoter = result && (result.promotion_type === 'explicit' || result.promotion_type === 'inferred');
+        if (resultIsPromoter && result.authenticity_score != null) {
+          newAuth     = result.authenticity_score;
+          authReason  = result.authenticity_reason  || null;
+          authExample = result.authenticity_example || null;
+        }
+
+        // Persist if we resolved the promotion type OR produced a fresh authenticity score.
+        // COALESCE keeps existing authenticity when newAuth is null (no clobber).
+        if (promotionResolved || newAuth != null) {
           await db.execute({
             sql: `UPDATE accounts SET promotion_type=?, promotion_confidence=?, promotion_signals=?,
+                  authenticity_score=COALESCE(?, authenticity_score),
+                  authenticity_reason=COALESCE(?, authenticity_reason),
+                  authenticity_example=COALESCE(?, authenticity_example),
                   last_updated=datetime('now') WHERE handle=?`,
-            args: [outcome, result.promotion_confidence || 0, JSON.stringify(result.promotion_signals || []), acc.handle],
+            args: [outcome, result?.promotion_confidence || 0, JSON.stringify(result?.promotion_signals || []),
+                   newAuth, authReason, authExample, acc.handle],
           });
         }
       }
 
       processed++;
+      const effAuth = (newAuth != null) ? newAuth : acc.authenticity_score;
       if      (outcome === 'explicit') toA1++;
-      else if (outcome === 'inferred') toA2++;
+      else if (outcome === 'inferred') {
+        toA2++;
+        if (effAuth != null) { if (effAuth >= GENUINE_THRESHOLD) genuine++; else salesy++; }
+      }
       else if (outcome === 'none')     toNone++;
       else                             stillUnknown++;
 
       emit('account', {
         handle: acc.handle, name: acc.name, overall: acc.overall,
         from: acc.promotion_type, to: outcome,
+        authenticity: effAuth, genuine: effAuth != null && effAuth >= GENUINE_THRESHOLD,
         signals: result?.promotion_signals || [],
-        tally: { toA1, toA2, toNone, stillUnknown, processed, total: rows.length },
+        tally: { toA1, toA2, toNone, stillUnknown, genuine, salesy, processed, total: rows.length },
       });
     }
   } catch (err) {
@@ -1096,7 +1150,7 @@ async function resolveUnknowns({ scope = 'all', sseRes = null, isAborted = () =>
     }
   }
 
-  const summary = { processed, toA1, toA2, toNone, stillUnknown, total: rows.length };
+  const summary = { processed, toA1, toA2, toNone, stillUnknown, genuine, salesy, total: rows.length };
   emit('complete', summary);
   return summary;
 }

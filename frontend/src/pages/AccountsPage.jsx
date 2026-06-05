@@ -3,6 +3,19 @@ import { useAuth } from '../context/AuthContext';
 
 const API = (import.meta.env.VITE_API_URL || 'http://localhost:3001').replace(/\/$/, '');
 
+// Authenticity threshold — keep in sync with GENUINE_THRESHOLD (backend)
+const GENUINE_MIN = 60;
+
+// Which A2 sub-bucket an account falls in (genuine creator vs salesy vs not-yet-scored)
+function authBucket(a) {
+  if (a.promotion_type === 'explicit') return 'a1';
+  if (a.promotion_type === 'inferred') {
+    if (a.authenticity_score === null || a.authenticity_score === undefined) return 'unscored';
+    return a.authenticity_score >= GENUINE_MIN ? 'genuine' : 'salesy';
+  }
+  return 'other';
+}
+
 const SCORE_TIERS = [
   { key: 'all',     label: 'All',     color: '#7DA4BE', min: 0,  max: 100 },
   { key: 'top',     label: 'Tier 1',  color: '#00C896', min: 65, max: 100 },
@@ -193,6 +206,31 @@ function ContactPanel({ account }) {
         </div>
       )}
 
+      {/* Content Authenticity — genuine creator vs salesy/templated (A2 quality) */}
+      {account.promotion_type === 'inferred' && account.authenticity_score != null && (
+        <div className="cp-section">
+          <div className="cp-section-label">Content Authenticity</div>
+          <div className="cp-promo-row">
+            <span className="promo-badge" style={{
+              background: account.authenticity_score >= 60 ? 'rgba(0,200,150,.15)' : 'rgba(136,136,136,.18)',
+              color: account.authenticity_score >= 60 ? '#00C896' : '#999',
+            }}>
+              {account.authenticity_score >= 60 ? '✦ Genuine creator' : '⚠ Salesy / low-quality'}
+            </span>
+            <span className="promo-conf">{account.authenticity_score}/100</span>
+          </div>
+          {account.authenticity_reason && (
+            <div className="cp-ai-reason" style={{ marginTop: 8 }}>{account.authenticity_reason}</div>
+          )}
+          {account.authenticity_example && (
+            <div style={{ marginTop: 8, padding: '8px 12px', borderLeft: '3px solid var(--green)',
+                          background: 'rgba(0,200,150,.06)', borderRadius: 4, fontSize: 13, fontStyle: 'italic', color: 'var(--text2)' }}>
+              “{account.authenticity_example}”
+            </div>
+          )}
+        </div>
+      )}
+
     </div>
   );
 }
@@ -253,6 +291,14 @@ function AccountRow({ account, rank }) {
           {/* Promotion type badge */}
           {account.promotion_type === 'explicit'  && <span className="badge promo-tag-exp" title="Confirmed paid promoter">💰 A1</span>}
           {account.promotion_type === 'inferred'  && <span className="badge promo-tag-inf" title={`Likely paid promoter (${account.promotion_confidence}%)`}>~ A2</span>}
+          {/* Authenticity (genuine creator vs salesy) badge for A2 */}
+          {account.promotion_type === 'inferred' && account.authenticity_score != null && (
+            <span className="badge" title={account.authenticity_reason || 'content authenticity'}
+              style={{ background: account.authenticity_score >= 60 ? 'rgba(0,200,150,.15)' : 'rgba(136,136,136,.18)',
+                       color: account.authenticity_score >= 60 ? '#00C896' : '#999' }}>
+              {account.authenticity_score >= 60 ? '✦' : '⚠'} {account.authenticity_score}
+            </span>
+          )}
         </div>
 
         <div className="arf-expand-btn">{expanded ? '▲' : '▼'}</div>
@@ -271,7 +317,7 @@ function ResolveUnknownsPanel({ onDone }) {
   const { apiFetch } = useAuth();
   const [stats,    setStats]    = useState(null);
   const [running,  setRunning]  = useState(false);
-  const [tally,    setTally]    = useState({ toA1: 0, toA2: 0, toNone: 0, stillUnknown: 0, processed: 0, total: 0 });
+  const [tally,    setTally]    = useState({ toA1: 0, toA2: 0, toNone: 0, stillUnknown: 0, genuine: 0, salesy: 0, processed: 0, total: 0 });
   const [current,  setCurrent]  = useState('');
   const [progress, setProgress] = useState(0);
   const [done,     setDone]     = useState(null);
@@ -299,7 +345,7 @@ function ResolveUnknownsPanel({ onDone }) {
     if (!token) { setErr('Not authenticated — please log in again.'); return; }
 
     setRunning(true); setDone(null); setErr('');
-    setTally({ toA1: 0, toA2: 0, toNone: 0, stillUnknown: 0, processed: 0, total: n });
+    setTally({ toA1: 0, toA2: 0, toNone: 0, stillUnknown: 0, genuine: 0, salesy: 0, processed: 0, total: n });
     setProgress(0); setCurrent('Starting…');
 
     const es = new EventSource(`${API}/api/resolve-unknowns?scope=all&_token=${encodeURIComponent(token)}`);
@@ -338,11 +384,13 @@ function ResolveUnknownsPanel({ onDone }) {
     <div className="dash-card" style={{ marginBottom: 16, borderColor: 'rgba(192,132,252,.4)' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
         <div>
-          <h3 style={{ margin: 0 }}>✦ Resolve Unbadged Accounts</h3>
+          <h3 style={{ margin: 0 }}>✦ Resolve & Quality-Score Accounts</h3>
           <p className="page-sub" style={{ margin: '4px 0 0' }}>
-            Re-read recent posts of the <strong style={{ color: '#C084FC' }}>{resolvable}</strong> unbadged Track A accounts
-            ({stats.unknown} unknown + {stats.none} not-paid) and promote real promoters into A1/A2.
-            Current: <span style={{ color: '#00C896' }}>A1 {stats.a1}</span> · <span style={{ color: '#F9A825' }}>A2 {stats.a2}</span>.
+            Reads recent posts of <strong style={{ color: '#C084FC' }}>{resolvable}</strong> accounts —
+            classifies the {stats.unknown} unknown + {stats.none} not-paid, AND quality-scores
+            {stats.a2_unscored != null ? ` ${stats.a2_unscored}` : ''} unscored A2 into
+            <span style={{ color: '#00C896' }}> genuine</span> vs <span style={{ color: '#888' }}>salesy</span>.
+            Current A2: <span style={{ color: '#00C896' }}>✦ {stats.a2_genuine ?? 0} genuine</span> · <span style={{ color: '#888' }}>⚠ {stats.a2_salesy ?? 0} salesy</span>.
           </p>
         </div>
         {!running
@@ -358,19 +406,22 @@ function ResolveUnknownsPanel({ onDone }) {
           <div className="progress-bar-wrap" style={{ height: 6 }}>
             <div style={{ width: `${progress}%`, height: '100%', background: '#C084FC', borderRadius: 3, transition: 'width .3s' }} />
           </div>
-          <div style={{ display: 'flex', gap: 18, alignItems: 'center', marginTop: 12, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 16, alignItems: 'center', marginTop: 12, flexWrap: 'wrap' }}>
             {tile('→ A1', tally.toA1, '#00C896')}
             {tile('→ A2', tally.toA2, '#F9A825')}
+            {tile('✦ Genuine', tally.genuine ?? 0, '#00C896')}
+            {tile('⚠ Salesy', tally.salesy ?? 0, '#888')}
             {tile('→ Not paid', tally.toNone, '#888')}
-            {tile('Still unknown', tally.stillUnknown, '#666')}
+            {tile('Unknown', tally.stillUnknown, '#666')}
             <div style={{ width: 1, alignSelf: 'stretch', background: 'var(--border)' }} />
             {tile('Processed', `${tally.processed}/${tally.total}`, 'var(--blue)')}
           </div>
           {running && <div className="page-sub" style={{ marginTop: 8 }}>⏳ {current}</div>}
           {done && !err && (
             <div className="dash-new-banner" style={{ margin: '12px 0 0' }}>
-              ✅ Done — promoted <strong>{done.toA1} → A1</strong>, <strong>{done.toA2} → A2</strong>,
-              {' '}{done.toNone} marked not-paid, {done.stillUnknown} still unknown (of {done.processed} analysed).
+              ✅ Done — <strong>{done.toA1} → A1</strong>, <strong>{done.toA2} → A2</strong>
+              {' '}(<span style={{ color: '#00C896' }}>✦ {done.genuine ?? 0} genuine</span>, <span style={{ color: '#888' }}>⚠ {done.salesy ?? 0} salesy</span>),
+              {' '}{done.toNone} not-paid, {done.stillUnknown} unknown — of {done.processed} analysed.
             </div>
           )}
         </div>
@@ -443,18 +494,20 @@ export default function AccountsPage({ mode }) {
       if (typeFilter && a.account_type !== typeFilter) return false;
       if (dmFilter    && !a.dm_open)                          return false;
       if (emailFilter && !a.has_email)                        return false;
-      // treat null/undefined as 'unknown' for filter matching
-      const pt = a.promotion_type || 'unknown';
-      if (promoFilter && pt !== promoFilter) return false;
+      // promoFilter holds an A2 bucket key: a1 | genuine | salesy | unscored
+      if (promoFilter && authBucket(a) !== promoFilter) return false;
       return true;
     });
-    // Sort: explicit promoters first, then inferred, then others — within each group by score
+    // Sort: A1 → A2-genuine → A2-unscored → A2-salesy → others; within A2 by authenticity desc
     if (sortBy === 'score') {
-      const promoOrder = { explicit: 0, inferred: 1, none: 2, unknown: 3 };
+      const bucketOrder = { a1: 0, genuine: 1, unscored: 2, salesy: 3, other: 4 };
       out = [...out].sort((a, b) => {
-        const pa = promoOrder[a.promotion_type || 'unknown'] ?? 3;
-        const pb = promoOrder[b.promotion_type || 'unknown'] ?? 3;
-        if (pa !== pb) return pa - pb;
+        const ba = authBucket(a), bb = authBucket(b);
+        if (bucketOrder[ba] !== bucketOrder[bb]) return bucketOrder[ba] - bucketOrder[bb];
+        if ((ba === 'genuine' || ba === 'salesy')) {
+          const aa = a.authenticity_score ?? -1, ab = b.authenticity_score ?? -1;
+          if (aa !== ab) return ab - aa;
+        }
         return (b.overall || 0) - (a.overall || 0);
       });
     }
@@ -467,6 +520,9 @@ export default function AccountsPage({ mode }) {
   const emailCount    = accounts.filter(a => a.has_email).length;
   const confirmedPaid = accounts.filter(a => a.promotion_type === 'explicit').length;
   const likelyPaid    = accounts.filter(a => a.promotion_type === 'inferred').length;
+  const a2Genuine     = accounts.filter(a => authBucket(a) === 'genuine').length;
+  const a2Salesy      = accounts.filter(a => authBucket(a) === 'salesy').length;
+  const a2Unscored    = accounts.filter(a => authBucket(a) === 'unscored').length;
 
   const reloadAccounts = useCallback(() => {
     apiFetch(endpoint).then(r => r.json()).then(d => setAccounts(d.accounts || [])).catch(() => {});
@@ -496,9 +552,10 @@ export default function AccountsPage({ mode }) {
           <h1>{title}</h1>
           <p className="page-sub">
             {filtered.length} of {accounts.length} accounts
-            {mode === 'influencers' && confirmedPaid > 0 && (
-              <> · <span style={{color:'#00C896'}}>💰 {confirmedPaid} confirmed paid</span>
-                 · <span style={{color:'#F9A825'}}>~ {likelyPaid} likely paid</span></>
+            {mode === 'influencers' && (confirmedPaid > 0 || likelyPaid > 0) && (
+              <> · <span style={{color:'#00C896'}}>💰 {confirmedPaid} A1</span>
+                 · <span style={{color:'#00C896'}}>✦ {a2Genuine} genuine A2</span>
+                 · <span style={{color:'#888'}}>⚠ {a2Salesy} salesy</span></>
             )}
           </p>
         </div>
@@ -530,7 +587,7 @@ export default function AccountsPage({ mode }) {
 
       {/* Filters */}
       <div className="filter-panel">
-        {/* Promotion filter — A1 Confirmed / A2 Likely only (no Not Paid / Unknown) */}
+        {/* Promotion + authenticity filter — A1 / A2 Genuine / Salesy (option B split) */}
         {mode === 'influencers' && (confirmedPaid > 0 || likelyPaid > 0) && (
           <div className="filter-row">
             <span className="filter-group-label">Paid Status</span>
@@ -538,16 +595,29 @@ export default function AccountsPage({ mode }) {
               <button className={`filter-chip${!promoFilter?' active':''}`} onClick={() => setPromoFilter('')}>
                 All <span className="chip-count">{accounts.length}</span>
               </button>
-              <button className={`filter-chip${promoFilter==='explicit'?' active':''}`}
-                style={promoFilter==='explicit'?{borderColor:'#00C896',color:'#00C896',background:'rgba(0,200,150,.08)'}:{}}
-                onClick={() => setPromoFilter(p => p==='explicit'?'':'explicit')}>
-                💰 A1 — Confirmed Paid <span className="chip-count" style={{background: promoFilter==='explicit'?'#00C896':''}}>{confirmedPaid}</span>
+              <button className={`filter-chip${promoFilter==='a1'?' active':''}`}
+                style={promoFilter==='a1'?{borderColor:'#00C896',color:'#00C896',background:'rgba(0,200,150,.08)'}:{}}
+                onClick={() => setPromoFilter(p => p==='a1'?'':'a1')}>
+                💰 A1 — Confirmed <span className="chip-count" style={{background: promoFilter==='a1'?'#00C896':''}}>{confirmedPaid}</span>
               </button>
-              <button className={`filter-chip${promoFilter==='inferred'?' active':''}`}
-                style={promoFilter==='inferred'?{borderColor:'#F9A825',color:'#F9A825',background:'rgba(249,168,37,.08)'}:{}}
-                onClick={() => setPromoFilter(p => p==='inferred'?'':'inferred')}>
-                ~ A2 — Likely Paid <span className="chip-count" style={{background: promoFilter==='inferred'?'#F9A825':''}}>{likelyPaid}</span>
+              <button className={`filter-chip${promoFilter==='genuine'?' active':''}`}
+                style={promoFilter==='genuine'?{borderColor:'#00C896',color:'#00C896',background:'rgba(0,200,150,.08)'}:{}}
+                onClick={() => setPromoFilter(p => p==='genuine'?'':'genuine')}>
+                ✦ A2 — Genuine <span className="chip-count" style={{background: promoFilter==='genuine'?'#00C896':''}}>{a2Genuine}</span>
               </button>
+              <button className={`filter-chip${promoFilter==='salesy'?' active':''}`}
+                style={promoFilter==='salesy'?{borderColor:'#888',color:'#aaa',background:'rgba(136,136,136,.12)'}:{}}
+                onClick={() => setPromoFilter(p => p==='salesy'?'':'salesy')}>
+                ⚠ Salesy / Low <span className="chip-count" style={{background: promoFilter==='salesy'?'#888':''}}>{a2Salesy}</span>
+              </button>
+              {a2Unscored > 0 && (
+                <button className={`filter-chip${promoFilter==='unscored'?' active':''}`}
+                  style={promoFilter==='unscored'?{borderColor:'#F9A825',color:'#F9A825',background:'rgba(249,168,37,.08)'}:{}}
+                  onClick={() => setPromoFilter(p => p==='unscored'?'':'unscored')}
+                  title="Likely-paid (A2) but content quality not yet scored — run Resolve to score them">
+                  ◷ A2 — Unscored <span className="chip-count" style={{background: promoFilter==='unscored'?'#F9A825':''}}>{a2Unscored}</span>
+                </button>
+              )}
             </div>
           </div>
         )}

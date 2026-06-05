@@ -269,10 +269,66 @@ function scanPostsForSignals(tweets = []) {
   };
 }
 
+// ══════════════════════════════════════════════════════════════════════════
+// AUTHENTICITY / CONTENT-QUALITY SCAN
+// For accounts that ARE promoters, rank how GENUINE their product content reads.
+// Genuine = first-person lived experience, specific, honest/balanced, human voice.
+// Salesy/low = hype overload, templated praise, pure CTA, robotic tone.
+// Regex provides a backstop hint; Gemini is the primary judge.
+// ══════════════════════════════════════════════════════════════════════════
+const GENUINE_FIRSTPERSON = [
+  /\bi(?:'ve| have)?\s+(tried|been using|switched to|used|tested|started using|set up|built with)\b/i,
+  /\bmy\s+(experience|setup|workflow|honest|take|go-to)\b/i,
+  /\bi\s+(love|really like|prefer|ended up|was skeptical|didn'?t expect)\b/i,
+  /\bafter\s+(using|trying|a (week|month)|\d+)\b/i,
+];
+const GENUINE_SPECIFIC = [
+  /\b\d+\s*(weeks?|days?|months?|years?|hours?|mins?|minutes?)\b/i,
+  /\b\d+%/, /\b\d+x\b/i, /\bv\d/i, /\b\d{2,}\b/,
+];
+const GENUINE_HONEST = [
+  /\b(downside|drawback|not perfect|wish it|skeptical|the catch|honestly|to be fair|caveat|the only (issue|gripe|thing))\b/i,
+];
+const HYPE_WORDS = [
+  /\bgame.?changer\b/i, /\bbest\b.{0,14}\bever\b/i, /\babsolute(ly)?\b/i, /\binsane(ly)?\b/i,
+  /\bmind.?blow/i, /\brevolutionary\b/i, /\bmust.?have\b/i, /\bunbelievable\b/i,
+  /\bblown away\b/i, /\b10\/10\b/, /\bGOAT\b/, /\bno.?brainer\b/i,
+];
+const CTA_SPAM = [
+  /\b(buy now|sign up now|grab yours|don'?t miss|act now|limited time|hurry)\b/i,
+  /link in bio/i,
+];
+
+function scanAuthenticitySignals(tweets = []) {
+  let firstPerson = 0, specific = 0, honest = 0, hype = 0, ctaSpam = 0, emojiTotal = 0, capsBursts = 0;
+  let genuineExample = '';
+  for (const raw of tweets) {
+    const t = String(raw || '');
+    if (!t) continue;
+    const fp = GENUINE_FIRSTPERSON.some(p => p.test(t));
+    const sp = GENUINE_SPECIFIC.some(p => p.test(t));
+    const hn = GENUINE_HONEST.some(p => p.test(t));
+    if (fp) firstPerson++;
+    if (sp) specific++;
+    if (hn) honest++;
+    if (HYPE_WORDS.some(p => p.test(t))) hype++;
+    if (CTA_SPAM.some(p => p.test(t))) ctaSpam++;
+    emojiTotal += (t.match(/\p{Extended_Pictographic}/gu) || []).length;
+    if (/\b[A-Z]{3,}\b[^a-z]*\b[A-Z]{3,}\b/.test(t)) capsBursts++; // 2+ ALL-CAPS words
+    if (!genuineExample && fp && (sp || hn) && t.length > 80) genuineExample = t.slice(0, 180);
+  }
+  const n = Math.max(tweets.length, 1);
+  const genuineRate = (firstPerson + specific + honest) / n;
+  const salesyRate  = (hype + ctaSpam + capsBursts + emojiTotal / 4) / n;
+  const hint = Math.round(Math.max(0, Math.min(100, 50 + genuineRate * 28 - salesyRate * 28)));
+  return { firstPerson, specific, honest, hype, ctaSpam, emojiTotal, capsBursts, genuineExample, hint };
+}
+
 /**
  * Build the evidence-based paid-pattern prompt. Few-shot examples teach the
  * model the shape of a paid post; rules force a quoted-evidence verdict and
- * exclude own-brand founders (not hireable promoters).
+ * exclude own-brand founders (not hireable promoters). Also asks for an
+ * authenticity score so genuine creators rank above salesy/templated ones.
  */
 function buildPaidPatternPrompt(handle, bio, tweets, signals) {
   const tweetText = tweets.map((t, i) => `${i + 1}. ${String(t).replace(/\n/g, ' ').slice(0, 220)}`).join('\n');
@@ -307,11 +363,26 @@ NOT PAID:
 - "unknown": too few posts or no signal either way — do NOT guess.
 - EVERY "explicit"/"inferred" verdict MUST quote the exact post text that proves it.
 
+=== CONTENT AUTHENTICITY (only when promotion_type is "explicit" or "inferred") ===
+Rate how GENUINE & high-quality this creator's product content reads — would an audience
+trust it as a real personal experience, or dismiss it as a paid ad? We want creators whose
+promo posts feel authentic, not salesy or AI/templated.
+authenticity_score 0-100:
+  70-100 (GENUINE): first-person lived experience ("I've been using…", "switched to…"),
+    specific details (features, timeframes, real use-case), honest/balanced (admits a
+    downside), natural conversational voice, real reasoning.
+  40-69 (MIXED): some genuine signal but generic, thin, or partly promotional.
+  0-39 (SALESY/LOW): hype-only ("BEST EVER 🚀🔥"), templated/interchangeable praise,
+    pure CTA / link-dump, robotic uniform tone, no specifics or personal voice.
+authenticity_reason: one short phrase explaining the score.
+authenticity_example: quote the single most genuine post (or "" if none).
+(If promotion_type is "none"/"unknown", set authenticity_score 0, reason "", example "".)
+
 Return ONLY JSON (no markdown):
-{"promotion_type":"explicit"|"inferred"|"none"|"unknown","confidence":0-100,"signals":["<short reason + quoted post>"],"brands":["@brand1","@brand2"]}`;
+{"promotion_type":"explicit"|"inferred"|"none"|"unknown","confidence":0-100,"signals":["<short reason + quoted post>"],"brands":["@brand1","@brand2"],"authenticity_score":0-100,"authenticity_reason":"<short why>","authenticity_example":"<most genuine post or empty>"}`;
 }
 
 module.exports = {
   classifyFromBio, buildTweetAnalysisPrompt, EXPLICIT_PATTERNS, EXCLUSIVE_PATTERNS,
-  scanPostsForSignals, buildPaidPatternPrompt,
+  scanPostsForSignals, buildPaidPatternPrompt, scanAuthenticitySignals,
 };

@@ -35,6 +35,7 @@ router.get('/influencers', async (req, res) => {
     const { rows } = await db.execute(
       `SELECT * FROM accounts WHERE track = 'A' ORDER BY
          CASE promotion_type WHEN 'explicit' THEN 0 WHEN 'inferred' THEN 1 ELSE 2 END,
+         COALESCE(authenticity_score, -1) DESC,
          overall DESC LIMIT 1000`
     );
     res.json({ accounts: rows });
@@ -43,20 +44,38 @@ router.get('/influencers', async (req, res) => {
   }
 });
 
-// GET /api/accounts/promotion-stats — Track A breakdown by promotion_type
+// Authenticity threshold — keep in sync with GENUINE_THRESHOLD in server.js
+const GENUINE_THRESHOLD = 60;
+
+// GET /api/accounts/promotion-stats — Track A breakdown by promotion_type + A2 quality split
 router.get('/promotion-stats', async (req, res) => {
   try {
-    const { rows } = await db.execute(
-      `SELECT promotion_type, COUNT(*) n FROM accounts WHERE track='A' GROUP BY promotion_type`
-    );
+    const [byType, a2split] = await Promise.all([
+      db.execute(`SELECT promotion_type, COUNT(*) n FROM accounts WHERE track='A' GROUP BY promotion_type`),
+      db.execute({
+        sql: `SELECT
+                SUM(CASE WHEN authenticity_score >= ? THEN 1 ELSE 0 END)                          genuine,
+                SUM(CASE WHEN authenticity_score IS NOT NULL AND authenticity_score < ? THEN 1 ELSE 0 END) salesy,
+                SUM(CASE WHEN authenticity_score IS NULL THEN 1 ELSE 0 END)                        unscored
+              FROM accounts WHERE track='A' AND promotion_type='inferred'`,
+        args: [GENUINE_THRESHOLD, GENUINE_THRESHOLD],
+      }),
+    ]);
     const m = { explicit: 0, inferred: 0, none: 0, unknown: 0 };
-    rows.forEach(r => { if (r.promotion_type in m) m[r.promotion_type] = Number(r.n); });
+    byType.rows.forEach(r => { if (r.promotion_type in m) m[r.promotion_type] = Number(r.n); });
+    const s = a2split.rows[0] || {};
+    // resolvable = unknown/none to classify + A2 not yet authenticity-scored
+    const a2Unscored = Number(s.unscored) || 0;
     res.json({
-      a1:         m.explicit,
-      a2:         m.inferred,
-      none:       m.none,
-      unknown:    m.unknown,
-      resolvable: m.none + m.unknown, // candidates for the resolve-unknowns pass
+      a1:          m.explicit,
+      a2:          m.inferred,
+      none:        m.none,
+      unknown:     m.unknown,
+      a2_genuine:  Number(s.genuine) || 0,
+      a2_salesy:   Number(s.salesy)  || 0,
+      a2_unscored: a2Unscored,
+      resolvable:  m.none + m.unknown + a2Unscored,
+      threshold:   GENUINE_THRESHOLD,
     });
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch promotion stats' });

@@ -640,11 +640,12 @@ async function runAgent({ queries, directHandles = [], triggeredBy = 'manual', e
   globalConsecutive429  = 0;    // reset quota counter for a fresh run
   requestsSinceBreak   = 0;    // reset human-break counter
 
-  // ── Step 1: Build compound OR queries (4-5 keywords per call) ────────────────
-  // “vapi OR elevenlabs OR deepgram OR retell” = 1 call instead of 4
-  // Dramatically reduces search calls, frees budget for profile fetches
+  // ── Step 1: Build compound OR queries (6 keywords per call) ──────────────────
+  // “vapi OR elevenlabs OR deepgram OR retell OR cartesia OR livekit” = 1 call
+  // GROUP=6: ~33% fewer search calls than 4, niche-keyword coverage barely affected,
+  // frees more per-run budget for profile fetches. (Tunable; ~512-char query cap.)
   function buildCompoundQueries(rawQueries) {
-    const GROUP = 4;
+    const GROUP = 6;
     const groups = [];
     for (let i = 0; i < rawQueries.length; i += GROUP) {
       const chunk = rawQueries.slice(i, i + GROUP);

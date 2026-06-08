@@ -352,16 +352,33 @@ function quotaExhaustedGuard() {
   return rapidQuotaRemaining != null && rapidQuotaRemaining <= QUOTA_MIN_REMAINING;
 }
 
-// Build a maskable request string + stream request/response to the UI log
-function logApiCall(endpoint, params, status, ok, ms, keyLabel, errMsg) {
+// Summarise the response body into a short human string for the log
+function summariseResponse(endpoint, data) {
+  try {
+    if (endpoint === 'search') {
+      const handles = (JSON.stringify(data).match(/"screen_name"/g) || []).length;
+      return `${handles} results`;
+    }
+    if (endpoint === 'user') {
+      const u    = data?.result?.data?.user?.result;
+      const name = u?.core?.screen_name || u?.legacy?.screen_name;
+      const fol  = u?.legacy?.followers_count;
+      return name ? `@${name}${fol != null ? ` · ${Number(fol).toLocaleString()} followers` : ''}` : 'profile';
+    }
+  } catch {}
+  try { return `${Math.round(JSON.stringify(data).length / 1024)}KB`; } catch { return 'ok'; }
+}
+
+// Build a maskable request string + stream request/response (incl. result) to the UI log
+function logApiCall(endpoint, params, status, ok, ms, keyLabel, errMsg, result) {
   if (!apiCallSink) return;
   let q = Object.entries(params || {}).map(([k, v]) => `${k}=${v}`).join('&');
   if (q.length > 120) q = q.slice(0, 120) + '…';
   const request  = `GET /${endpoint}${q ? '?' + q : ''}`;
   const response = ok
-    ? `${status} OK · ${ms}ms · ${keyLabel}`
+    ? `${status} OK · ${ms}ms${result ? ' · ' + result : ''} · ${keyLabel}`
     : `${status || 'ERR'} · ${ms}ms${errMsg ? ' · ' + String(errMsg).slice(0, 70) : ''}`;
-  try { apiCallSink({ request, response, ok: !!ok, status: status || 0 }); } catch {}
+  try { apiCallSink({ request, response, result: result || null, ok: !!ok, status: status || 0 }); } catch {}
 }
 
 async function callAPI(endpoint, params = {}, emitStatus = null, sseKeepAlive = null) {
@@ -379,7 +396,7 @@ async function callAPI(endpoint, params = {}, emitStatus = null, sseKeepAlive = 
     });
     clearErrors(k);
     captureQuota(resp.headers);
-    logApiCall(endpoint, params, resp.status, true, Date.now() - start, k.label);
+    logApiCall(endpoint, params, resp.status, true, Date.now() - start, k.label, null, summariseResponse(endpoint, resp.data));
     return { success: true, data: resp.data, status: resp.status,
              duration_ms: Date.now() - start, key_label: k.label };
   } catch (err) {
@@ -403,7 +420,7 @@ async function callAPI(endpoint, params = {}, emitStatus = null, sseKeepAlive = 
           other.lastFiredAt = Date.now();
           clearErrors(other);
           captureQuota(resp2.headers);
-          logApiCall(endpoint, params, resp2.status, true, Date.now() - start, other.label);
+          logApiCall(endpoint, params, resp2.status, true, Date.now() - start, other.label, null, summariseResponse(endpoint, resp2.data));
           return { success: true, data: resp2.data, status: resp2.status,
                    duration_ms: Date.now() - start, key_label: other.label };
         } catch (e2) {

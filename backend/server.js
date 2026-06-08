@@ -176,6 +176,66 @@ function validateKeys() {
 // so callAPI can stream the raw request string + response status to the UI.
 let apiCallSink = null;
 
+// ── Run manager — decouples the agent run from any single SSE connection ──────
+// The run executes in the background and broadcasts events to ALL attached
+// viewers. Viewers can disconnect/reconnect freely without killing the run; it
+// only stops on an explicit stop request or the per-run cap.
+const runManager = {
+  active: false,
+  startedAt: 0,
+  triggeredBy: null,
+  stopRequested: false,
+  progress: 0,
+  listeners: new Set(),   // open SSE res objects
+  history: [],            // recent events so late-joiners catch up
+  lastSummary: null,
+  broadcast(event, data) {
+    if (event === 'status' && typeof data?.progress === 'number') this.progress = data.progress;
+    this.history.push({ event, data });
+    if (this.history.length > 400) this.history.shift();
+    for (const res of this.listeners) {
+      try { sse(res, event, data); } catch { this.listeners.delete(res); }
+    }
+  },
+  ping() {
+    for (const res of this.listeners) {
+      try { res.write(': ping\n\n'); } catch { this.listeners.delete(res); }
+    }
+  },
+  endListeners() {
+    for (const res of this.listeners) { try { res.end(); } catch {} }
+    this.listeners.clear();
+  },
+};
+
+// Start an agent run in the BACKGROUND (not tied to any request). Returns false
+// if a run is already active. Events stream to whoever is attached as a listener.
+function startAgentRun({ queries, directHandles = [], triggeredBy = 'manual' }) {
+  if (runManager.active) return false;
+  runManager.active = true;
+  runManager.stopRequested = false;
+  runManager.startedAt = Date.now();
+  runManager.triggeredBy = triggeredBy;
+  runManager.progress = 0;
+  runManager.history = [];
+  runManager.lastSummary = null;
+
+  runAgent({
+    queries, directHandles, triggeredBy,
+    emit:      (e, d) => runManager.broadcast(e, d),
+    keepAlive: ()     => runManager.ping(),
+    isAborted: ()     => runManager.stopRequested,
+  })
+    .then(summary => { runManager.lastSummary = summary; console.log(`[run] complete (${triggeredBy}) — +${summary?.accountsAdded ?? 0} new, ${summary?.duplicatesSkipped ?? 0} updated`); })
+    .catch(err => { console.error('[run] error:', err.message); try { runManager.broadcast('error', { step: 'run', message: err.message }); } catch {} })
+    .finally(() => {
+      runManager.active = false;
+      apiCallSink = null;
+      runManager.endListeners(); // close viewer connections; data is saved in DB
+    });
+  return true;
+}
+
 // Track global consecutive 429s â€” 3+ in a row = daily quota exhausted
 let globalConsecutive429 = 0;
 const QUOTA_EXHAUSTED_THRESHOLD = 3;
@@ -517,24 +577,14 @@ async function upsertAccount(account, runId) {
 }
 
 // â”€â”€ Core agent run function (reused by SSE endpoint + cron) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-async function runAgent({ queries, directHandles = [], triggeredBy = 'manual', sseRes = null, isAborted = () => false }) {
-  // Local abort flag for this run â€” set when the SSE socket closes unexpectedly
-  let localAborted = false;
-  const isLocalAborted = () => localAborted || isAborted();
-
-  const emit = (event, data) => {
-    if (sseRes && !isLocalAborted()) {
-      try { sse(sseRes, event, data); } catch { localAborted = true; } // socket closed
-    }
-  };
+// emit/keepAlive are injected by the caller (runManager broadcasts to all attached
+// viewers). The run is NO LONGER tied to a single socket — it only stops when an
+// explicit stop is requested (isAborted), so it survives client disconnects.
+async function runAgent({ queries, directHandles = [], triggeredBy = 'manual', emit = () => {}, keepAlive = () => {}, isAborted = () => false }) {
+  const isLocalAborted = () => isAborted();
   const pace = (msg) => emit('status', { step: 'pacing', message: msg });
   const paceWithBreak = async (msg) => { pace(msg); await humanBreak(pace); };
-  apiCallSink = (c) => emit('api_call', c); // stream raw request/response strings to the UI
-  const keepAlive = () => {
-    if (sseRes && !isLocalAborted()) {
-      try { sseRes.write(': ping\n\n'); } catch { localAborted = true; }
-    }
-  };
+  apiCallSink = (c) => emit('api_call', c); // stream raw request/response strings to listeners
 
   // Create run record
   const runResult = await db.execute({
@@ -1213,50 +1263,71 @@ app.get('/api/run-demo', require('./middleware/auth').requireAuth, async (req, r
   res.write('retry: 0\n\n');
   res.flushHeaders();
 
-  let queries         = [];
-  let directHandles   = []; // influencer handles from friend's DB â€” fetched directly, no search
-  const { query } = req.query;
+  // ATTACH ONLY — this endpoint never starts a run (use POST /api/agent/start).
+  // Disconnecting just detaches the viewer; the background run keeps going. This
+  // makes reconnect safe — re-opening the stream can never launch a new run.
+  runManager.listeners.add(res);
+  req.on('close', () => { runManager.listeners.delete(res); });
+
+  // Replay recent events so a fresh/reconnecting viewer catches up.
+  for (const f of runManager.history) { try { sse(res, f.event, f.data); } catch {} }
+
+  if (!runManager.active) {
+    // Nothing running — let the client know and close (history above shows the last run).
+    try { sse(res, 'idle', { message: 'No agent run is active' }); } catch {}
+    runManager.listeners.delete(res);
+    return res.end();
+  }
+  // Active run — stay open; runManager broadcasts live events and ends us on completion.
+});
+
+// â”€â”€ Agent control â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Start a run in the background (returns immediately). Watch it via GET /api/run-demo.
+app.post('/api/agent/start', require('./middleware/auth').requireAuth, async (req, res) => {
+  if (runManager.active) return res.json({ ok: true, alreadyRunning: true, message: 'A run is already in progress' });
+
+  let queries       = [];
+  let directHandles = [];
+  const query = req.query.query || req.body?.query;
 
   if (query) {
-    // Custom query from UI â€” use as-is
     queries = [query];
   } else {
-    // 1. Own active keywords
     const { rows: ownRows } = await db.execute(
       `SELECT keyword FROM keywords WHERE active = 1 ORDER BY class, category`
     );
-    const ownKeywords = ownRows.map(r => r.keyword);
-
-    // 2. Friend's search queries (read-only, never writes to friend's DB)
+    const ownKeywords   = ownRows.map(r => r.keyword);
     const friendQueries = await getFriendSearchQueries({ maxRows: 300 });
+    directHandles       = await getFriendInfluencerHandles();
 
-    // 3. Friend's known influencer handles (fetch directly, skip search step)
-    directHandles = await getFriendInfluencerHandles();
-
-    // Merge & deduplicate queries (own keywords take priority)
     const seen = new Set(ownKeywords.map(k => k.toLowerCase()));
     const merged = [...ownKeywords];
     for (const q of friendQueries) {
       if (!seen.has(q.toLowerCase())) { seen.add(q.toLowerCase()); merged.push(q); }
     }
     queries = merged.length ? merged : ['ai voice assistant', 'vapi developer', 'elevenlabs'];
-
-    console.log(`[Agent] Queries: ${ownKeywords.length} own + ${friendQueries.length} friend = ${queries.length} total`);
-    console.log(`[Agent] Direct handles from friend: ${directHandles.length}`);
+    console.log(`[Agent] Queries: ${ownKeywords.length} own + ${friendQueries.length} friend = ${queries.length} total | direct: ${directHandles.length}`);
   }
 
-  // Handle client disconnect gracefully
-  let aborted = false;
-  req.on('close', () => { aborted = true; });
+  const started = startAgentRun({ queries, directHandles, triggeredBy: 'manual' });
+  res.json({ ok: true, started, totalQueries: queries.length });
+});
 
-  try {
-    await runAgent({ queries, directHandles, triggeredBy: 'manual', sseRes: res, isAborted: () => aborted });
-  } catch (err) {
-    console.error('[SSE] Unexpected error in runAgent:', err.message);
-  } finally {
-    apiCallSink = null;
-    if (!res.writableEnded) res.end();
-  }
+app.get('/api/agent/status', require('./middleware/auth').requireAuth, (req, res) => {
+  res.json({
+    running:     runManager.active,
+    startedAt:   runManager.startedAt ? new Date(runManager.startedAt).toISOString() : null,
+    triggeredBy: runManager.triggeredBy,
+    progress:    runManager.progress,
+    viewers:     runManager.listeners.size,
+    lastSummary: runManager.lastSummary,
+  });
+});
+
+app.post('/api/agent/stop', require('./middleware/auth').requireAuth, (req, res) => {
+  if (!runManager.active) return res.json({ ok: true, message: 'No run active' });
+  runManager.stopRequested = true;
+  res.json({ ok: true, message: 'Stop requested — the run will finish its current request and stop.' });
 });
 
 // â”€â”€ Health check (public) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -1295,7 +1366,9 @@ cron.schedule('0 2 * * 1', async () => {
     const nextRun = new Date(); nextRun.setDate(nextRun.getDate() + 7); nextRun.setHours(2, 0, 0, 0);
     await db.execute({ sql: `UPDATE agent_config SET value=?, updated_at=datetime('now') WHERE key='next_run'`, args: [nextRun.toISOString()] });
 
-    const summary = await runAgent({ queries: merged, directHandles, triggeredBy: 'weekly_cron' });
+    if (runManager.active) { console.log('[WEEKLY] A run is already active - skipping'); return; }
+    startAgentRun({ queries: merged, directHandles, triggeredBy: 'weekly_cron' });
+    const summary = { accountsAdded: '?', duplicatesSkipped: '?' }; // runs in background; see runManager.lastSummary
     console.log(`[WEEKLY] â•â•â•â•â•â• Done â€” +${summary.accountsAdded} new, ${summary.duplicatesSkipped} updated â•â•â•â•â•â•\n`);
   } catch (err) {
     console.error('[WEEKLY] Error:', err.message);

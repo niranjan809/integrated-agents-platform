@@ -16,14 +16,36 @@ export function AgentProvider({ children }) {
 
   const esRef          = useRef(null);
   const completedRef   = useRef(false);
+  const reconnectRef   = useRef(null);  // timer for auto-reattach after a dropped stream
   const doneCallbacks  = useRef([]);  // components register here to hear run completion
 
   const addLog = useCallback((msg, type = 'info') => {
     setStepLog(prev => [...prev.slice(-299), { msg, type, ts: Date.now() }]);
   }, []);
 
-  // Cleanup: close EventSource on unmount to prevent leaks
-  useEffect(() => () => { esRef.current?.close(); }, []);
+  // Cleanup: close EventSource + reconnect timer on unmount to prevent leaks
+  useEffect(() => () => {
+    esRef.current?.close();
+    if (reconnectRef.current) clearTimeout(reconnectRef.current);
+  }, []);
+
+  // On load, reattach if a run is already going in the background (survives reload)
+  useEffect(() => {
+    const token = localStorage.getItem('kiteai_token');
+    if (!token) return;
+    fetch(`${API}/api/agent/status`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(d => {
+        if (d?.running) {
+          completedRef.current = false;
+          setRunning(true);
+          addLog('Reattached to a run already in progress…', 'info');
+          attachStream();
+        }
+      })
+      .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Dashboard (or any page) can register a callback to run when agent finishes
   const onRunComplete = useCallback((cb) => {
@@ -31,33 +53,15 @@ export function AgentProvider({ children }) {
     return () => { doneCallbacks.current = doneCallbacks.current.filter(f => f !== cb); };
   }, []);
 
-  function startRun(query = '') {
-    if (running) return;
-
-    setRunning(true);
-    setAccounts([]);
-    setErrCards([]);
-    setStepLog([]);
-    setProgress(0);
-    setSummary(null);
-    setConnErr('');
-    setStats({ added: 0, updated: 0, errors: 0 });
-    setApiLog([]);
-    completedRef.current = false;
-
+  // Open (or re-open) the event stream to WATCH the background run. Safe to call
+  // repeatedly — the backend endpoint only attaches a viewer, never starts a run.
+  function attachStream() {
     const token = localStorage.getItem('kiteai_token');
-    if (!token) {
-      setConnErr('Not authenticated — please log in again.');
-      setRunning(false);
-      return;
-    }
-
-    const params = new URLSearchParams({ _token: token });
-    if (query.trim()) params.set('query', query.trim());
+    if (!token) { setConnErr('Not authenticated — please log in again.'); setRunning(false); return; }
 
     let es;
     try {
-      es = new EventSource(`${API}/api/run-demo?${params.toString()}`);
+      es = new EventSource(`${API}/api/run-demo?_token=${encodeURIComponent(token)}`);
     } catch {
       setConnErr(`Cannot connect to backend at ${API} — is the server running?`);
       setRunning(false);
@@ -65,10 +69,21 @@ export function AgentProvider({ children }) {
     }
     esRef.current = es;
 
-    es.onopen = () => {
-      setConnErr('');
-      addLog('Agent started — fetching all keywords…', 'success');
+    // Cleanly end the run view
+    const endRun = (src) => {
+      completedRef.current = true;
+      setRunning(false);
+      esRef.current = null;
+      if (reconnectRef.current) { clearTimeout(reconnectRef.current); reconnectRef.current = null; }
+      try { src.close(); } catch {}
     };
+
+    es.onopen = () => { setConnErr(''); };
+
+    es.addEventListener('idle', () => {
+      addLog('No active run.', 'info');
+      endRun(es);
+    });
 
     es.addEventListener('status', e => {
       try {
@@ -137,14 +152,6 @@ export function AgentProvider({ children }) {
       } catch {}
     });
 
-    // Helper: cleanly end the run
-    const endRun = (es) => {
-      completedRef.current = true;
-      setRunning(false);
-      esRef.current = null; // null BEFORE close so onerror guard skips
-      es.close();
-    };
-
     es.addEventListener('quota_exhausted', e => {
       try {
         const d = JSON.parse(e.data);
@@ -189,20 +196,52 @@ export function AgentProvider({ children }) {
 
     es.onerror = () => {
       if (completedRef.current) { es.close(); return; } // normal close — ignore
+      // Stream dropped mid-run — the run KEEPS GOING server-side. Reattach to resume
+      // watching (the endpoint replays history so we catch up). Never starts a new run.
       if (esRef.current === es) {
-        setConnErr(`Connection lost — the backend stopped responding. Check it is running at ${API} and try again.`);
-        addLog('Stream disconnected', 'error');
-        setRunning(false);
+        es.close();
         esRef.current = null;
+        addLog('Stream dropped — the run continues in the background, reattaching…', 'warn');
+        reconnectRef.current = setTimeout(() => { if (!completedRef.current) attachStream(); }, 3000);
+      } else {
+        es.close();
       }
-      es.close();
     };
   }
 
-  function stopRun() {
+  async function startRun(query = '') {
+    if (running) return;
+    setRunning(true);
+    setAccounts([]); setErrCards([]); setStepLog([]); setProgress(0);
+    setSummary(null); setConnErr(''); setStats({ added: 0, updated: 0, errors: 0 }); setApiLog([]);
+    completedRef.current = false;
+
+    const token = localStorage.getItem('kiteai_token');
+    if (!token) { setConnErr('Not authenticated — please log in again.'); setRunning(false); return; }
+
+    // Kick off the run in the BACKGROUND, then attach to watch it.
+    try {
+      const qs = query.trim() ? `?query=${encodeURIComponent(query.trim())}` : '';
+      const r  = await fetch(`${API}/api/agent/start${qs}`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+      const d  = await r.json().catch(() => ({}));
+      if (d.alreadyRunning) addLog('A run was already in progress — attaching to it.', 'warn');
+      else addLog(`Agent started${d.totalQueries ? ` — ${d.totalQueries} queries` : ''}. Runs in the background — safe to close this tab.`, 'success');
+    } catch {
+      setConnErr(`Cannot reach backend at ${API} — is the server running?`);
+      setRunning(false);
+      return;
+    }
+    attachStream();
+  }
+
+  async function stopRun() {
+    const token = localStorage.getItem('kiteai_token');
+    try { await fetch(`${API}/api/agent/stop`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } }); } catch {}
+    if (reconnectRef.current) { clearTimeout(reconnectRef.current); reconnectRef.current = null; }
     if (esRef.current) { esRef.current.close(); esRef.current = null; }
+    completedRef.current = true;
     setRunning(false);
-    addLog('Run stopped by user', 'warn');
+    addLog('Stop requested — the run will finish its current request and stop.', 'warn');
   }
 
   return (

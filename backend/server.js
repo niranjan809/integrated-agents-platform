@@ -75,6 +75,13 @@ const JITTER_MS = 6000; // Â±3 000ms random spread
 // Per-run request cap â€” protects shared paid quota
 const MAX_REQUESTS_PER_RUN = Number(process.env.MAX_REQUESTS_PER_RUN) || 5000;
 
+// Hard monthly-quota guard. RapidAPI reports the real shared monthly counter in
+// response headers; we stop a run when remaining drops to this reserve so we never
+// exhaust the plan (and leave headroom for the shared user). Configurable via env.
+const QUOTA_MIN_REMAINING = Number(process.env.QUOTA_MIN_REMAINING) || 10000;
+let rapidQuotaRemaining = null; // latest x-ratelimit-requests-remaining seen
+let rapidQuotaLimit     = null; // latest x-ratelimit-requests-limit seen
+
 // Authenticity threshold — A2 promoters scoring >= this read as genuine creators;
 // below it they're salesy/templated (separate "low-quality" bucket). Keep in sync
 // with the same constant in routes/accounts.js and the frontend.
@@ -331,6 +338,20 @@ function clearErrors(k) {
   k.requests++;
 }
 
+// Read the real shared monthly quota from RapidAPI response headers
+function captureQuota(headers) {
+  if (!headers) return;
+  const rem = Number(headers['x-ratelimit-requests-remaining']);
+  const lim = Number(headers['x-ratelimit-requests-limit']);
+  if (Number.isFinite(rem)) rapidQuotaRemaining = rem;
+  if (Number.isFinite(lim)) rapidQuotaLimit = lim;
+}
+
+// True when we're at/below the reserve and must stop to protect the shared plan
+function quotaExhaustedGuard() {
+  return rapidQuotaRemaining != null && rapidQuotaRemaining <= QUOTA_MIN_REMAINING;
+}
+
 // Build a maskable request string + stream request/response to the UI log
 function logApiCall(endpoint, params, status, ok, ms, keyLabel, errMsg) {
   if (!apiCallSink) return;
@@ -357,6 +378,7 @@ async function callAPI(endpoint, params = {}, emitStatus = null, sseKeepAlive = 
       timeout: 20_000,
     });
     clearErrors(k);
+    captureQuota(resp.headers);
     logApiCall(endpoint, params, resp.status, true, Date.now() - start, k.label);
     return { success: true, data: resp.data, status: resp.status,
              duration_ms: Date.now() - start, key_label: k.label };
@@ -380,6 +402,7 @@ async function callAPI(endpoint, params = {}, emitStatus = null, sseKeepAlive = 
           });
           other.lastFiredAt = Date.now();
           clearErrors(other);
+          captureQuota(resp2.headers);
           logApiCall(endpoint, params, resp2.status, true, Date.now() - start, other.label);
           return { success: true, data: resp2.data, status: resp2.status,
                    duration_ms: Date.now() - start, key_label: other.label };
@@ -644,6 +667,10 @@ async function runAgent({ queries, directHandles = [], triggeredBy = 'manual', e
   try { // catches QuotaExhaustedError from acquireKey
   for (const query of shuffledQueries) {
     if (isLocalAborted()) break;
+    if (health.calls >= MAX_REQUESTS_PER_RUN || quotaExhaustedGuard()) {
+      emit('status', { step: 'cap_reached', message: `Stopping before next query — ${quotaExhaustedGuard() ? `monthly quota reserve reached (${rapidQuotaRemaining} left)` : `per-run cap (${MAX_REQUESTS_PER_RUN})`}. Data saved.`, progress: 100 });
+      break;
+    }
     emit('status', { step: 'search', message: `Searching: “${query}”`, progress: 0 });
 
     const searchCount = 40 + Math.floor(Math.random() * 11); // anti-bot count variation
@@ -747,6 +774,14 @@ async function runAgent({ queries, directHandles = [], triggeredBy = 'manual', e
           message: `Request cap reached (${MAX_REQUESTS_PER_RUN} calls). Stopping to protect shared quota. Data saved so far.`,
           progress: 100 });
         console.log(`[CAP] Run stopped at ${health.calls} requests (limit: ${MAX_REQUESTS_PER_RUN})`);
+        break;
+      }
+      // Hard monthly-quota guard â€” stop before exhausting the shared plan
+      if (quotaExhaustedGuard()) {
+        emit('status', { step: 'cap_reached',
+          message: `Monthly quota guard hit (${rapidQuotaRemaining} of ${rapidQuotaLimit} left, reserve ${QUOTA_MIN_REMAINING}). Stopping. Data saved so far.`,
+          progress: 100 });
+        console.log(`[QUOTA] Run stopped — ${rapidQuotaRemaining} requests remaining (reserve ${QUOTA_MIN_REMAINING})`);
         break;
       }
 
@@ -1147,8 +1182,10 @@ async function resolveUnknowns({ scope = 'all', sseRes = null, isAborted = () =>
   try {
     for (let i = 0; i < rows.length; i++) {
       if (isLocalAborted()) break;
-      if (health.calls >= MAX_REQUESTS_PER_RUN) {
-        emit('status', { step: 'cap_reached', message: `Request cap (${MAX_REQUESTS_PER_RUN}) reached — stopping. Progress saved.` });
+      if (health.calls >= MAX_REQUESTS_PER_RUN || quotaExhaustedGuard()) {
+        emit('status', { step: 'cap_reached', message: quotaExhaustedGuard()
+          ? `Monthly quota reserve reached (${rapidQuotaRemaining} of ${rapidQuotaLimit} left). Stopping. Progress saved.`
+          : `Request cap (${MAX_REQUESTS_PER_RUN}) reached — stopping. Progress saved.` });
         break;
       }
       const acc = rows[i];
@@ -1336,6 +1373,11 @@ app.get('/api/health', (req, res) => {
     status:     'ok',
     key_stats:  keyStats(),
     db_url:     process.env.TURSO_URL ? 'connected' : 'NOT SET',
+    rapid_quota: {
+      remaining: rapidQuotaRemaining,
+      limit:     rapidQuotaLimit,
+      reserve:   QUOTA_MIN_REMAINING,
+    },
   });
 });
 

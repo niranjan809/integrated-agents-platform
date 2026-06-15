@@ -1536,6 +1536,49 @@ app.post('/api/tasks/:id/run', require('./middleware/auth').requireAuth, async (
   res.json({ ok: true, started, taskId, totalKeywords: keywords.length });
 });
 
+// Gather the full weekly query set: own active keywords + friend queries + direct handles
+async function buildWeeklyRun() {
+  const { rows: ownRows } = await db.execute(`SELECT keyword FROM keywords WHERE active = 1 ORDER BY class, category`);
+  const ownKeywords   = ownRows.map(r => r.keyword);
+  const friendQueries = await getFriendSearchQueries({ maxRows: 300 });
+  const directHandles = await getFriendInfluencerHandles();
+  const seen = new Set(ownKeywords.map(k => k.toLowerCase()));
+  const merged = [...ownKeywords];
+  for (const q of friendQueries) {
+    if (!seen.has(q.toLowerCase())) { seen.add(q.toLowerCase()); merged.push(q); }
+  }
+  return { queries: merged, directHandles };
+}
+
+// POST /api/cron/run — external scheduler (GitHub Actions) trigger for the weekly run.
+// Secured by CRON_SECRET (header x-cron-secret OR ?secret=). The incoming request also
+// wakes Render from sleep — which is why this works where the in-process cron can't.
+app.post('/api/cron/run', async (req, res) => {
+  const provided = req.get('x-cron-secret') || req.query.secret;
+  if (!process.env.CRON_SECRET || provided !== process.env.CRON_SECRET) {
+    return res.status(401).json({ error: 'invalid or missing cron secret' });
+  }
+  try {
+    const cfg = await db.execute(`SELECT value FROM agent_config WHERE key='auto_run_enabled'`);
+    if (cfg.rows[0]?.value !== '1')  return res.json({ ok: false, reason: 'auto-run disabled' });
+    if (runManager.active)           return res.json({ ok: true,  alreadyRunning: true });
+    if (monthlyBudgetGuard())        return res.json({ ok: false, budgetReached: true, message: `Monthly budget reached (${monthlyCalls}/${MONTHLY_CALL_BUDGET})` });
+
+    const { queries, directHandles } = await buildWeeklyRun();
+    if (!queries.length && !directHandles.length) return res.json({ ok: false, reason: 'no keywords' });
+
+    const nextRun = new Date(); nextRun.setDate(nextRun.getDate() + 7); nextRun.setHours(2, 0, 0, 0);
+    await db.execute({ sql: `UPDATE agent_config SET value=?, updated_at=datetime('now') WHERE key='next_run'`, args: [nextRun.toISOString()] }).catch(() => {});
+
+    const started = startAgentRun({ queries, directHandles, triggeredBy: 'github_cron' });
+    console.log(`[CRON] Weekly run triggered via GitHub Action — ${queries.length} queries, ${directHandles.length} direct handles`);
+    res.json({ ok: true, started, totalQueries: queries.length });
+  } catch (err) {
+    console.error('[CRON] trigger error:', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 app.get('/api/agent/status', require('./middleware/auth').requireAuth, (req, res) => {
   res.json({
     running:     runManager.active,

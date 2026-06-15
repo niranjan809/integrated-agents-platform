@@ -1,0 +1,27 @@
+name: Weekly X fetch
+
+# Reliable weekly trigger that runs on GitHub's servers (not Render), so it works
+# even when the Render free-tier backend is asleep — the HTTP request wakes it.
+on:
+  schedule:
+    # Monday 02:00 IST = Sunday 20:30 UTC (IST = UTC+5:30)
+    - cron: '30 20 * * 0'
+  workflow_dispatch: {}   # also lets you trigger it manually from the Actions tab
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wake backend (Render cold start can take ~30-60s)
+        run: curl -fsS --max-time 90 "${{ secrets.BACKEND_URL }}/api/health" || true
+
+      - name: Trigger weekly run
+        run: |
+          code=$(curl -s -o /tmp/out.txt -w "%{http_code}" -X POST \
+            "${{ secrets.BACKEND_URL }}/api/cron/run" \
+            -H "x-cron-secret: ${{ secrets.CRON_SECRET }}" \
+            --max-time 120)
+          echo "HTTP $code"
+          cat /tmp/out.txt
+          echo
+          test "$code" = "200"

@@ -712,6 +712,8 @@ body { background: var(--bg); color: var(--text); font-family: 'Inter', 'Segoe U
 .bucket-section.b-dim    { border-left-color: #888; }
 .bucket-section.b-blue   { border-left-color: var(--blue); }
 .bucket-section.b-grey   { border-left-color: #555; }
+.bucket-section.b-orange { border-left-color: #f08c2e; }
+.badge.orange { background: rgba(240,140,46,.16); color: #f08c2e; }
 .bucket-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
 .bucket-title { font-size: 14px; font-weight: 700; }
 .bucket-count { background: var(--bg3); border-radius: 10px; padding: 1px 9px; font-size: 12px; font-weight: 700; }

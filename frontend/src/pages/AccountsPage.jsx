@@ -3,11 +3,14 @@ import { useAuth } from '../context/AuthContext';
 
 const API = (import.meta.env.VITE_API_URL || 'http://localhost:3001').replace(/\/$/, '');
 
-// Authenticity threshold — keep in sync with GENUINE_THRESHOLD (backend)
+// Authenticity + repost thresholds — keep in sync with backend
 const GENUINE_MIN = 60;
+const REPOST_MIN  = 60;
 
-// Which A2 sub-bucket an account falls in (genuine creator vs salesy vs not-yet-scored)
+// Which sub-bucket an account falls in. Reposters/amplifiers are pulled out FIRST so
+// they never show up under A1/A2.
 function authBucket(a) {
+  if (a.repost_ratio != null && a.repost_ratio >= REPOST_MIN) return 'reposter';
   if (a.promotion_type === 'explicit') return 'a1';
   if (a.promotion_type === 'inferred') {
     if (a.authenticity_score === null || a.authenticity_score === undefined) return 'unscored';
@@ -289,10 +292,17 @@ function AccountRow({ account, rank }) {
           )}
           {!!account.contact_email && <span className="badge blue" title={account.contact_email}>@</span>}
           {/* Promotion type badge */}
-          {account.promotion_type === 'explicit'  && <span className="badge promo-tag-exp" title="Confirmed paid promoter">💰 A1</span>}
-          {account.promotion_type === 'inferred'  && <span className="badge promo-tag-inf" title={`Likely paid promoter (${account.promotion_confidence}%)`}>~ A2</span>}
-          {/* Authenticity (genuine creator vs salesy) badge for A2 */}
-          {account.promotion_type === 'inferred' && account.authenticity_score != null && (
+          {account.repost_ratio != null && account.repost_ratio >= 60 ? (
+            <span className="badge" title={`Mostly reposts (${account.repost_ratio}%) — amplifier, not a creator`}
+              style={{ background: 'rgba(240,140,46,.16)', color: '#f08c2e' }}>🔁 {account.repost_ratio}%</span>
+          ) : (
+            <>
+              {account.promotion_type === 'explicit'  && <span className="badge promo-tag-exp" title="Confirmed paid promoter">💰 A1</span>}
+              {account.promotion_type === 'inferred'  && <span className="badge promo-tag-inf" title={`Likely paid promoter (${account.promotion_confidence}%)`}>~ A2</span>}
+            </>
+          )}
+          {/* Authenticity (genuine creator vs salesy) badge for A2 — not for reposters */}
+          {(account.repost_ratio == null || account.repost_ratio < 60) && account.promotion_type === 'inferred' && account.authenticity_score != null && (
             <span className="badge" title={account.authenticity_reason || 'content authenticity'}
               style={{ background: account.authenticity_score >= 60 ? 'rgba(0,200,150,.15)' : 'rgba(136,136,136,.18)',
                        color: account.authenticity_score >= 60 ? '#00C896' : '#999' }}>
@@ -518,7 +528,7 @@ export default function AccountsPage({ mode }) {
     });
     // Sort: A1 → A2-genuine → A2-unscored → A2-salesy → others; within A2 by authenticity desc
     if (sortBy === 'score') {
-      const bucketOrder = { a1: 0, genuine: 1, unscored: 2, salesy: 3, other: 4 };
+      const bucketOrder = { a1: 0, genuine: 1, unscored: 2, salesy: 3, other: 4, reposter: 5 };
       out = [...out].sort((a, b) => {
         const ba = authBucket(a), bb = authBucket(b);
         if (bucketOrder[ba] !== bucketOrder[bb]) return bucketOrder[ba] - bucketOrder[bb];
@@ -541,6 +551,7 @@ export default function AccountsPage({ mode }) {
   const a2Genuine     = accounts.filter(a => authBucket(a) === 'genuine').length;
   const a2Salesy      = accounts.filter(a => authBucket(a) === 'salesy').length;
   const a2Unscored    = accounts.filter(a => authBucket(a) === 'unscored').length;
+  const reposterCount = accounts.filter(a => authBucket(a) === 'reposter').length;
 
   const reloadAccounts = useCallback(() => {
     apiFetch(endpoint).then(r => r.json()).then(d => setAccounts(d.accounts || [])).catch(() => {});
@@ -606,7 +617,7 @@ export default function AccountsPage({ mode }) {
       {/* Filters */}
       <div className="filter-panel">
         {/* Promotion + authenticity filter — A1 / A2 Genuine / Salesy (option B split) */}
-        {mode === 'influencers' && (confirmedPaid > 0 || likelyPaid > 0) && (
+        {mode === 'influencers' && (confirmedPaid > 0 || likelyPaid > 0 || reposterCount > 0) && (
           <div className="filter-row">
             <span className="filter-group-label">Paid Status</span>
             <div className="filter-chips">
@@ -634,6 +645,14 @@ export default function AccountsPage({ mode }) {
                   onClick={() => setPromoFilter(p => p==='unscored'?'':'unscored')}
                   title="Likely-paid (A2) but content quality not yet scored — run Resolve to score them">
                   ◷ A2 — Unscored <span className="chip-count" style={{background: promoFilter==='unscored'?'#F9A825':''}}>{a2Unscored}</span>
+                </button>
+              )}
+              {reposterCount > 0 && (
+                <button className={`filter-chip${promoFilter==='reposter'?' active':''}`}
+                  style={promoFilter==='reposter'?{borderColor:'#f08c2e',color:'#f08c2e',background:'rgba(240,140,46,.10)'}:{}}
+                  onClick={() => setPromoFilter(p => p==='reposter'?'':'reposter')}
+                  title="Mostly retweet others (amplifiers) — kept out of A1/A2">
+                  🔁 Reposters <span className="chip-count" style={{background: promoFilter==='reposter'?'#f08c2e':''}}>{reposterCount}</span>
                 </button>
               )}
             </div>

@@ -79,7 +79,11 @@ const MAX_REQUESTS_PER_RUN = Number(process.env.MAX_REQUESTS_PER_RUN) || 5000;
 // How many pages to pull per compound search query (page 1 + extra cursor pages).
 // Each page = 1 API call. "Top" search depth has diminishing returns after a few
 // pages (results start repeating), so 3 is a sensible default. Tunable via env.
-const MAX_SEARCH_PAGES = Math.max(1, Number(process.env.MAX_SEARCH_PAGES) || 3);
+const MAX_SEARCH_PAGES = Math.max(1, Number(process.env.MAX_SEARCH_PAGES) || 4);
+
+// An account whose recent timeline is >= this % pure reposts/retweets is treated as
+// a "reposter / amplifier" — shown in its own section, kept OUT of A1/A2. Env-tunable.
+const REPOST_THRESHOLD = Math.max(1, Math.min(100, Number(process.env.REPOST_THRESHOLD) || 60));
 
 // Hard monthly-quota guard. RapidAPI reports the real shared monthly counter in
 // response headers; we stop a run when remaining drops to this reserve so we never
@@ -476,17 +480,25 @@ async function callAPI(endpoint, params = {}, emitStatus = null, sseKeepAlive = 
 // live agent's promotion check and the resolve-unknowns backfill job.
 async function fetchRecentTweets(handle, count = 20, paceFn = null, keepAliveFn = null) {
   const res = await callAPI('search', { query: `from:${handle}`, count, type: 'Latest' }, paceFn, keepAliveFn);
-  if (!res.success) return { tweets: [], duration_ms: res.duration_ms, success: false, status: res.status };
+  if (!res.success) return { tweets: [], duration_ms: res.duration_ms, success: false, status: res.status, repostRatio: null };
   const instr   = res.data?.result?.timeline?.instructions || [];
   const entries = (instr.find(i => i.type === 'TimelineAddEntries')?.entries || []);
   const tweets  = [];
+  let reposts = 0, total = 0;
   for (const e of entries) {
     try {
-      const t = e.content?.itemContent?.tweet_results?.result?.legacy?.full_text;
-      if (t && !t.startsWith('RT @')) tweets.push(t.slice(0, 220));
+      const lg = e.content?.itemContent?.tweet_results?.result?.legacy;
+      const t  = lg?.full_text;
+      if (!t) continue;
+      total++;
+      // A pure repost = retweet ("RT @…") or has a retweeted_status. Quote tweets have
+      // their own commentary (don't start with "RT @") and count as original content.
+      if (t.startsWith('RT @') || lg?.retweeted_status_result) reposts++;
+      else tweets.push(t.slice(0, 220));
     } catch {}
   }
-  return { tweets, duration_ms: res.duration_ms, success: true };
+  const repostRatio = total > 0 ? Math.round((reposts / total) * 100) : null;
+  return { tweets, duration_ms: res.duration_ms, success: true, repostRatio, repostCount: reposts, total };
 }
 
 function keyStats() {
@@ -609,6 +621,8 @@ async function upsertAccount(account, runId) {
                    ? null : Number(account.authenticity_score);
   const aReason  = account.authenticity_reason  || null;
   const aExample = account.authenticity_example || null;
+  const repostRatio = (account.repost_ratio === undefined || account.repost_ratio === null)
+                      ? null : Number(account.repost_ratio);
   if (isDup) {
     await db.execute({
       sql: `UPDATE accounts SET name=?, bio=?, followers=?, following=?, tweets=?,
@@ -619,6 +633,7 @@ async function upsertAccount(account, runId) {
             authenticity_score=COALESCE(?, authenticity_score),
             authenticity_reason=COALESCE(?, authenticity_reason),
             authenticity_example=COALESCE(?, authenticity_example),
+            repost_ratio=COALESCE(?, repost_ratio),
             last_updated=datetime('now'), run_id=?
             WHERE handle=?`,
       args: [account.name, account.bio, account.followers, account.following, account.tweets,
@@ -628,7 +643,7 @@ async function upsertAccount(account, runId) {
              account.dmOpen ? 1 : 0, account.hasEmail ? 1 : 0,
              account.contactEmail || null, account.ai_model || null, account.ai_reason || null,
              account.promotion_type || 'unknown', account.promotion_confidence || 0, promoSignals,
-             aScore, aReason, aExample,
+             aScore, aReason, aExample, repostRatio,
              runId, account.handle.toLowerCase()],
     });
   } else {
@@ -637,8 +652,8 @@ async function upsertAccount(account, runId) {
             avatar, website, location, tier, account_type, track, d2, d3, d4, d5, overall,
             dm_open, has_email, contact_email, ai_model, ai_reason,
             promotion_type, promotion_confidence, promotion_signals,
-            authenticity_score, authenticity_reason, authenticity_example, run_id)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+            authenticity_score, authenticity_reason, authenticity_example, repost_ratio, run_id)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       args: [account.handle.toLowerCase(), account.name, account.bio,
              account.followers, account.following, account.tweets,
              account.verified ? 1 : 0, account.avatar, account.website, account.location,
@@ -647,7 +662,7 @@ async function upsertAccount(account, runId) {
              account.dmOpen ? 1 : 0, account.hasEmail ? 1 : 0,
              account.contactEmail || null, account.ai_model || null, account.ai_reason || null,
              account.promotion_type || 'unknown', account.promotion_confidence || 0, promoSignals,
-             aScore, aReason, aExample, runId],
+             aScore, aReason, aExample, repostRatio, runId],
     });
   }
   return isDup;
@@ -1040,6 +1055,7 @@ async function runAgent({ queries, directHandles = [], triggeredBy = 'manual', t
       let promoConfidence = ai?.promotion_confidence || 0;
       let promoSignals    = ai?.promotion_signals    || [];
       let authScore = null, authReason = null, authExample = null; // genuine-creator quality
+      let repostRatio = null; // % of recent posts that are reposts (amplifier detection)
 
       const dupNeedsRecheck = isDup && ['unknown', 'none'].includes(existingPromo.get(a.handle));
       if (finalTrack === 'A' && (!isDup || dupNeedsRecheck)) {
@@ -1057,8 +1073,9 @@ async function runAgent({ queries, directHandles = [], triggeredBy = 'manual', t
         const needsTweetCheck = promoType !== 'explicit' && health.calls < MAX_REQUESTS_PER_RUN - 50;
         if (needsTweetCheck) {
           emit('status', { step: 'tweet_check', message: `Paid-pattern check @${a.handle}` });
-          const { tweets, duration_ms } = await fetchRecentTweets(a.handle, 20, pace, keepAlive);
+          const { tweets, duration_ms, repostRatio: rr } = await fetchRecentTweets(a.handle, 20, pace, keepAlive);
           health.calls++; health.totalMs += duration_ms;
+          repostRatio = rr;
 
           if (tweets.length > 0) {
             const tweetAI = await analysePaidPattern(a.handle, a.bio, tweets);
@@ -1088,6 +1105,7 @@ async function runAgent({ queries, directHandles = [], triggeredBy = 'manual', t
       account.authenticity_score   = authScore;
       account.authenticity_reason  = authReason;
       account.authenticity_example = authExample;
+      account.repost_ratio         = repostRatio;
 
       const savedDup = await upsertAccount(account, runId);
       if (savedDup) duplicatesSkipped++; else accountsAdded++;
@@ -1299,9 +1317,13 @@ async function resolveUnknowns({ scope = 'all', sseRes = null, isAborted = () =>
         key_stats: keyStats(),
       });
 
-      const { tweets, success, duration_ms } = await fetchRecentTweets(acc.handle, 20, paceWithBreak, keepAlive);
+      const { tweets, success, duration_ms, repostRatio } = await fetchRecentTweets(acc.handle, 20, paceWithBreak, keepAlive);
       health.calls++; health.totalMs += duration_ms || 0;
       if (success) health.successes++; else health.errors++;
+      // Persist repost ratio whenever we have it — even pure-reposter timelines (0 originals)
+      if (repostRatio != null) {
+        await db.execute({ sql: `UPDATE accounts SET repost_ratio=? WHERE handle=?`, args: [repostRatio, acc.handle] }).catch(() => {});
+      }
 
       let outcome = acc.promotion_type;       // unchanged unless re-analysis resolves it
       let result  = null;

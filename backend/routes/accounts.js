@@ -44,22 +44,26 @@ router.get('/influencers', async (req, res) => {
   }
 });
 
-// Authenticity threshold — keep in sync with GENUINE_THRESHOLD in server.js
+// Thresholds — keep in sync with server.js
 const GENUINE_THRESHOLD = 60;
+const REPOST_THRESHOLD  = Math.max(1, Math.min(100, Number(process.env.REPOST_THRESHOLD) || 60));
 
-// GET /api/accounts/promotion-stats — Track A breakdown by promotion_type + A2 quality split
+// GET /api/accounts/promotion-stats — Track A breakdown by promotion_type + A2 quality split.
+// Reposters/amplifiers are pulled out of A1/A2 counts and reported separately.
 router.get('/promotion-stats', async (req, res) => {
   try {
-    const [byType, a2split] = await Promise.all([
-      db.execute(`SELECT promotion_type, COUNT(*) n FROM accounts WHERE track='A' GROUP BY promotion_type`),
+    const nr = `(repost_ratio IS NULL OR repost_ratio < ${REPOST_THRESHOLD})`;
+    const [byType, a2split, repostRow] = await Promise.all([
+      db.execute(`SELECT promotion_type, COUNT(*) n FROM accounts WHERE track='A' AND ${nr} GROUP BY promotion_type`),
       db.execute({
         sql: `SELECT
                 SUM(CASE WHEN authenticity_score >= ? THEN 1 ELSE 0 END)                          genuine,
                 SUM(CASE WHEN authenticity_score IS NOT NULL AND authenticity_score < ? THEN 1 ELSE 0 END) salesy,
                 SUM(CASE WHEN authenticity_score IS NULL THEN 1 ELSE 0 END)                        unscored
-              FROM accounts WHERE track='A' AND promotion_type='inferred'`,
+              FROM accounts WHERE track='A' AND promotion_type='inferred' AND ${nr}`,
         args: [GENUINE_THRESHOLD, GENUINE_THRESHOLD],
       }),
+      db.execute(`SELECT COUNT(*) n FROM accounts WHERE repost_ratio >= ${REPOST_THRESHOLD}`),
     ]);
     const m = { explicit: 0, inferred: 0, none: 0, unknown: 0 };
     byType.rows.forEach(r => { if (r.promotion_type in m) m[r.promotion_type] = Number(r.n); });
@@ -74,8 +78,10 @@ router.get('/promotion-stats', async (req, res) => {
       a2_genuine:  Number(s.genuine) || 0,
       a2_salesy:   Number(s.salesy)  || 0,
       a2_unscored: a2Unscored,
+      reposters:   Number(repostRow.rows[0].n) || 0,
       resolvable:  m.none + m.unknown + a2Unscored,
       threshold:   GENUINE_THRESHOLD,
+      repost_threshold: REPOST_THRESHOLD,
     });
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch promotion stats' });

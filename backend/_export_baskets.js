@@ -4,8 +4,10 @@ const XLSX = require('xlsx');
 const { db } = require('./db');
 
 const GENUINE_THRESHOLD = 60;
+const REPOST_THRESHOLD  = Math.max(1, Math.min(100, Number(process.env.REPOST_THRESHOLD) || 60));
 
 function bucketOf(a) {
+  if (a.repost_ratio != null && a.repost_ratio >= REPOST_THRESHOLD) return 'Reposters';
   if (a.track === 'B') return 'Track B (ads)';
   if (a.promotion_type === 'explicit') return 'A1 Confirmed';
   if (a.promotion_type === 'inferred') {
@@ -33,6 +35,7 @@ function row(a, basket) {
     Promotion:     a.promotion_type || '',
     'Promo Conf':  a.promotion_confidence ?? '',
     Authenticity:  a.authenticity_score ?? '',
+    'Repost %':    a.repost_ratio ?? '',
     'Auth Reason': a.authenticity_reason || '',
     'Auth Example':a.authenticity_example || '',
     DM_Open:       a.dm_open ? 'Yes' : '',
@@ -48,17 +51,19 @@ function row(a, basket) {
   const { rows } = await db.execute(`
     SELECT handle, name, bio, followers, verified, tier, account_type, track,
            overall, d2, d3, d4, d5, dm_open, has_email, contact_email, website,
-           promotion_type, promotion_confidence, authenticity_score, authenticity_reason, authenticity_example
+           promotion_type, promotion_confidence, authenticity_score, authenticity_reason, authenticity_example, repost_ratio
     FROM accounts
     ORDER BY CASE promotion_type WHEN 'explicit' THEN 0 WHEN 'inferred' THEN 1 ELSE 2 END,
              COALESCE(authenticity_score, -1) DESC, overall DESC`);
 
   // Group into the four primary baskets (+ secondary)
   const groups = { 'A1 Confirmed': [], 'A2 Genuine': [], 'Salesy Low': [], 'A2 Unscored': [] };
+  const reposters = [];
   const all = [];
   for (const a of rows) {
     const b = bucketOf(a);
-    if (groups[b]) { groups[b].push(row(a, b)); all.push(row(a, b)); }
+    if (b === 'Reposters') reposters.push(row(a, b));
+    else if (groups[b]) { groups[b].push(row(a, b)); all.push(row(a, b)); }
   }
 
   const wb = XLSX.utils.book_new();
@@ -72,6 +77,10 @@ function row(a, basket) {
                            : XLSX.utils.aoa_to_sheet([['(no accounts in this basket yet)']]);
     XLSX.utils.book_append_sheet(wb, ws, name);
   }
+  // Reposters / amplifiers — pulled out of the 4 baskets, shown separately
+  XLSX.utils.book_append_sheet(wb,
+    reposters.length ? XLSX.utils.json_to_sheet(reposters) : XLSX.utils.aoa_to_sheet([['(no reposters detected yet)']]),
+    'Reposters');
 
   const out = path.join(__dirname, '..', 'KiteAI_Accounts_Baskets.xlsx');
   XLSX.writeFile(wb, out);
@@ -79,6 +88,7 @@ function row(a, basket) {
   console.log('\nBasket counts:');
   for (const [name, list] of Object.entries(groups)) console.log(`  ${name.padEnd(14)} : ${list.length}`);
   console.log(`  ${'TOTAL (4)'.padEnd(14)} : ${all.length}`);
+  console.log(`  ${'Reposters'.padEnd(14)} : ${reposters.length}`);
   console.log(`\nSaved: ${out}`);
   process.exit(0);
 })().catch(e => { console.error(e.message); process.exit(1); });

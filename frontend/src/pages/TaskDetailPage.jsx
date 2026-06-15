@@ -11,6 +11,7 @@ const BUCKETS = [
   { key: 'a2_genuine',  icon: '✦',  label: 'A2 — Genuine',         cls: 'b-purple', desc: 'Likely paid + authentic content (authenticity ≥ 60)' },
   { key: 'a2_salesy',   icon: '⚠',  label: 'Salesy / Low',         cls: 'b-gold',   desc: 'Likely paid but hype/templated (authenticity < 60)' },
   { key: 'a2_unscored', icon: '◷',  label: 'A2 — Unscored',        cls: 'b-dim',    desc: 'Tagged A2, authenticity not scored yet' },
+  { key: 'reposters',   icon: '🔁', label: 'Reposters / Amplifiers', cls: 'b-orange', desc: 'Mostly retweet others — pulled out of A1/A2' },
   { key: 'trackB',      icon: '◎',  label: 'Track B — Ads',        cls: 'b-blue',   desc: 'PR / brand pages — ads audience only' },
   { key: 'other',       icon: '·',  label: 'Other — Unbadged',     cls: 'b-grey',   desc: 'Track A but no paid-promo evidence' },
 ];
@@ -28,6 +29,7 @@ function AccountMini({ a }) {
           {a.dm_open ? <span className="badge green">DM</span> : null}
           {a.has_email ? <span className="badge blue">Email</span> : null}
           {a.authenticity_score != null && <span className="badge purple">auth {a.authenticity_score}</span>}
+          {a.repost_ratio != null && a.repost_ratio >= 60 && <span className="badge orange">🔁 {a.repost_ratio}% reposts</span>}
         </div>
         {a.authenticity_reason && <div className="am-reason">{a.authenticity_reason}</div>}
       </div>

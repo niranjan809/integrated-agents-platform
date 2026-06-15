@@ -199,6 +199,9 @@ async function initDB() {
     // short why-text for the authenticity score
     `ALTER TABLE accounts ADD COLUMN authenticity_example TEXT`,
     // the single most genuine post quoted as evidence
+    `ALTER TABLE accounts ADD COLUMN repost_ratio INTEGER`,
+    // 0-100 — % of recent posts that are pure reposts/retweets (NULL = not analyzed).
+    // >= REPOST_THRESHOLD marks the account a "reposter / amplifier" (own section, out of A1/A2)
   ];
   for (const m of migrations) {
     try { await db.execute(m); }

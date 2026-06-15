@@ -5,11 +5,14 @@ const { requireAuth } = require('../middleware/auth');
 const router = express.Router();
 router.use(requireAuth);
 
-// Keep in sync with GENUINE_THRESHOLD elsewhere
+// Keep in sync with thresholds in server.js
 const GENUINE_THRESHOLD = 60;
+const REPOST_THRESHOLD  = Math.max(1, Math.min(100, Number(process.env.REPOST_THRESHOLD) || 60));
 
-// Which of the four (+2 hidden) buckets an account falls into
+// Which bucket an account falls into. Reposters/amplifiers are pulled out FIRST so
+// they never dilute A1/A2 (their own section instead).
 function bucketOf(a) {
+  if (a.repost_ratio != null && a.repost_ratio >= REPOST_THRESHOLD) return 'reposters';
   if (a.track === 'B') return 'trackB';
   if (a.promotion_type === 'explicit') return 'a1';
   if (a.promotion_type === 'inferred') {
@@ -19,20 +22,23 @@ function bucketOf(a) {
   return 'other'; // Track A but none/unknown
 }
 
-const emptyBuckets = () => ({ a1: [], a2_genuine: [], a2_salesy: [], a2_unscored: [], trackB: [], other: [] });
+const emptyBuckets = () => ({ a1: [], a2_genuine: [], a2_salesy: [], a2_unscored: [], reposters: [], trackB: [], other: [] });
 function parseKeywords(raw) { try { const a = JSON.parse(raw); return Array.isArray(a) ? a : []; } catch { return []; } }
 
 // ── GET /api/tasks — list all tasks with per-bucket counts ───────────────────
 router.get('/', async (req, res) => {
   try {
     const { rows: tasks } = await db.execute(`SELECT * FROM tasks ORDER BY id DESC`);
+    // `nr` = "not a reposter" guard so amplifiers only count in the reposters bucket
+    const nr = `(a.repost_ratio IS NULL OR a.repost_ratio < ${REPOST_THRESHOLD})`;
     const { rows: counts } = await db.execute(`
       SELECT ta.task_id,
-        SUM(CASE WHEN a.track='A' AND a.promotion_type='explicit' THEN 1 ELSE 0 END) a1,
-        SUM(CASE WHEN a.track='A' AND a.promotion_type='inferred' AND a.authenticity_score >= ${GENUINE_THRESHOLD} THEN 1 ELSE 0 END) a2_genuine,
-        SUM(CASE WHEN a.track='A' AND a.promotion_type='inferred' AND a.authenticity_score IS NOT NULL AND a.authenticity_score < ${GENUINE_THRESHOLD} THEN 1 ELSE 0 END) a2_salesy,
-        SUM(CASE WHEN a.track='A' AND a.promotion_type='inferred' AND a.authenticity_score IS NULL THEN 1 ELSE 0 END) a2_unscored,
-        SUM(CASE WHEN a.track='B' THEN 1 ELSE 0 END) trackB,
+        SUM(CASE WHEN a.repost_ratio >= ${REPOST_THRESHOLD} THEN 1 ELSE 0 END) reposters,
+        SUM(CASE WHEN ${nr} AND a.track='A' AND a.promotion_type='explicit' THEN 1 ELSE 0 END) a1,
+        SUM(CASE WHEN ${nr} AND a.track='A' AND a.promotion_type='inferred' AND a.authenticity_score >= ${GENUINE_THRESHOLD} THEN 1 ELSE 0 END) a2_genuine,
+        SUM(CASE WHEN ${nr} AND a.track='A' AND a.promotion_type='inferred' AND a.authenticity_score IS NOT NULL AND a.authenticity_score < ${GENUINE_THRESHOLD} THEN 1 ELSE 0 END) a2_salesy,
+        SUM(CASE WHEN ${nr} AND a.track='A' AND a.promotion_type='inferred' AND a.authenticity_score IS NULL THEN 1 ELSE 0 END) a2_unscored,
+        SUM(CASE WHEN ${nr} AND a.track='B' THEN 1 ELSE 0 END) trackB,
         COUNT(*) total
       FROM task_accounts ta JOIN accounts a ON a.handle = ta.handle
       GROUP BY ta.task_id`);
@@ -46,7 +52,8 @@ router.get('/', async (req, res) => {
           keywords: parseKeywords(t.keywords),
           counts: {
             a1: Number(c.a1)||0, a2_genuine: Number(c.a2_genuine)||0, a2_salesy: Number(c.a2_salesy)||0,
-            a2_unscored: Number(c.a2_unscored)||0, trackB: Number(c.trackB)||0, total: Number(c.total)||0,
+            a2_unscored: Number(c.a2_unscored)||0, reposters: Number(c.reposters)||0,
+            trackB: Number(c.trackB)||0, total: Number(c.total)||0,
           },
         };
       }),
@@ -85,7 +92,7 @@ router.get('/:id', async (req, res) => {
       sql: `SELECT a.handle, a.name, a.bio, a.avatar, a.followers, a.verified, a.tier, a.account_type, a.track,
                    a.overall, a.d2, a.d3, a.d4, a.d5, a.dm_open, a.has_email, a.contact_email, a.website,
                    a.promotion_type, a.promotion_confidence, a.authenticity_score, a.authenticity_reason, a.authenticity_example,
-                   ta.added_at
+                   a.repost_ratio, ta.added_at
             FROM task_accounts ta JOIN accounts a ON a.handle = ta.handle
             WHERE ta.task_id = ?
             ORDER BY CASE a.promotion_type WHEN 'explicit' THEN 0 WHEN 'inferred' THEN 1 ELSE 2 END,

@@ -4,8 +4,8 @@ name: Weekly X fetch
 # even when the Render free-tier backend is asleep — the HTTP request wakes it.
 on:
   schedule:
-    # Monday 02:00 IST = Sunday 20:30 UTC (IST = UTC+5:30)
-    - cron: '30 20 * * 0'
+    # Monday 06:00 IST = Monday 00:30 UTC (IST = UTC+5:30)
+    - cron: '30 0 * * 1'
   workflow_dispatch: {}   # also lets you trigger it manually from the Actions tab
 
 jobs:

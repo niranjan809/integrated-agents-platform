@@ -1567,7 +1567,7 @@ app.post('/api/cron/run', async (req, res) => {
     const { queries, directHandles } = await buildWeeklyRun();
     if (!queries.length && !directHandles.length) return res.json({ ok: false, reason: 'no keywords' });
 
-    const nextRun = new Date(); nextRun.setDate(nextRun.getDate() + 7); nextRun.setHours(2, 0, 0, 0);
+    const nextRun = new Date(); nextRun.setDate(nextRun.getDate() + 7); nextRun.setHours(6, 0, 0, 0);
     await db.execute({ sql: `UPDATE agent_config SET value=?, updated_at=datetime('now') WHERE key='next_run'`, args: [nextRun.toISOString()] }).catch(() => {});
 
     const started = startAgentRun({ queries, directHandles, triggeredBy: 'github_cron' });
@@ -1633,10 +1633,10 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// â”€â”€ Weekly cron â€” every Monday at 02:00 AM IST (Indian Standard Time, UTC+5:30) â”€â”€
+// â”€â”€ Weekly cron â€” every Monday at 06:00 AM IST (Indian Standard Time, UTC+5:30) â”€â”€
 // Only schedule â€” monthly cron removed. Weekly keeps data fresh.
 // Recent accounts (< 6 days old) are skipped to protect shared API quota.
-cron.schedule('0 2 * * 1', async () => {
+cron.schedule('0 6 * * 1', async () => {
   const stamp = new Date().toISOString();
   console.log(`\n[WEEKLY] â•â•â•â•â•â• Weekly refresh starting â€” ${stamp} â•â•â•â•â•â•`);
   try {
@@ -1657,7 +1657,7 @@ cron.schedule('0 2 * * 1', async () => {
     if (!merged.length && !directHandles.length) { console.log('[WEEKLY] No keywords â€” skipping'); return; }
 
     console.log(`[WEEKLY] ${merged.length} queries | cap: ${MAX_REQUESTS_PER_RUN} | anti-bot: on`);
-    const nextRun = new Date(); nextRun.setDate(nextRun.getDate() + 7); nextRun.setHours(2, 0, 0, 0);
+    const nextRun = new Date(); nextRun.setDate(nextRun.getDate() + 7); nextRun.setHours(6, 0, 0, 0);
     await db.execute({ sql: `UPDATE agent_config SET value=?, updated_at=datetime('now') WHERE key='next_run'`, args: [nextRun.toISOString()] });
 
     if (runManager.active) { console.log('[WEEKLY] A run is already active - skipping'); return; }

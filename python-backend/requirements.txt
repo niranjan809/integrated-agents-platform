@@ -1,0 +1,8 @@
+requests
+python-dotenv
+streamlit
+pandas
+python-docx
+tenacity
+pydantic>=2
+libsql>=0.1.11

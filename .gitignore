@@ -23,3 +23,20 @@ Thumbs.db
 # ── Render / Vercel cache ─────────────────────────
 .vercel/
 .render/
+
+# -- Python --
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+venv/
+.venv/
+env/
+*.egg-info/
+
+# -- Streamlit (KA017 legacy) --
+.streamlit/secrets.toml
+
+# -- Local DB caches (SQLite/Turso) --
+*.db-wal
+*.db-shm

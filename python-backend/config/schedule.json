@@ -1,0 +1,15 @@
+{
+  "enabled": false,
+  "frequency_type": "interval",
+  "interval_minutes": 60,
+  "fixed_times": [
+    "09:00",
+    "13:00",
+    "17:00"
+  ],
+  "modes": [
+    "keywords",
+    "classify"
+  ],
+  "last_modified": "2026-06-12T07:59:00.559565+00:00"
+}

@@ -1,0 +1,62 @@
+{
+  "version": "topsweep-1.0.0",
+  "generated_at": "2026-06-15T08:04:32.306604+00:00",
+  "parent_version": "7.0.0",
+  "notes": "TEMPORARY lexicon for Top-sweep experiment. Contains ONLY Class C with 8 clusters. First 6 clusters copied from v7 (Deepgram, Whisper, ElevenLabs x2, Cartesia, OpenAI Realtime), each with {{since_time}} placeholder for hour-granular time filtering. Two new clusters added: (7) Moshi/Kokoro/Silero open-source voice trio, (8) Resemble AI + Inworld AI commercial alternatives. Use with --lexicon-file config/genesis_lexicon_topsweep.json --since-hours N --sweep-type Top. Other classes (A, B, D, E, F, G, K) deliberately omitted from this temp lexicon.",
+  "Keyword_Classes": {
+    "C": {
+      "name": "Voice AI Stack — Latency, Reliability & UX (Top-sweep test)",
+      "priority": "high",
+      "queries": [
+        "(Deepgram latency OR Deepgram (latency OR slow OR streaming) OR Deepgram pricing OR Deepgram (pricing OR cost OR expensive) OR Deepgram Aura OR \"Aura\" Deepgram (TTS OR voice) OR Deepgram (alternative OR free tier OR realtime) OR switch from Deepgram) since_time:{{since_time}} -is:retweet -is:reply -is:nullcast lang:en",
+        "(Whisper latency OR Whisper (latency OR slow OR realtime) OR Whisper hallucination OR Whisper (hallucination OR misheard OR accent) OR faster-whisper OR \"faster-whisper\" (performance OR latency) OR Distil-Whisper OR \"Distil-Whisper\" (latency OR speed) OR WhisperX (latency OR alignment)) since_time:{{since_time}} -is:retweet -is:reply -is:nullcast lang:en",
+        "(ElevenLabs pricing OR ElevenLabs (pricing OR cost OR credits) OR ElevenLabs latency OR ElevenLabs (latency OR slow OR streaming OR rate limit) OR ElevenLabs Turbo OR \"ElevenLabs Turbo\" OR ElevenLabs voice clone OR ElevenLabs (voice clone OR cloning)) since_time:{{since_time}} -is:retweet -is:reply -is:nullcast lang:en",
+        "(ElevenLabs alternative OR ElevenLabs (alternative OR vs) OR cheaper than ElevenLabs OR (cheaper OR alternative) to ElevenLabs OR switch from ElevenLabs OR (switched OR moved) from ElevenLabs OR ElevenLabs (not working OR API latency) OR ElevenLabs (Hindi OR Hinglish OR multilingual)) since_time:{{since_time}} -is:retweet -is:reply -is:nullcast lang:en",
+        "(Cartesia streaming OR Cartesia (streaming OR low latency OR Sonic) OR \"Cartesia Sonic\" OR Cartesia latency OR Cartesia (latency OR speed OR benchmark) OR Cartesia alternative OR Cartesia (alternative OR not working) OR Cartesia review) since_time:{{since_time}} -is:retweet -is:reply -is:nullcast lang:en",
+        "(OpenAI Realtime API OR \"OpenAI Realtime\" (API OR voice OR latency) OR OpenAI Realtime cost OR \"OpenAI Realtime\" (cost OR pricing OR expensive) OR OpenAI TTS latency OR OpenAI (TTS OR \"text to speech\") latency OR cheaper than OpenAI Realtime OR \"GPT Realtime\" (voice OR mode)) since_time:{{since_time}} -is:retweet -is:reply -is:nullcast lang:en",
+        "(Moshi Kyutai OR \"Moshi\" (Kyutai OR full-duplex OR speech) OR Kokoro TTS OR Kokoro (TTS OR voice OR onnx OR on-device) OR Silero VAD OR \"Silero\" (VAD OR detection OR endpointing) OR (open source OR open-source) voice (model OR TTS OR STT)) since_time:{{since_time}} -is:retweet -is:reply -is:nullcast lang:en",
+        "(Resemble AI OR \"Resemble AI\" (voice OR cloning OR TTS) OR Resemble voice OR Resemble (Chatterbox OR Localize) OR Inworld AI voice OR \"Inworld AI\" (voice OR TTS OR Realtime) OR Inworld (Realtime OR voice agent OR NPC)) since_time:{{since_time}} -is:retweet -is:reply -is:nullcast lang:en"
+      ]
+    }
+  },
+  "Tracked_Handles": {
+    "tier_1": [
+      "@abacaj",
+      "@awnihannun",
+      "@charles_irl",
+      "@clattner_llvm",
+      "@ggerganov",
+      "@hwchase17",
+      "@jerryjliu0",
+      "@jxmnop",
+      "@karpathy",
+      "@rasbt",
+      "@reach_vb",
+      "@soumithchintala",
+      "@StasBekman",
+      "@swyx",
+      "@vipulved"
+    ],
+    "tier_2": [
+      "@AravSrinivas",
+      "@AnthropicAI",
+      "@ID_AA_Carmack",
+      "@OpenAIDevs",
+      "@amasad",
+      "@drjimfan",
+      "@levelsio",
+      "@mckaywrigley",
+      "@osanseviero",
+      "@rauchg",
+      "@sama",
+      "@virattt",
+      "@ylecun"
+    ],
+    "tier_3": [
+      "@SarvamAI",
+      "@ai4bharat",
+      "@bhutanisanyam1",
+      "@vivek_raghavan"
+    ]
+  }
+}

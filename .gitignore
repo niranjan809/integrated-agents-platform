@@ -40,3 +40,6 @@ env/
 # -- Local DB caches (SQLite/Turso) --
 *.db-wal
 *.db-shm
+
+# -- KA017 runtime data (local, not source) --
+python-backend/data/

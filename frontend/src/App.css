@@ -730,3 +730,10 @@ body { background: var(--bg); color: var(--text); font-family: 'Inter', 'Segoe U
 .am-meta { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; font-size: 11px; color: var(--text2); margin-top: 3px; }
 .am-reason { font-size: 10.5px; color: var(--text-dim); margin-top: 3px; font-style: italic; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .am-score { font-size: 18px; font-weight: 800; align-self: center; }
+
+/* KA017 Market Intel tables */
+.ka-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.ka-table th { text-align: left; padding: 7px 10px; color: var(--text2); border-bottom: 1px solid var(--border, #2a2f3a); font-weight: 600; white-space: nowrap; }
+.ka-table td { padding: 7px 10px; border-bottom: 1px solid rgba(255,255,255,.04); vertical-align: top; }
+.ka-table tr:hover td { background: var(--bg3); }
+.ka-table a { color: var(--blue); text-decoration: none; }

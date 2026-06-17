@@ -54,6 +54,7 @@ app.use('/api/accounts',  require('./routes/accounts'));
 app.use('/api/dashboard', require('./routes/dashboard'));
 app.use('/api/settings',  require('./routes/settings'));
 app.use('/api/tasks',     require('./routes/tasks'));
+app.use('/api/ka',        require('./routes/ka'));   // read-only view of friend's KA017 agent
 
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // PROACTIVE RATE LIMITER â€” prevents blocks before they happen

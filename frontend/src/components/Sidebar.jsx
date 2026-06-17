@@ -6,6 +6,7 @@ const NAV = [
   { to: '/',            icon: '▦',  label: 'Dashboard'   },
   { to: '/agent',       icon: '⚡', label: 'Run Agent'   },
   { to: '/tasks',       icon: '🎯', label: 'Tasks'       },
+  { to: '/market-intel',icon: '🛰️', label: 'Market Intel' },
   { to: '/accounts',    icon: '◉',  label: 'All Accounts' },
   { to: '/influencers', icon: '★',  label: 'Track A'      },
   { to: '/pr-pages',    icon: '📢', label: 'Track B'      },

@@ -13,6 +13,7 @@ import WorkflowPage   from './pages/WorkflowPage';
 import PromptsPage    from './pages/PromptsPage';
 import TasksPage      from './pages/TasksPage';
 import TaskDetailPage from './pages/TaskDetailPage';
+import MarketIntelPage from './pages/MarketIntelPage';
 
 function AppLayout() {
   return (
@@ -26,6 +27,7 @@ function AppLayout() {
             <Route path="/agent"       element={<AgentRunner />} />
             <Route path="/tasks"       element={<TasksPage />} />
             <Route path="/tasks/:id"   element={<TaskDetailPage />} />
+            <Route path="/market-intel" element={<MarketIntelPage />} />
             <Route path="/accounts"    element={<AccountsPage mode="all" />} />
             <Route path="/influencers" element={<AccountsPage mode="influencers" />} />
             <Route path="/pr-pages"    element={<AccountsPage mode="pr-pages" />} />

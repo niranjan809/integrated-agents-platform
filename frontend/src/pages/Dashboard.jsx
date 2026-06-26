@@ -22,7 +22,7 @@ function StatCard({ label, value, sub, color, icon }) {
 
 function RunRow({ run }) {
   const statusColor = run.status === 'completed' ? '#00C896'
-    : run.status === 'running'  ? '#1D9BF0'
+    : run.status === 'running'  ? '#00F5D4'
     : run.status === 'quota_exhausted' ? '#F9A825'
     : '#FF4444';
   const date = run.started_at ? new Date(run.started_at) : null;
@@ -249,7 +249,7 @@ export default function Dashboard() {
 
       {/* KPI row */}
       <div className="stat-grid">
-        <StatCard label="Total Accounts" value={t.total}     color="#1D9BF0" icon="◉" />
+        <StatCard label="Total Accounts" value={t.total}     color="#00F5D4" icon="◉" />
         <StatCard label="Avg Score"      value={t.avg_score} color="#00C896" icon="★" sub="/ 100" />
         <StatCard label="DM Open"        value={t.dm_open}   color="#F9A825" icon="💬" />
         <StatCard label="Has Email"      value={t.has_email} color="#C084FC" icon="✉" />

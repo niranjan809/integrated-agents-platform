@@ -4,7 +4,7 @@ const SECTIONS = [
   {
     id: 'agent-run',
     label: 'Agent Run & Discovery',
-    color: '#1D9BF0',
+    color: '#00F5D4',
     description: 'How the agent searches X and discovers accounts',
     prompts: [
       {
@@ -271,7 +271,7 @@ INTEGER 0/1 for booleans (Turso doesn't have BOOL).`,
   {
     id: 'api-integration',
     label: 'API Integration (twitter241)',
-    color: '#1D9BF0',
+    color: '#00F5D4',
     description: 'How we use the twitter241 RapidAPI',
     prompts: [
       {

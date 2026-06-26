@@ -2,7 +2,7 @@ import React from 'react';
 
 /* ─── shared style tokens ─────────────────────────────────────────── */
 const C = {
-  blue:   '#1D9BF0',
+  blue:   '#00F5D4',
   green:  '#00C896',
   gold:   '#F9A825',
   red:    '#FF4444',
@@ -376,7 +376,7 @@ export default function WorkflowPage() {
                 <span style={{ color: C.gold }}>X-RapidAPI-Host</span><span style={{ color: C.muted }}>: </span><span style={{ color: '#a5d6ff' }}>twitter241.p.rapidapi.com</span>
               </div>
               <div style={{ color: C.muted, marginTop: 8, fontSize: 10 }}>Full URL string:</div>
-              <div style={{ color: '#58a6ff', wordBreak: 'break-all', marginTop: 2 }}>
+              <div style={{ color: '#00F5D4', wordBreak: 'break-all', marginTop: 2 }}>
                 https://twitter241.p.rapidapi.com/search?query=vapi+OR+elevenlabs+OR+deepgram+OR+%22retell+ai%22&count=47&type=Top
               </div>
             </div>
@@ -477,7 +477,7 @@ export default function WorkflowPage() {
                 <span style={{ color: C.gold }}>X-RapidAPI-Host</span><span style={{ color: C.muted }}>: </span><span style={{ color: '#a5d6ff' }}>twitter241.p.rapidapi.com</span>
               </div>
               <div style={{ color: C.muted, marginTop: 8, fontSize: 10 }}>Full URL string:</div>
-              <div style={{ color: '#58a6ff', marginTop: 2 }}>
+              <div style={{ color: '#00F5D4', marginTop: 2 }}>
                 https://twitter241.p.rapidapi.com/user?username=vapidev    (no @ symbol)
               </div>
             </div>

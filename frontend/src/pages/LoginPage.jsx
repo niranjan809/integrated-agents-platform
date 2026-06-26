@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import AmbientCanvas from '../components/AmbientCanvas';
 
 export default function LoginPage() {
   const [email,    setEmail]    = useState('');
@@ -26,10 +27,12 @@ export default function LoginPage() {
 
   return (
     <div className="login-page">
+      <AmbientCanvas />
       <div className="login-card">
         <div className="login-logo">
           <span className="logo-kite">Kite</span><span className="logo-ai">AI</span>
-          <div className="login-subtitle">Multi-Agent Growth Platform</div>
+          <div className="login-subtitle">Intelligent Agent Platform</div>
+          <span className="status-pill login-status"><span className="dot" />System online</span>
         </div>
 
         <form onSubmit={handleSubmit} className="login-form">

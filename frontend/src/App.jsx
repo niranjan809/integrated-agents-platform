@@ -7,6 +7,7 @@ import LoginPage      from './pages/LoginPage';
 import LandingPage          from './pages/LandingPage';
 import BrandVisibilityPage  from './pages/BrandVisibilityPage';
 import PRAgentPage          from './pages/PRAgentPage';
+import MarketIntelPage      from './pages/MarketIntelPage';
 import LeaderboardAgentPage from './pages/LeaderboardAgentPage';
 import Dashboard      from './pages/Dashboard';
 import AgentRunner    from './pages/AgentRunner';
@@ -59,6 +60,7 @@ export default function App() {
       <Route path="/"            element={<ProtectedRoute><LandingPage /></ProtectedRoute>} />
       <Route path="/brand"       element={<ProtectedRoute><BrandVisibilityPage /></ProtectedRoute>} />
       <Route path="/pr"          element={<ProtectedRoute><PRAgentPage /></ProtectedRoute>} />
+      <Route path="/market-intel" element={<ProtectedRoute><MarketIntelPage /></ProtectedRoute>} />
       <Route path="/leaderboard" element={<ProtectedRoute><LeaderboardAgentPage /></ProtectedRoute>} />
 
       {/* X Agent dashboard (everything else, with sidebar) */}

@@ -49,6 +49,7 @@ app.use('/api',      rateLimit({ windowMs: 1 * 60 * 1000,  max: 120, standardHea
 
 // â”€â”€ Routes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 app.use('/api/auth',      require('./routes/auth'));
+app.use('/api/agents',    require('./routes/agents'));
 app.use('/api/keywords',  require('./routes/keywords'));
 app.use('/api/accounts',  require('./routes/accounts'));
 app.use('/api/dashboard', require('./routes/dashboard'));

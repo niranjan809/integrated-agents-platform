@@ -3,13 +3,13 @@ import PlatformShell from '../components/PlatformShell';
 
 const OPTIONS = [
   {
-    to: '/brand', icon: '◎', title: 'Brand Visibility Agent', status: 'live', statusLabel: 'Active',
-    desc: 'Gets your product discovered. The agent joins the right conversations in your field, finds where your product fits, and surfaces it to the people who need it — starting with X, expanding across platforms.',
+    to: '/pr', icon: '◇', title: 'PR Agent', status: 'live', statusLabel: 'Active',
+    desc: 'Finds the accounts that move your reputation — creators open to paid promotion and the voices that publish genuine, credible reviews of your product. Live on X today, with LinkedIn next.',
     cta: 'Open agent',
   },
   {
-    to: '/pr', icon: '◇', title: 'PR Agent', status: 'soon', statusLabel: 'Coming soon',
-    desc: 'Finds the accounts that move your reputation — creators open to paid promotion and the voices that publish genuine, credible reviews of your product.',
+    to: '/brand', icon: '◎', title: 'Brand Visibility Agent', status: 'soon', statusLabel: 'Coming soon',
+    desc: 'Gets your product discovered — joins the right conversations in your field, finds where your product fits, and surfaces it to the people who need it.',
     cta: 'Preview',
   },
   {

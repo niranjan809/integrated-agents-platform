@@ -238,7 +238,7 @@ def classify_pending(
         # Persist relevance_score and noise_reason directly on the row
         with db._conn() as conn:
             conn.execute(
-                "UPDATE scraped_tweets SET relevance_score=?, noise_reason=? WHERE tweet_id=?",
+                "UPDATE scraped_tweets SET relevance_score=%s, noise_reason=%s WHERE tweet_id=%s",
                 [result.relevance_score, result.noise_reason, tweet_id],
             )
 

@@ -67,7 +67,7 @@ def load_from_turso(db: Any) -> dict[str, Any]:
 
         kw_rows = db.query(
             "SELECT keyword FROM keywords "
-            "WHERE class_key = ? AND enabled = 1 "
+            "WHERE class_key = %s AND enabled = 1 "
             "ORDER BY keyword",
             (class_key,),
         )

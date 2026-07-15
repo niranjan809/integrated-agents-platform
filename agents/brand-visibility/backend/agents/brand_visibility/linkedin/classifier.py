@@ -169,7 +169,7 @@ def classify_pending(limit: int | None = None) -> dict:
 
     sql = ("SELECT * FROM linkedin_posts "
            "WHERE classification_class IS NULL AND LENGTH(text) > 0 ORDER BY id ASC")
-    rows = db.query(sql + " LIMIT ?", (limit,)) if limit else db.query(sql)
+    rows = db.query(sql + " LIMIT %s", (limit,)) if limit else db.query(sql)
 
     stats: dict[str, Any] = {"classified": 0, "skipped": 0, "errors": 0, "total_cost_usd": 0.0}
     first = True
@@ -191,10 +191,10 @@ def classify_pending(limit: int | None = None) -> dict:
         noise = ",".join(result.noise_flags)
         with db._conn() as conn:
             conn.execute(
-                "UPDATE linkedin_posts SET relevance_score=?, commercial_fit_score=?, "
-                "relationship_value_score=?, engagement_safety_score=?, "
-                "classification_class=?, intent_signal=?, summary_one_line=?, "
-                "classified_at=datetime('now') WHERE id=?",
+                "UPDATE linkedin_posts SET relevance_score=%s, commercial_fit_score=%s, "
+                "relationship_value_score=%s, engagement_safety_score=%s, "
+                "classification_class=%s, intent_signal=%s, summary_one_line=%s, "
+                "classified_at=NOW() WHERE id=%s",
                 [result.relevance_voice_ai, result.commercial_fit,
                  result.relationship_value, result.engagement_safety,
                  result.final_tier, noise, result.one_line_reason, post_id],

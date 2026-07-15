@@ -156,7 +156,7 @@ def run_sweep(db, run_id: int, config: dict, post_enabled: bool = False) -> dict
 
     if mode in ("all", "classify"):
         try:
-            st = classify_pending(db, limit=500, dry_run=dry_run)
+            st = classify_pending(db, limit=500, dry_run=dry_run, run_id=run_id)
             summary["classify"] = st
             posts_classified = st.get("classified", 0)
         except Exception:

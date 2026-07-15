@@ -8,7 +8,7 @@ export function AuthProvider({ children }) {
   const [user,    setUser]    = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const token = () => localStorage.getItem('kiteai_token');
+  const token = () => sessionStorage.getItem('kiteai_token');
 
   const headers = () => ({
     'Content-Type':  'application/json',
@@ -24,9 +24,9 @@ export function AuthProvider({ children }) {
         const { user: u } = await res.json();
         setUser(u);
       } else {
-        localStorage.removeItem('kiteai_token');
+        sessionStorage.removeItem('kiteai_token');
       }
-    } catch { localStorage.removeItem('kiteai_token'); }
+    } catch { sessionStorage.removeItem('kiteai_token'); }
     setLoading(false);
   }, []);
 
@@ -40,7 +40,7 @@ export function AuthProvider({ children }) {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Login failed');
-    localStorage.setItem('kiteai_token', data.token);
+    sessionStorage.setItem('kiteai_token', data.token);
     setUser(data.user);
     return data.user;
   }
@@ -53,13 +53,13 @@ export function AuthProvider({ children }) {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Registration failed');
-    localStorage.setItem('kiteai_token', data.token);
+    sessionStorage.setItem('kiteai_token', data.token);
     setUser(data.user);
     return data.user;
   }
 
   function logout() {
-    localStorage.removeItem('kiteai_token');
+    sessionStorage.removeItem('kiteai_token');
     setUser(null);
   }
 

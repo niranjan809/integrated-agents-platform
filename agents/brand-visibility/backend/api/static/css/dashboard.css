@@ -1,0 +1,560 @@
+/*
+ * KA018 LinkedIn dashboard — placeholder design system (Phase 4a).
+ * All colors/sizes are CSS variables so a real design-token set can re-skin this
+ * by overriding :root values only. Plain CSS, no framework.
+ */
+:root {
+  --color-bg: #f1f5f9;
+  --color-surface: #ffffff;
+  --color-border: #e2e8f0;
+  --color-text: #1e293b;
+  --color-muted: #64748b;
+  --color-primary: #2dd4bf;        /* teal accent */
+  --color-tier-1: #10b981;         /* emerald  */
+  --color-tier-1-bg: #ecfdf5;
+  --color-tier-2: #f59e0b;         /* amber    */
+  --color-tier-3: #3b82f6;         /* blue     */
+  --color-tier-4: #94a3b8;         /* gray     */
+  --space: 16px;
+  --radius: 8px;
+  --sidebar-w: 280px;
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial,
+          sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: var(--font);
+  background: var(--color-bg);
+  color: var(--color-text);
+  line-height: 1.5;
+}
+
+/* Header */
+.site-header {
+  padding: calc(var(--space) * 1.5) var(--space);
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+.site-header h1 { margin: 0; font-size: 1.4rem; }
+.subtitle { margin: 4px 0 0; color: var(--color-muted); font-size: 0.9rem; }
+
+/* KPI strip: 4-column grid, 8 cards -> 2 rows */
+.kpi-strip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space);
+  padding: var(--space);
+}
+.kpi-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: var(--space);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.kpi-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-muted);
+}
+.kpi-value { font-size: 1.6rem; font-weight: 600; }
+.kpi-value-sm { font-size: 0.95rem; font-weight: 600; }
+.kpi-suffix { font-size: 0.9rem; font-weight: 400; color: var(--color-muted); }
+
+/* Tier cards: left accent border + colored value; Tier 1 highlighted */
+.kpi-tier { border-left: 4px solid var(--color-border); }
+.kpi-tier-1 { border-left-color: var(--color-tier-1); background: var(--color-tier-1-bg); }
+.kpi-tier-1 .kpi-value { color: var(--color-tier-1); }
+.kpi-tier-2 { border-left-color: var(--color-tier-2); }
+.kpi-tier-2 .kpi-value { color: var(--color-tier-2); }
+.kpi-tier-3 { border-left-color: var(--color-tier-3); }
+.kpi-tier-3 .kpi-value { color: var(--color-tier-3); }
+.kpi-tier-4 { border-left-color: var(--color-tier-4); }
+.kpi-tier-4 .kpi-value { color: var(--color-tier-4); }
+
+/* Two-column main area */
+.layout {
+  display: flex;
+  gap: var(--space);
+  padding: 0 var(--space) var(--space);
+  align-items: flex-start;
+}
+.sidebar {
+  flex: 0 0 var(--sidebar-w);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: var(--space);
+}
+.sidebar-title { margin: 0 0 var(--space); font-size: 1rem; }
+.filter-group { margin-bottom: var(--space); }
+.filter-group label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.filter-placeholder {
+  font-size: 0.8rem;
+  color: var(--color-muted);
+  border: 1px dashed var(--color-border);
+  border-radius: 6px;
+  padding: 8px;
+  background: var(--color-bg);
+}
+
+.content { flex: 1 1 auto; min-width: 0; }   /* min-width:0 prevents flex overflow */
+.posts-placeholder {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: calc(var(--space) * 3);
+  text-align: center;
+  color: var(--color-muted);
+}
+
+/* Footer */
+.site-footer {
+  padding: var(--space);
+  background: var(--color-surface);
+  border-top: 1px solid var(--color-border);
+  color: var(--color-muted);
+  font-size: 0.85rem;
+}
+
+/* Sidebar filter inputs */
+.filter-group select {
+  width: 100%;
+  padding: 6px 8px;
+  font: inherit;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-surface);
+}
+.filter-group .check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  font-weight: 400;
+  margin-bottom: 4px;
+  cursor: pointer;
+}
+
+/* Posts table */
+.table-scroll {
+  overflow-x: auto;                 /* mobile: scroll the table, not the page */
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+.posts-table {
+  width: 100%;
+  min-width: 960px;                 /* forces horizontal scroll on narrow screens */
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+.posts-table thead th {
+  position: sticky;                 /* sticky header on scroll */
+  top: 0;
+  z-index: 1;
+  background: #f8fafc;
+  text-align: left;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--color-muted);
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--color-border);
+}
+.posts-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--color-border);
+  vertical-align: top;
+}
+.posts-table td.num {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  white-space: nowrap;
+}
+.posts-table td.preview, .posts-table td.reason { color: var(--color-muted); max-width: 320px; }
+.posts-table tbody tr:hover { background: #f1f5f9; }
+.posts-table td.empty { text-align: center; color: var(--color-muted); padding: var(--space); }
+
+/* Tier row backgrounds (left accent + tint); hover above still applies */
+.posts-table tbody tr.tier-tier_1_engage { background: var(--color-tier-1-bg); box-shadow: inset 3px 0 0 var(--color-tier-1); }
+.posts-table tbody tr.tier-tier_2_watch  { background: #fffbeb; box-shadow: inset 3px 0 0 var(--color-tier-2); }
+.posts-table tbody tr.tier-tier_3_signal { background: #eff6ff; box-shadow: inset 3px 0 0 var(--color-tier-3); }
+.posts-table tbody tr.tier-tier_4_noise  { background: #f8fafc; box-shadow: inset 3px 0 0 var(--color-tier-4); }
+.posts-table tbody tr.tier-unclassified  { box-shadow: inset 3px 0 0 var(--color-border); }
+
+.pagination {
+  padding: 10px var(--space);
+  color: var(--color-muted);
+  font-size: 0.8rem;
+}
+
+/* ─────────────────────────────────────────────────────────────
+ * Phase 4c — pagination, control panels, forms, run status
+ * ───────────────────────────────────────────────────────────── */
+
+/* Pagination */
+.pagination {
+  display: flex;
+  align-items: center;
+  gap: var(--space);
+  padding: 10px var(--space);
+  color: var(--color-muted);
+  font-size: 0.8rem;
+  flex-wrap: wrap;
+}
+.page-range { font-variant-numeric: tabular-nums; }
+.page-btn {
+  font: inherit;
+  padding: 6px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+}
+.page-btn:hover:not(:disabled) { border-color: var(--color-primary); }
+.page-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.page-size { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+.page-size select {
+  font: inherit;
+  padding: 4px 6px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-surface);
+}
+
+/* Control panels (collapsible) */
+.controls {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space);
+  padding: 0 var(--space) var(--space);
+}
+.control-panel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.control-panel > summary {
+  cursor: pointer;
+  padding: 12px var(--space);
+  font-weight: 600;
+  font-size: 0.9rem;
+  list-style-position: inside;
+  user-select: none;
+}
+.control-panel > summary:hover { background: var(--color-bg); }
+.control-panel[open] > summary { border-bottom: 1px solid var(--color-border); }
+.control-body { padding: var(--space); }
+.control-body .loading,
+.control-panel .loading { color: var(--color-muted); font-size: 0.85rem; margin: 0; }
+
+/* Forms inside control panels */
+.field-label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.field-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.field-row > label:not(.check) {
+  flex: 0 0 130px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.field-row input[type="number"],
+.field-row input[type="text"],
+.field-row select {
+  font: inherit;
+  padding: 6px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-surface);
+  flex: 1 1 160px;
+  min-width: 0;
+}
+.field-readonly {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.ro-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-muted);
+}
+.ro-value { font-weight: 700; font-size: 1rem; }
+.ro-meta { color: var(--color-muted); font-size: 0.8rem; }
+
+/* Prompt editor textarea + counter (stacked, not on one line) */
+.prompt-textarea {
+  width: 100%;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  padding: 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  resize: vertical;
+}
+.char-counter {
+  text-align: right;
+  font-size: 0.75rem;
+  color: var(--color-muted);
+  font-variant-numeric: tabular-nums;
+  margin: 4px 0 12px;
+}
+
+/* Primary action buttons */
+.btn-primary {
+  font: inherit;
+  font-weight: 600;
+  padding: 8px 18px;
+  border: none;
+  border-radius: 6px;
+  background: var(--color-primary);
+  color: #06403a;
+  cursor: pointer;
+}
+.btn-primary:hover { filter: brightness(0.95); }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Run-agent stats */
+.run-stats { font-size: 0.9rem; margin-bottom: 10px; }
+.last-run { font-size: 0.85rem; color: var(--color-muted); margin-bottom: 12px; }
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Status messages (success / error / in-progress) */
+.status {
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  margin: 10px 0;
+}
+.status-success { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
+.status-error   { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+.status-running { background: #f1f5f9; color: var(--color-muted); border: 1px solid var(--color-border); }
+
+/* ─────────────────────────────────────────────────────────────
+ * Phase 4d — page wrapper, cost view, htmx indicators, empty state
+ * ───────────────────────────────────────────────────────────── */
+
+/* Iframe-friendly: full width, capped, centered. */
+body { padding: 0; }
+.page { width: 100%; max-width: 1400px; margin: 0 auto; }
+
+/* Cost summary panel */
+.cost-kpis {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space);
+  margin-bottom: var(--space);
+}
+.cost-table-scroll { margin-bottom: 10px; }
+.cost-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+.cost-table thead th {
+  text-align: left;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--color-muted);
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--color-border);
+  background: #f8fafc;
+}
+.cost-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--color-border);
+}
+.cost-table .num {
+  text-align: right;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  white-space: nowrap;
+}
+.cost-table td.empty { text-align: center; color: var(--color-muted); }
+.cost-avg { font-size: 0.8rem; color: var(--color-muted); margin: 0; }
+
+/* HTMX in-flight indicator: swap "Save" <-> "Saving…" on the save buttons.
+   htmx adds .htmx-request to the requesting <form> for the request's duration. */
+.saving-text { display: none; }
+.htmx-request .save-text { display: none; }
+.htmx-request .saving-text { display: inline; }
+
+/* Empty state for the posts table (centered card, not a row) */
+.empty-state {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: calc(var(--space) * 3);
+  text-align: center;
+  color: var(--color-muted);
+  font-size: 0.9rem;
+}
+
+.footer-clock { font-variant-numeric: tabular-nums; }
+
+/* Mobile: stack sidebar above content; narrower KPI grid; table scrolls in-place */
+@media (max-width: 768px) {
+  .kpi-strip { grid-template-columns: repeat(2, 1fr); }
+  .cost-kpis { grid-template-columns: repeat(2, 1fr); }
+  .layout { flex-direction: column; }
+  .sidebar { flex: 1 1 auto; width: 100%; }
+  .field-row > label:not(.check) { flex-basis: 100%; }
+}
+
+/* ─────────────────────────────────────────────────────────────
+ * X (Twitter) dashboard — Sub-phase X1 (additive; no existing rule changed)
+ * Class-badge palette uses literal hex (the requested A-NOISE colors aren't all
+ * in :root) rather than introducing new CSS variables.
+ * ───────────────────────────────────────────────────────────── */
+
+/* Class-distribution mini-strip (second KPI row, 5 tiles). Reuses .kpi-card /
+   .kpi-tier-* for colour; this just lays them out. */
+.x-dist {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: var(--space);
+  padding: 0 var(--space) var(--space);
+}
+.x-dist-lead .kpi-value { font-size: 1.9rem; }   /* A reads as the lead tile */
+.x-dist-other { border-left: 4px solid var(--color-border); }
+
+/* Class badges (literal hex; light-bg variants get dark text for contrast) */
+.class-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.4;
+  color: #fff;
+  background: #94a3b8;            /* default / unknown class */
+}
+.class-A { background: #3b82f6; }                       /* blue   — engage */
+.class-B { background: #10b981; }                       /* green  — watch  */
+.class-C { background: #f59e0b; color: #1e293b; }       /* yellow — signal */
+.class-D { background: #f97316; }                       /* orange */
+.class-E { background: #8b5cf6; }                       /* purple */
+.class-F { background: #ec4899; }                       /* pink   */
+.class-G { background: #14b8a6; }                       /* teal   */
+.class-NOISE { background: #94a3b8; }                   /* gray   — noise  */
+.class-NONE  { background: #cbd5e1; color: #475569; }   /* light  — unclassified */
+
+/* Priority flag pill (priority_flag is a TEXT enum; we surface URGENT_* only) */
+.priority-flag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #b91c1c;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+}
+
+/* Quality score: small horizontal bar + number */
+.quality-cell { display: inline-flex; align-items: center; gap: 8px; }
+.quality-bar {
+  display: inline-block;
+  width: 56px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--color-border);
+  overflow: hidden;
+  vertical-align: middle;
+}
+.quality-bar > span {
+  display: block;
+  height: 100%;
+  background: var(--color-primary);
+}
+
+/* Tweet table odds and ends */
+.x-handle { font-weight: 600; }
+.x-builder {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--color-tier-1);
+  background: var(--color-tier-1-bg);
+}
+.muted { color: var(--color-muted); }
+
+/* Embedded-iframe wrapper for the X dashboard (used by the frontend later;
+   mirrors the LinkedIn iframe wrapper pattern). */
+.x-iframe-wrap {
+  position: relative;
+  width: 100%;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--color-surface);
+}
+.x-iframe {
+  width: 100%;
+  height: 100%;
+  min-height: 70vh;
+  border: 0;
+  display: block;
+}
+
+@media (max-width: 768px) {
+  .x-dist { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* X prompt editor — version history list (Sub-phase X3; new UI, minimal rules) */
+.prompt-history { margin-top: var(--space); }
+.prompt-history ul { list-style: none; margin: 6px 0 0; padding: 0; }
+.prompt-history li {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--color-border);
+  font-size: 0.8rem;
+}
+.ph-version {
+  font-weight: 600;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+.ph-active {
+  color: var(--color-tier-1);
+  background: var(--color-tier-1-bg);
+  border-radius: 4px;
+  padding: 0 6px;
+  font-size: 0.7rem;
+  font-weight: 700;
+}

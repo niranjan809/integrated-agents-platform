@@ -1,0 +1,83 @@
+{# X sweep schedule config (Sub-phase X4) — lazy-loaded into the "Scheduler
+   config" panel. Config-only: stores the orchestrator's sweep params. Render Cron
+   owns cadence (no enabled/interval/next_run_at). Saves to PUT
+   /dashboard/x/_scheduler-form, which re-renders this .control-body with a status
+   banner. Reuses LinkedIn 4c/4d scheduler CSS classes. #}
+<div class="control-body">
+  {% if status %}
+  <div class="status status-{{ status.type }}"
+       x-data="{ show: true }" x-show="show"
+       x-init="setTimeout(() => show = false, 5000)">{{ status.message }}</div>
+  {% endif %}
+
+  <p class="ro-meta">
+    Schedule is managed via <strong>Render Cron Jobs</strong>. This form configures
+    the sweep <em>parameters</em> the run-now flow will use.
+  </p>
+
+  <form hx-put="/dashboard/x/_scheduler-form"
+        hx-target="closest .control-body" hx-swap="outerHTML"
+        hx-disabled-elt="find button">
+
+    <div class="field-row">
+      <label for="xsf-mode">Mode</label>
+      <select id="xsf-mode" name="mode">
+        {% for v in ['all', 'keywords', 'influencers', 'reply_trees', 'classify', 'cluster', 'draft'] %}
+        <option value="{{ v }}" {% if sched.mode == v %}selected{% endif %}>{{ v }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="field-row">
+      <label for="xsf-sweep">Sweep type</label>
+      <select id="xsf-sweep" name="sweep_type">
+        {% for v in ['Latest', 'Top'] %}
+        <option value="{{ v }}" {% if sched.sweep_type == v %}selected{% endif %}>{{ v }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="field-row">
+      <label for="xsf-maxkw">Max keywords</label>
+      <input id="xsf-maxkw" type="number" name="max_keywords" min="1" max="50"
+             value="{{ sched.max_keywords }}" required>
+    </div>
+
+    <div class="field-row">
+      <label for="xsf-maxpg">Max pages</label>
+      <input id="xsf-maxpg" type="number" name="max_pages" min="1" max="10"
+             value="{{ sched.max_pages }}" required>
+    </div>
+
+    <div class="field-row">
+      <label for="xsf-calls">Max API calls</label>
+      <input id="xsf-calls" type="number" name="max_api_calls" min="1" max="100"
+             value="{{ sched.max_api_calls }}" required>
+    </div>
+
+    <div class="field-row">
+      <label for="xsf-classes">Class filter</label>
+      <input id="xsf-classes" type="text" name="class_filter" placeholder="A,C  (blank = all classes)"
+             value="{{ sched.class_filter or '' }}">
+    </div>
+
+    <div class="field-row">
+      <label for="xsf-since">Since hours</label>
+      <input id="xsf-since" type="number" name="since_hours" min="1" max="720"
+             placeholder="blank = no time filter"
+             value="{{ sched.since_hours if sched.since_hours is not none else '' }}">
+    </div>
+
+    <div class="field-readonly">
+      <span class="ro-meta">
+        Last run:
+        {% if last_run_display %}{{ last_run_display }} &middot; Status: {{ last_run_status or '—' }}{% else %}Never run{% endif %}
+      </span>
+    </div>
+
+    <button type="submit" class="btn-primary save-btn">
+      <span class="save-text">Save schedule</span>
+      <span class="saving-text">Saving…</span>
+    </button>
+  </form>
+</div>

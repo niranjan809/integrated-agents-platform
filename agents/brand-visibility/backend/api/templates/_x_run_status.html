@@ -1,0 +1,29 @@
+{# X run status poller (Sub-phase X5). While 'running' it self-refreshes every 5s
+   (hx-get this same URL, outerHTML swap). On a terminal state the trigger is gone
+   so polling stops, and a hidden element refreshes the KPI strip. Reuses .status
+   classes. #}
+{% if not terminal %}
+<div id="x-run-status" class="status status-running"
+     hx-get="/dashboard/x/_run-status/{{ run_id }}"
+     hx-trigger="every 5s" hx-swap="outerHTML">
+  {% if just_started %}Sweep started (run_id={{ run_id }}). Polling… {% else %}Running… {% endif %}
+  posts fetched: <span class="mono">{{ posts_fetched }}</span>,
+  classified: <span class="mono">{{ posts_classified }}</span>,
+  API calls: <span class="mono">{{ api_calls }}</span>
+</div>
+{% else %}
+<div id="x-run-status" class="status status-{{ 'error' if status == 'failed' else 'success' }}">
+  {% if status == 'failed' %}
+    Failed: {{ error_message or 'unknown error' }}
+  {% elif status == 'completed_partial' %}
+    Completed (partial — API budget reached). Fetched {{ posts_fetched }}, classified {{ posts_classified }}, API calls {{ api_calls }}.
+  {% elif status == 'cancelled' %}
+    Cancelled.
+  {% else %}
+    Completed. Fetched {{ posts_fetched }}, classified {{ posts_classified }}, API calls {{ api_calls }}.
+  {% endif %}
+  {# Terminal -> refresh the KPI strip with fresh counts. #}
+  <span hx-get="/dashboard/x/_kpi-strip" hx-target="#x-kpi-strip"
+        hx-swap="outerHTML" hx-trigger="load" style="display:none"></span>
+</div>
+{% endif %}

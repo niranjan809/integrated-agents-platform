@@ -1,0 +1,82 @@
+{# Scheduler config — lazy-loaded into the "Scheduler config" panel. Pre-filled
+   from db.get_schedule(); saves to PUT /dashboard/linkedin/_scheduler-form which
+   re-renders this whole .control-body with a status banner. #}
+<div class="control-body">
+  {% if status %}
+  <div class="status status-{{ status.type }}"
+       x-data="{ show: true }" x-show="show"
+       x-init="setTimeout(() => show = false, 5000)">{{ status.message }}</div>
+  {% endif %}
+
+  <form hx-put="/dashboard/linkedin/_scheduler-form"
+        hx-target="closest .control-body" hx-swap="outerHTML"
+        hx-disabled-elt="find button">
+
+    <div class="field-row">
+      <label class="check" for="sf-enabled">
+        <input id="sf-enabled" type="checkbox" name="enabled" value="true"
+               {% if sched.enabled %}checked{% endif %}> Enabled
+      </label>
+    </div>
+
+    <div class="field-row">
+      <label for="sf-interval">Interval (min)</label>
+      <input id="sf-interval" type="number" name="interval_minutes" min="60" max="43200"
+             value="{{ sched.interval_minutes }}" required>
+    </div>
+
+    <div class="field-row">
+      <label for="sf-maxkw">Max keywords</label>
+      <input id="sf-maxkw" type="number" name="max_keywords" min="1" max="100"
+             value="{{ sched.max_keywords }}" required>
+    </div>
+
+    <div class="field-row">
+      <label for="sf-maxpg">Max pages</label>
+      <input id="sf-maxpg" type="number" name="max_pages" min="1" max="10"
+             value="{{ sched.max_pages }}" required>
+    </div>
+
+    <div class="field-row">
+      <label for="sf-cats">Categories</label>
+      <input id="sf-cats" type="text" name="categories" placeholder="vendor,pain_signal"
+             value="{{ sched.categories or '' }}">
+    </div>
+
+    <div class="field-row">
+      <label for="sf-vol">Min volume</label>
+      <select id="sf-vol" name="min_volume">
+        {% for v in ['HIGH', 'MEDIUM', 'LOW'] %}
+        <option value="{{ v }}" {% if sched.min_volume == v %}selected{% endif %}>{{ v }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="field-row">
+      <label for="sf-date">Date posted</label>
+      <select id="sf-date" name="date_posted">
+        {% for v in ['past_24h', 'past_week', 'past_month'] %}
+        <option value="{{ v }}" {% if sched.date_posted == v %}selected{% endif %}>{{ v }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="field-row">
+      <label for="sf-sort">Sort by</label>
+      <select id="sf-sort" name="sort_by">
+        {% for v in ['date_posted', 'relevance'] %}
+        <option value="{{ v }}" {% if sched.sort_by == v %}selected{% endif %}>{{ v }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="field-readonly">
+      <span class="ro-meta">Last run: {{ last_run_display }} &middot; Next run: {{ next_run_display }}</span>
+    </div>
+
+    <button type="submit" class="btn-primary save-btn">
+      <span class="save-text">Save schedule</span>
+      <span class="saving-text">Saving…</span>
+    </button>
+  </form>
+</div>

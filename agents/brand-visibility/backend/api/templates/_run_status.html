@@ -1,0 +1,29 @@
+{# Live run status — self-replacing poller. While running it carries
+   hx-trigger="every 5s" + outerHTML swap so it re-fetches itself; terminal
+   states (completed/failed) drop hx-trigger, which stops the polling. #}
+{% if status == 'running' %}
+<div id="run-status-poll" class="status status-running"
+     hx-get="/dashboard/linkedin/_run-status/{{ run_id }}"
+     hx-trigger="every 5s" hx-swap="outerHTML">
+  {% if just_started %}Sweep started (run_id={{ run_id }}). Polling… {% else %}Running… {% endif %}
+  keywords: <span class="mono">{{ keywords_queried or 0 }}</span>,
+  calls: <span class="mono">{{ api_calls_made or 0 }}</span>,
+  posts: <span class="mono">{{ posts_ingested or 0 }}</span>
+</div>
+{% elif status == 'completed' %}
+<div id="run-status-poll" class="status status-success">
+  Completed in {{ duration }}.
+  {{ keywords_queried or 0 }} keywords queried,
+  {{ posts_ingested or 0 }} posts ingested,
+  {{ posts_classified or 0 }} classified.
+  {# Polling stopped (no hx-trigger). On completion, refresh the KPI strip once:
+     this hidden element fires on insertion and swaps the top-of-page #kpi-strip. #}
+  <span hidden
+        hx-get="/dashboard/linkedin/_kpi-strip"
+        hx-trigger="load" hx-target="#kpi-strip" hx-swap="outerHTML"></span>
+</div>
+{% else %}
+<div id="run-status-poll" class="status status-error">
+  Failed: {{ notes or 'unknown error' }}
+</div>
+{% endif %}

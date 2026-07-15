@@ -1,0 +1,78 @@
+{# X tweets table partial — swapped into #x-posts-table-area by HTMX. Pagination
+   mutates the shared Alpine offset/limit (scope on <main>) then calls reload();
+   offsets/disabled states are computed server-side (Sub-phase X1). #}
+{% if posts %}
+<div class="table-scroll">
+  <table class="posts-table">
+    <thead>
+      <tr>
+        <th>Author</th>
+        <th>Tweet</th>
+        <th>Class</th>
+        <th>Priority</th>
+        <th>Quality</th>
+        <th>Engagement</th>
+        <th>Posted</th>
+        <th>Link</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for post in posts %}
+      <tr>
+        <td>
+          <span class="x-handle">@{{ post.author_handle }}</span>
+          {% if post.is_builder %}<span class="x-builder" title="Classified as a builder">builder</span>{% endif %}
+        </td>
+        <td class="preview">{{ post.content | truncate(200) }}</td>
+        <td>
+          {% if post.classification %}
+          <span class="class-badge class-{{ post.classification }}">{{ post.classification }}</span>
+          {% else %}<span class="class-badge class-NONE">—</span>{% endif %}
+        </td>
+        <td>
+          {% if post.priority_flag and 'URGENT' in post.priority_flag %}
+          <span class="priority-flag" title="{{ post.priority_flag }}">Priority</span>
+          {% else %}<span class="muted">—</span>{% endif %}
+        </td>
+        <td class="num">
+          {% if post.quality_score is not none %}
+          <span class="quality-cell">
+            <span class="quality-bar"><span style="width: {{ (post.quality_score * 10) if post.quality_score <= 10 else 100 }}%"></span></span>
+            {{ post.quality_score }}
+          </span>
+          {% else %}—{% endif %}
+        </td>
+        <td class="num">{{ post.engagement_display }}</td>
+        <td class="num">{{ post.posted_display }}</td>
+        <td>{% if post.tweet_url %}<a href="{{ post.tweet_url }}" target="_blank" rel="noopener">&#8599;</a>{% else %}—{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="empty-state">No tweets match the current filters. Try adjusting the class filter or search.</div>
+{% endif %}
+
+{% if total %}
+<div class="pagination">
+  <button type="button" class="page-btn"
+          {% if not has_prev %}disabled{% endif %}
+          @click="offset = {{ prev_offset }}; reload()">&larr; Prev</button>
+
+  <span class="page-range">{{ page_start }}&ndash;{{ page_end }} of {{ total }}</span>
+
+  <button type="button" class="page-btn"
+          {% if not has_next %}disabled{% endif %}
+          @click="offset = {{ next_offset }}; reload()">Next &rarr;</button>
+
+  <label class="page-size">
+    Page size
+    <select @change="limit = parseInt($event.target.value); offset = 0; reload()">
+      {% for size in page_sizes %}
+      <option value="{{ size }}" {% if size == limit %}selected{% endif %}>{{ size }}</option>
+      {% endfor %}
+    </select>
+  </label>
+</div>
+{% endif %}

@@ -1,23 +1,22 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth }       from './context/AuthContext';
 import { AgentProvider } from './context/AgentContext';
-import Sidebar        from './components/Sidebar';
-import ProtectedRoute from './components/ProtectedRoute';
-import LoginPage      from './pages/LoginPage';
-import LandingPage          from './pages/LandingPage';
-import BrandVisibilityPage  from './pages/BrandVisibilityPage';
-import PRAgentPage          from './pages/PRAgentPage';
-import MarketIntelPage      from './pages/MarketIntelPage';
-import LeaderboardAgentPage from './pages/LeaderboardAgentPage';
-import Dashboard      from './pages/Dashboard';
-import AgentRunner    from './pages/AgentRunner';
-import AccountsPage   from './pages/AccountsPage';
-import KeywordsPage   from './pages/KeywordsPage';
-import SettingsPage   from './pages/SettingsPage';
-import WorkflowPage   from './pages/WorkflowPage';
-import PromptsPage    from './pages/PromptsPage';
-import TasksPage      from './pages/TasksPage';
-import TaskDetailPage from './pages/TaskDetailPage';
+import Sidebar        from './components/x/Sidebar';
+import ProtectedRoute from './components/platform/ProtectedRoute';
+import LoginPage      from './pages/platform/LoginPage';
+import LandingPage    from './pages/platform/LandingPage';
+import SectionPage    from './pages/platform/SectionPage';
+import AgentEmbedPage from './pages/platform/AgentEmbedPage';
+import AdminPage      from './pages/platform/AdminPage';
+import Dashboard      from './pages/x/Dashboard';
+import AgentRunner    from './pages/x/AgentRunner';
+import AccountsPage   from './pages/x/AccountsPage';
+import KeywordsPage   from './pages/x/KeywordsPage';
+import SettingsPage   from './pages/x/SettingsPage';
+import WorkflowPage   from './pages/x/WorkflowPage';
+import PromptsPage    from './pages/x/PromptsPage';
+import TasksPage      from './pages/x/TasksPage';
+import TaskDetailPage from './pages/x/TaskDetailPage';
 
 // The X Agent dashboard (sidebar layout). Mounted under the platform catch-all so the
 // landing + agent-section pages can live at the top level.
@@ -56,12 +55,13 @@ export default function App() {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
 
-      {/* Platform shell: landing + agent sections (no sidebar) */}
-      <Route path="/"            element={<ProtectedRoute><LandingPage /></ProtectedRoute>} />
-      <Route path="/brand"       element={<ProtectedRoute><BrandVisibilityPage /></ProtectedRoute>} />
-      <Route path="/pr"          element={<ProtectedRoute><PRAgentPage /></ProtectedRoute>} />
-      <Route path="/market-intel" element={<ProtectedRoute><MarketIntelPage /></ProtectedRoute>} />
-      <Route path="/leaderboard" element={<ProtectedRoute><LeaderboardAgentPage /></ProtectedRoute>} />
+      {/* Admin console — its own separate login (not the user ProtectedRoute) */}
+      <Route path="/admin" element={<AdminPage />} />
+
+      {/* Landing + section pages (agent catalogue, no sidebar) */}
+      <Route path="/" element={<ProtectedRoute><LandingPage /></ProtectedRoute>} />
+      <Route path="/section/:sectionId" element={<ProtectedRoute><SectionPage /></ProtectedRoute>} />
+      <Route path="/embed/:agentId" element={<ProtectedRoute><AgentEmbedPage /></ProtectedRoute>} />
 
       {/* X Agent dashboard (everything else, with sidebar) */}
       <Route path="/*" element={

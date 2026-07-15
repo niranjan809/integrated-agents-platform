@@ -1,0 +1,50 @@
+{# Cost summary panel (Phase 4d). Data from /api/linkedin/cost-summary (reused
+   handler) + a this-month classified count for the average. Data-first: no charts. #}
+<div class="control-body">
+  <div class="cost-kpis">
+    <div class="kpi-card">
+      <span class="kpi-label">This month</span>
+      <span class="kpi-value mono">${{ '%.4f' | format(this_month_total) }}</span>
+    </div>
+    <div class="kpi-card">
+      <span class="kpi-label">All time</span>
+      <span class="kpi-value mono">${{ '%.4f' | format(all_time_total) }}</span>
+    </div>
+    <div class="kpi-card">
+      <span class="kpi-label">Posts classified</span>
+      <span class="kpi-value mono">{{ post_count }}</span>
+    </div>
+  </div>
+
+  <div class="table-scroll cost-table-scroll">
+    <table class="cost-table">
+      <thead>
+        <tr>
+          <th>Model</th>
+          <th class="num">Posts</th>
+          <th class="num">Total cost USD</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in by_model %}
+        <tr>
+          <td>{{ row.model }}</td>
+          <td class="num">{{ row.post_count }}</td>
+          <td class="num">${{ '%.4f' | format(row.total_cost_usd) }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="3" class="empty">No classification costs recorded yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <p class="cost-avg mono">
+    {% if avg_cost is not none %}
+    Avg cost / post (this month): ${{ '%.4f' | format(avg_cost) }}
+    ({{ classified_this_month }} classified this month)
+    {% else %}
+    Avg cost / post (this month): — (0 classified this month)
+    {% endif %}
+  </p>
+</div>

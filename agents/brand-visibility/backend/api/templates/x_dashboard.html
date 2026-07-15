@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Brand Visibility Agent — X</title>
+  <link rel="stylesheet" href="/static/css/dashboard.css">
+  <script src="/static/js/htmx.min.js"></script>
+  <script defer src="/static/js/alpine.min.js"></script>
+</head>
+<body>
+  <!-- .page: full-width but capped + centered, so the dashboard reads well both
+       standalone and inside teammate's React iframe. -->
+  <div class="page">
+
+  {# Header hidden in embedded mode — the host React app already shows agent context. #}
+  {% if not embedded %}
+  <header class="site-header">
+    <h1>Brand Visibility Agent — X</h1>
+    <p class="subtitle">Voice AI builder signals from X (Twitter)</p>
+  </header>
+  {% endif %}
+
+  {# KPI strip — server-rendered on first paint via include; the SAME partial backs
+     GET /dashboard/x/_kpi-strip for later refreshes. #}
+  {% include "_x_kpi_strip.html" %}
+
+  <!-- Alpine scope spans the sidebar AND the table area so pagination controls
+       (rendered inside the table partial) share offset/limit state with the
+       filters. HTMX reads the #x-filters inputs via hx-include; any change resets
+       to page 1 and re-fetches via reload(). -->
+  <main class="layout" x-data="{
+      classes: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'NOISE'],
+      search: '',
+      sort_by: 'priority_then_quality',
+      offset: 0,
+      limit: 50,
+      reload() { this.$nextTick(() => window.htmx.trigger('#x-posts-table-area', 'refresh')); }
+    }">
+    <!-- Filter sidebar. Any change resets offset to 0 and re-fetches; the hidden
+         offset/limit inputs ride along via hx-include. -->
+    <aside id="x-filters" class="sidebar" aria-label="Filters"
+           x-on:change="offset = 0; reload()">
+      <h2 class="sidebar-title">Filters</h2>
+
+      <div class="filter-group">
+        <label>Classification</label>
+        <label class="check"><input type="checkbox" name="class" value="A" x-model="classes" checked> A · Engage</label>
+        <label class="check"><input type="checkbox" name="class" value="B" x-model="classes" checked> B · Watch</label>
+        <label class="check"><input type="checkbox" name="class" value="C" x-model="classes" checked> C · Signal</label>
+        <label class="check"><input type="checkbox" name="class" value="D" x-model="classes" checked> D</label>
+        <label class="check"><input type="checkbox" name="class" value="E" x-model="classes" checked> E</label>
+        <label class="check"><input type="checkbox" name="class" value="F" x-model="classes" checked> F · Noise</label>
+        <label class="check"><input type="checkbox" name="class" value="G" x-model="classes" checked> G</label>
+        <label class="check"><input type="checkbox" name="class" value="NOISE" x-model="classes" checked> NOISE</label>
+        <label class="check"><input type="checkbox" name="class" value="OTHER" x-model="classes"> Other (H–K / Govt)</label>
+      </div>
+
+      <div class="filter-group">
+        <label for="x-search">Search</label>
+        <input id="x-search" type="search" name="search" x-model="search"
+               placeholder="text or @handle">
+      </div>
+
+      <div class="filter-group">
+        <label for="x-sort">Sort by</label>
+        <select id="x-sort" name="sort_by" x-model="sort_by">
+          <option value="priority_then_quality">Priority first</option>
+          <option value="posted_desc">Recent posts</option>
+          <option value="recent_classifications">Recent classifications</option>
+        </select>
+      </div>
+
+      {# Pagination state lives here so hx-include ships it with the filters.
+         Bound to Alpine (programmatic value changes don't emit change events). #}
+      <input type="hidden" name="offset" :value="offset">
+      <input type="hidden" name="limit" :value="limit">
+    </aside>
+
+    <!-- Tweets table area — fetches on load and on any 'refresh' (filter changes
+         or pagination, both via Alpine reload()). hx-include pulls #x-filters. -->
+    <section id="x-posts-table-area" class="content" aria-label="Tweets"
+             hx-get="/dashboard/x/_posts-table"
+             hx-include="#x-filters"
+             hx-trigger="load, refresh"
+             hx-swap="innerHTML">
+      <div class="posts-placeholder">Loading tweets…</div>
+    </section>
+  </main>
+
+  <!-- Controls (Sub-phase X2). One collapsible panel for now; X3/X4/X5 add
+       Prompt / Scheduler / Run-agent panels here. Each lazy-loads its partial
+       the first time its <details> opens (toggle trigger). -->
+  <section class="controls" aria-label="Controls">
+    <details class="control-panel">
+      <summary>Cost summary</summary>
+      <div hx-get="/dashboard/x/_cost-view"
+           hx-trigger="toggle from:closest details" hx-swap="innerHTML">
+        <p class="loading">Loading cost summary…</p>
+      </div>
+    </details>
+    <details class="control-panel">
+      <summary>Classifier prompt</summary>
+      <div hx-get="/dashboard/x/_prompt-editor"
+           hx-trigger="toggle from:closest details" hx-swap="innerHTML">
+        <p class="loading">Loading prompt editor…</p>
+      </div>
+    </details>
+    <details class="control-panel">
+      <summary>Scheduler config</summary>
+      <div hx-get="/dashboard/x/_scheduler-form"
+           hx-trigger="toggle from:closest details" hx-swap="innerHTML">
+        <p class="loading">Loading scheduler…</p>
+      </div>
+    </details>
+    <details class="control-panel">
+      <summary>Run agent manually</summary>
+      <div hx-get="/dashboard/x/_run-agent"
+           hx-trigger="toggle from:closest details" hx-swap="innerHTML">
+        <p class="loading">Loading…</p>
+      </div>
+    </details>
+  </section>
+
+  <footer class="site-footer">
+    Total tweets: {{ kpi.total_posts }}
+    &nbsp;|&nbsp; Classified: {{ kpi.classified }}
+    &nbsp;|&nbsp; High priority: {{ kpi.high_priority }}
+    {# Live wall clock — a lightweight "page is fresh" indicator, ticks via Alpine. #}
+    &nbsp;|&nbsp; Updated
+    <span class="footer-clock"
+          x-data="{ t: new Date().toLocaleTimeString() }"
+          x-init="setInterval(() => t = new Date().toLocaleTimeString(), 1000)"
+          x-text="t"></span>
+  </footer>
+
+  </div><!-- /.page -->
+
+  <!-- Initialize Alpine directives inside HTMX-swapped content (pagination
+       controls in the tweets partial). Alpine marks initialized nodes, so
+       re-running initTree on fresh swaps is safe. -->
+  <script>
+    document.body.addEventListener('htmx:afterSwap', function (e) {
+      if (window.Alpine && e.detail && e.detail.target) {
+        window.Alpine.initTree(e.detail.target);
+      }
+    });
+  </script>
+</body>
+</html>

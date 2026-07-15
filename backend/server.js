@@ -30,6 +30,8 @@ app.use(cors({
   origin: (origin, cb) => {
     if (!origin) return cb(null, true); // same-origin / curl / Render health checks
     if (allowedOrigins.includes(origin)) return cb(null, true);
+    // Allow any local dev origin (localhost / 127.0.0.1, any port)
+    if (/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return cb(null, true);
     // Allow all Vercel preview deployments (*.vercel.app)
     if (/^https:\/\/[a-z0-9-]+(\.vercel\.app)$/.test(origin)) return cb(null, true);
     cb(new Error(`CORS not allowed for origin: ${origin}`));
@@ -48,8 +50,12 @@ app.use('/api/auth', rateLimit({ windowMs: 15 * 60 * 1000, max: 20, standardHead
 app.use('/api',      rateLimit({ windowMs: 1 * 60 * 1000,  max: 120, standardHeaders: true }));
 
 // â”€â”€ Routes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Platform (shared by every agent): auth + the section/agent catalogue gateway + admin panel
 app.use('/api/auth',      require('./routes/auth'));
+app.use('/api/admin',     require('./routes/admin'));
+app.use('/api/sections',  require('./routes/sections'));
 app.use('/api/agents',    require('./routes/agents'));
+// X Agent (this repo's own agent): its dashboard data + run APIs
 app.use('/api/keywords',  require('./routes/keywords'));
 app.use('/api/accounts',  require('./routes/accounts'));
 app.use('/api/dashboard', require('./routes/dashboard'));

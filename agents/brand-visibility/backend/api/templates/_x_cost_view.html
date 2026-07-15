@@ -1,0 +1,52 @@
+{# X cost summary panel (Sub-phase X2). Data from Database.cost_summary()
+   (the X1 read helper) + a this-month classification count for the average.
+   Reuses LinkedIn 4d cost CSS (.cost-kpis/.cost-table/.cost-avg) — those rules
+   are generic, not LinkedIn-specific. Data-first: no charts. #}
+<div class="control-body">
+  <div class="cost-kpis">
+    <div class="kpi-card">
+      <span class="kpi-label">This month</span>
+      <span class="kpi-value mono">${{ '%.4f' | format(this_month_total) }}</span>
+    </div>
+    <div class="kpi-card">
+      <span class="kpi-label">All time</span>
+      <span class="kpi-value mono">${{ '%.4f' | format(all_time_total) }}</span>
+    </div>
+    <div class="kpi-card">
+      <span class="kpi-label">Classifications</span>
+      <span class="kpi-value mono">{{ posts_classified }}</span>
+    </div>
+  </div>
+
+  <div class="table-scroll cost-table-scroll">
+    <table class="cost-table">
+      <thead>
+        <tr>
+          <th>Model</th>
+          <th class="num">Classifications</th>
+          <th class="num">Total cost USD</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in by_model %}
+        <tr>
+          <td>{{ row.model }}</td>
+          <td class="num">{{ row.posts }}</td>
+          <td class="num">${{ '%.4f' | format(row.total_cost_usd) }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="3" class="empty">No classification costs recorded yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <p class="cost-avg mono">
+    {% if avg_cost is not none %}
+    Average: ${{ '%.4f' | format(avg_cost) }} per classification (this month)
+    — {{ classifications_this_month }} classified
+    {% else %}
+    Average: — per classification (this month, 0 classified)
+    {% endif %}
+  </p>
+</div>

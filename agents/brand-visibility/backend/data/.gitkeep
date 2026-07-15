@@ -1,0 +1,1 @@
+# Keeps the data/ directory in git. Turso replica .db files regenerate here at runtime and are gitignored.

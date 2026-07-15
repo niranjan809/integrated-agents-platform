@@ -1,0 +1,71 @@
+{# Posts table partial — rendered server-side, swapped into #posts-table-area by HTMX. #}
+{% if posts %}
+<div class="table-scroll">
+  <table class="posts-table">
+    <thead>
+      <tr>
+        <th>Tier</th>
+        <th>Matched keyword</th>
+        <th>Author</th>
+        <th>Headline</th>
+        <th>Post preview</th>
+        <th>Engagement</th>
+        <th>Commercial fit</th>
+        <th>Relationship value</th>
+        <th>Noise flags</th>
+        <th>Reason</th>
+        <th>Posted at</th>
+        <th>Link</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for post in posts %}
+      <tr class="tier-{{ post.classification.tier | lower if post.classification else 'unclassified' }}">
+        <td>{{ post.classification.tier if post.classification else 'UNCLASSIFIED' }}</td>
+        <td>{{ post.matched_keyword }}</td>
+        <td>{{ post.author_name }}</td>
+        <td>{{ post.author_headline | truncate(80) }}</td>
+        <td class="preview">{{ post.text | truncate(200) }}</td>
+        <td class="num">&#9829; {{ post.like_count }} &middot; &#128172; {{ post.comment_count }} &middot; &#8635; {{ post.repost_count }}</td>
+        <td class="num">{{ post.classification.commercial_fit if post.classification else '—' }}</td>
+        <td class="num">{{ post.classification.relationship_value if post.classification else '—' }}</td>
+        <td>{{ post.classification.noise_flags | join(', ') if post.classification else '—' }}</td>
+        <td class="reason">{{ post.classification.one_line_reason | truncate(120) if post.classification else '—' }}</td>
+        <td>{{ post.posted_at_display }}</td>
+        <td>{% if post.post_url %}<a href="{{ post.post_url }}" target="_blank" rel="noopener">&#8599;</a>{% else %}—{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+{# Empty state (Phase 4d) — a centered placeholder, not a table row. #}
+<div class="empty-state">No posts match the current filters. Try adjusting tier or category.</div>
+{% endif %}
+
+{# Pagination (Phase 4c). Buttons/select mutate the shared Alpine offset/limit
+   (scope on <main>) then call reload(); the new offset/limit ride to the server
+   via the hidden inputs in #filters. Offsets/disabled states are computed
+   server-side and embedded so this template stays logic-free. Hidden when empty. #}
+{% if total %}
+<div class="pagination">
+  <button type="button" class="page-btn"
+          {% if not has_prev %}disabled{% endif %}
+          @click="offset = {{ prev_offset }}; reload()">&larr; Prev</button>
+
+  <span class="page-range">{{ page_start }}&ndash;{{ page_end }} of {{ total }}</span>
+
+  <button type="button" class="page-btn"
+          {% if not has_next %}disabled{% endif %}
+          @click="offset = {{ next_offset }}; reload()">Next &rarr;</button>
+
+  <label class="page-size">
+    Page size
+    <select @change="limit = parseInt($event.target.value); offset = 0; reload()">
+      {% for size in page_sizes %}
+      <option value="{{ size }}" {% if size == limit %}selected{% endif %}>{{ size }}</option>
+      {% endfor %}
+    </select>
+  </label>
+</div>
+{% endif %}

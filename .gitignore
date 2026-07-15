@@ -38,5 +38,8 @@ env/
 .streamlit/secrets.toml
 
 # -- Local DB caches (SQLite/Turso) --
+*.db
+*.sqlite
+*.sqlite3
 *.db-wal
 *.db-shm

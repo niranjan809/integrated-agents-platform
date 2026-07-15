@@ -39,7 +39,7 @@ export function AgentProvider({ children }) {
   // global "Agent running" badge live on every page, detects runs started by the
   // weekly cron / terminal / another tab, and auto-attaches the live log stream.
   useEffect(() => {
-    const token = localStorage.getItem('kiteai_token');
+    const token = sessionStorage.getItem('kiteai_token');
     if (!token) return;
     let stopped = false;
 
@@ -93,7 +93,7 @@ export function AgentProvider({ children }) {
   // Open (or re-open) the event stream to WATCH the background run. Safe to call
   // repeatedly — the backend endpoint only attaches a viewer, never starts a run.
   function attachStream() {
-    const token = localStorage.getItem('kiteai_token');
+    const token = sessionStorage.getItem('kiteai_token');
     if (!token) { setConnErr('Not authenticated — please log in again.'); setRunning(false); return; }
 
     let es;
@@ -270,7 +270,7 @@ export function AgentProvider({ children }) {
     setServerActive(true);
     completedRef.current = false;
 
-    const token = localStorage.getItem('kiteai_token');
+    const token = sessionStorage.getItem('kiteai_token');
     if (!token) { setConnErr('Not authenticated — please log in again.'); setRunning(false); return; }
 
     // Kick off the run in the BACKGROUND, then attach to watch it.
@@ -299,7 +299,7 @@ export function AgentProvider({ children }) {
     setServerActive(true);
     completedRef.current = false;
 
-    const token = localStorage.getItem('kiteai_token');
+    const token = sessionStorage.getItem('kiteai_token');
     if (!token) { setConnErr('Not authenticated — please log in again.'); setRunning(false); return; }
 
     try {
@@ -317,7 +317,7 @@ export function AgentProvider({ children }) {
   }
 
   async function stopRun() {
-    const token = localStorage.getItem('kiteai_token');
+    const token = sessionStorage.getItem('kiteai_token');
     try { await fetch(`${API}/api/agent/stop`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } }); } catch {}
     if (reconnectRef.current) { clearTimeout(reconnectRef.current); reconnectRef.current = null; }
     if (esRef.current) { esRef.current.close(); esRef.current = null; }

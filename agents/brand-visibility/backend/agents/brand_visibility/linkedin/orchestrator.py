@@ -31,7 +31,7 @@ def _month_to_date_calls(ldb) -> int:
     """
     sql = (
         "SELECT COALESCE(SUM(api_calls_made), 0) AS used FROM linkedin_runs "
-        "WHERE strftime('%Y-%m', started_at) = strftime('%Y-%m', 'now')"
+        "WHERE to_char(started_at, 'YYYY-MM') = to_char(NOW(), 'YYYY-MM')"
     )
     try:
         rows = ldb.query(sql)

@@ -167,7 +167,7 @@ def draft_post(theme: Any, db: Database, dry_run: bool = False) -> bool:
     # Fetch representative tweet texts (up to 5)
     rep_tweets: list[str] = []
     for tid in tweet_ids[:10]:
-        rows = db.query("SELECT text FROM scraped_tweets WHERE tweet_id = ?", (tid,))
+        rows = db.query("SELECT text FROM scraped_tweets WHERE tweet_id = %s", (tid,))
         if rows:
             rep_tweets.append(_anonymize(rows[0]["text"]))
         if len(rep_tweets) >= 5:

@@ -415,7 +415,7 @@ def expand_reply_trees(db: Database, dry_run: bool = False, run_id: int | None =
           AND quality_score >= 6
           AND status = 'CLASSIFIED'
         ORDER BY quality_score DESC, velocity DESC
-        LIMIT ?
+        LIMIT %s
         """,
         (MAX_REPLY_EXPANSIONS_PER_TICK,),
     )

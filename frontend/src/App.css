@@ -962,3 +962,25 @@ code, .mono, pre { font-family: var(--mono); }
   .ambient-grid, .status-pill .dot { animation: none; }
   .shell-h1, .shell-eyebrow, .shell-sub, .agent-option-card, .login-card, .placeholder-wrap { animation: none; }
 }
+
+/* ── Brand Visibility: platform tabs (X | LinkedIn) ──────────────────────── */
+.platform-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 12px 24px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.platform-tab {
+  padding: 8px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #9ba3af;
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+.platform-tab:hover { color: #e5e7eb; }
+.platform-tab.active {
+  color: #00F5D4;
+  border-bottom-color: #00F5D4;
+}

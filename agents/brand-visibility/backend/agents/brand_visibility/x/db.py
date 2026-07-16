@@ -704,13 +704,18 @@ class Database:
     }
 
     @staticmethod
-    def _posts_where(class_filter: list[str] | None, search: str | None):
+    def _posts_where(class_filter: list[str] | None, search: str | None,
+                     priority_flags: list[str] | None = None):
         """Build the shared WHERE clause for list_posts/count (parameterized)."""
         clauses: list[str] = []
         params: list[Any] = []
         if class_filter:
             clauses.append(f"confirmed_class IN ({', '.join('%s' for _ in class_filter)})")
             params.extend(class_filter)
+        if priority_flags:
+            # psycopg3 adapts a Python list to a Postgres array for = ANY(...).
+            clauses.append("priority_flag = ANY(%s)")
+            params.append(list(priority_flags))
         if search:
             clauses.append("(text ILIKE %s OR author_handle ILIKE %s)")
             like = f"%{search}%"
@@ -724,9 +729,10 @@ class Database:
         return rows[0]["c"] if rows else 0
 
     def count_posts_filtered(self, class_filter: list[str] | None = None,
-                             search: str | None = None) -> int:
+                             search: str | None = None,
+                             priority_flags: list[str] | None = None) -> int:
         """Row count under the same filters as list_posts — drives pagination."""
-        where, params = self._posts_where(class_filter, search)
+        where, params = self._posts_where(class_filter, search, priority_flags)
         rows = self.query(f"SELECT COUNT(*) AS c FROM scraped_tweets{where}", tuple(params))
         return rows[0]["c"] if rows else 0
 
@@ -762,11 +768,12 @@ class Database:
 
     def list_posts(self, class_filter: list[str] | None = None, search: str | None = None,
                    offset: int = 0, limit: int = 50,
-                   sort_by: str = "priority_then_quality") -> list[dict]:
+                   sort_by: str = "priority_then_quality",
+                   priority_flags: list[str] | None = None) -> list[dict]:
         """One page of tweets as dashboard-ready dicts. engagement is computed
         (likes+RTs+replies). author_name is None — scraped_tweets stores only the
         handle. reputation comes from the author_reputation_label overlay column."""
-        where, params = self._posts_where(class_filter, search)
+        where, params = self._posts_where(class_filter, search, priority_flags)
         order = self._POSTS_ORDER.get(sort_by, self._POSTS_ORDER["priority_then_quality"])
         sql = (
             "SELECT tweet_id, author_handle, text, created_at, confirmed_class, "
@@ -987,7 +994,7 @@ class Database:
         if key == "max_keywords":
             return _as_int("max_keywords", 1, 50)
         if key == "max_api_calls":
-            return _as_int("max_api_calls", 1, 100)
+            return _as_int("max_api_calls", 1, 1000)
         if key == "since_hours":
             if value is None or str(value).strip() == "":
                 return None  # NULL = no time filter

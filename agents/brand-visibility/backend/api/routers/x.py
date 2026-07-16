@@ -124,10 +124,12 @@ def posts(
     offset: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     sort_by: str = Query("priority_then_quality"),
+    priority_flag: Optional[list[str]] = Query(None, alias="priority_flag"),
 ) -> list[dict]:
     return db.list_posts(
         class_filter=cls or None, search=search or None,
         offset=offset, limit=limit, sort_by=sort_by,
+        priority_flags=priority_flag or None,
     )
 
 

@@ -963,3 +963,401 @@ code, .mono, pre { font-family: var(--mono); }
   .ambient-grid, .status-pill .dot { animation: none; }
   .shell-h1, .shell-eyebrow, .shell-sub, .agent-option-card, .login-card, .placeholder-wrap { animation: none; }
 }
+
+/* ── Brand Visibility: platform tabs (X | LinkedIn) ──────────────────────── */
+.platform-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 12px 24px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.platform-tab {
+  padding: 8px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #9ba3af;
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+.platform-tab:hover { color: #e5e7eb; }
+.platform-tab.active {
+  color: #00F5D4;
+  border-bottom-color: #00F5D4;
+}
+
+/* ── Brand Visibility: tweets list (filters, table, pagination) ──────────── */
+.filters-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.class-chip {
+  padding: 5px 12px;
+  font-size: 13px;
+  font-weight: 700;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.bv-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.bv-table th {
+  text-align: left;
+  padding: 10px 12px;
+  color: var(--text2);
+  font-weight: 600;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--border);
+}
+.bv-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  vertical-align: middle;
+}
+.bv-table tbody tr:hover { background: rgba(255, 255, 255, 0.03); }
+.class-badge {
+  display: inline-block;
+  min-width: 26px;
+  text-align: center;
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #0b0f14;
+  border-radius: 6px;
+}
+.bv-link { color: var(--blue); text-decoration: none; white-space: nowrap; }
+.bv-link:hover { text-decoration: underline; }
+.pagination {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  margin-top: 18px;
+}
+.page-btn {
+  padding: 8px 16px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+}
+.page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.page-btn:not(:disabled):hover { border-color: var(--blue); }
+.page-info { color: var(--text2); font-size: 13px; }
+
+.filter-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-right: 2px;
+}
+
+/* ── Brand Visibility: tweets two-panel layout (list + detail) ───────────── */
+.tweets-layout {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  margin-top: 8px;
+}
+.tweets-list {
+  flex: 0 0 40%;
+  max-width: 40%;
+  max-height: calc(100vh - 320px);
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg2);
+}
+.tweet-list-row {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 12px 14px;
+  border: none;
+  border-left: 3px solid transparent;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+.tweet-list-row:hover { background: rgba(255, 255, 255, 0.03); }
+.tweet-list-row.selected { background: rgba(0, 245, 212, 0.08); }
+.tweet-list-row-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+.tweet-list-author { font-weight: 700; font-size: 13px; color: var(--text); }
+.tweet-list-time { font-size: 12px; color: var(--text2); white-space: nowrap; }
+.tweet-list-preview {
+  margin: 4px 0 8px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--text2);
+}
+.tweet-list-tags { display: flex; align-items: center; gap: 8px; }
+.tweet-list-prio { font-size: 11px; color: var(--text2); text-transform: capitalize; }
+
+.tweet-detail-panel {
+  flex: 1 1 60%;
+  min-width: 0;
+  padding: 22px 24px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  position: sticky;
+  top: 16px;
+}
+.tweet-detail-empty {
+  color: var(--text2);
+  font-size: 14px;
+  text-align: center;
+  padding: 48px 12px;
+}
+.tweet-detail-author {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+.tweet-detail-name { font-weight: 800; font-size: 16px; color: var(--text); }
+.tweet-detail-handle, .tweet-detail-dot, .tweet-detail-time { color: var(--text2); font-size: 14px; }
+.tweet-content {
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--text);
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin-bottom: 20px;
+}
+.tweet-metadata-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  padding: 14px 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 18px;
+}
+.tweet-meta-item { display: flex; flex-direction: column; gap: 2px; }
+.tweet-meta-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text2); }
+.tweet-meta-value { font-size: 14px; font-weight: 600; color: var(--text); }
+.view-on-x {
+  display: inline-block;
+  padding: 9px 16px;
+  background: var(--blue);
+  color: #0b0f14;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  border-radius: 8px;
+}
+.view-on-x:hover { opacity: 0.9; }
+
+/* ── Brand Visibility: Keywords page (per-class query CRUD) ──────────────── */
+.keywords-header { display: flex; justify-content: space-between; align-items: flex-start; }
+.kw-toolbar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+.kw-toolbar .search-input { flex: 1; min-width: 180px; }
+
+.keyword-class-card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg2);
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+.keyword-class-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 14px 16px;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+}
+.keyword-class-header:hover { background: rgba(255, 255, 255, 0.03); }
+.kw-class-dot { width: 10px; height: 10px; border-radius: 50%; flex: 0 0 auto; }
+.kw-class-name { font-weight: 700; font-size: 14px; }
+.kw-class-meta { margin-left: auto; font-size: 12px; color: var(--text2); }
+.kw-class-caret { font-size: 10px; color: var(--text2); }
+
+.keyword-list { border-top: 1px solid var(--border); }
+.keyword-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+.keyword-row:last-child { border-bottom: none; }
+.keyword-row.disabled { opacity: 0.5; }
+.keyword-query-text {
+  flex: 1;
+  min-width: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.keyword-row-actions { display: flex; gap: 4px; flex: 0 0 auto; }
+.kw-icon-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  padding: 4px 8px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.kw-icon-btn:hover { border-color: var(--blue); }
+.kw-icon-btn.danger:hover { border-color: #EF4444; }
+
+/* Modal (add/edit/confirm) */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 48px 16px;
+  overflow-y: auto;
+  z-index: 1000;
+}
+.modal-card {
+  width: 100%;
+  max-width: 560px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+}
+.modal-card h2 { margin: 0 0 16px; font-size: 18px; }
+.modal-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+.modal-field > span { font-size: 12px; color: var(--text2); }
+.modal-field-row { display: flex; gap: 12px; }
+.modal-field-row .modal-field { flex: 1; }
+.modal-textarea {
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+  resize: vertical;
+  outline: none;
+}
+.modal-textarea:focus { border-color: var(--blue); }
+.modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 8px; }
+.keyword-confirm .keyword-query-text {
+  display: block;
+  white-space: normal;
+  word-break: break-word;
+  padding: 10px;
+  background: var(--bg3);
+  border-radius: 8px;
+  margin: 12px 0;
+}
+
+/* ── Brand Visibility: Prompts page (classifier prompt editor) ──────────── */
+.page-success {
+  padding: 12px 16px;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  border-radius: 8px;
+  color: #10B981;
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+.prompts-header { display: flex; justify-content: space-between; align-items: flex-start; }
+.prompt-version-badge {
+  padding: 5px 12px;
+  background: rgba(0, 245, 212, 0.12);
+  border: 1px solid rgba(0, 245, 212, 0.4);
+  border-radius: 999px;
+  color: #00F5D4;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.prompt-editor {
+  width: 100%;
+  min-height: 460px;
+  padding: 16px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  resize: vertical;
+  outline: none;
+}
+.prompt-editor:focus { border-color: var(--blue); }
+.prompt-meta { margin: 10px 2px; font-size: 12px; color: var(--text2); }
+.prompt-dirty { color: #F59E0B; }
+.prompt-actions {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+.prompt-version-field { display: flex; flex-direction: column; gap: 6px; }
+.prompt-version-field > span { font-size: 12px; color: var(--text2); }
+.prompt-version-field .search-input { width: 160px; flex: none; }
+.prompt-actions-btns { display: flex; gap: 10px; }
+
+/* ── Brand Visibility: Scheduler page (sweep config) ────────────────────── */
+.config-section {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 18px 20px;
+  margin-bottom: 16px;
+}
+.config-section h3 { margin: 0 0 14px; font-size: 15px; }
+.config-field {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+.config-field:last-child { border-bottom: none; }
+.config-field > label {
+  flex: 0 0 200px;
+  font-size: 13px;
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.config-hint { font-size: 11px; color: var(--text2); font-weight: 400; }
+.config-field .search-input,
+.config-field .filter-select { flex: 1; max-width: 280px; }
+.config-updated { font-size: 12px; color: var(--text2); margin: 4px 2px 16px; }
+.config-actions { display: flex; justify-content: flex-end; gap: 10px; }

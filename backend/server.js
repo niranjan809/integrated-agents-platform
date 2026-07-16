@@ -37,7 +37,7 @@ app.use(cors({
     cb(new Error(`CORS not allowed for origin: ${origin}`));
   },
   credentials: false,
-  methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
@@ -55,6 +55,8 @@ app.use('/api/auth',      require('./routes/auth'));
 app.use('/api/admin',     require('./routes/admin'));
 app.use('/api/sections',  require('./routes/sections'));
 app.use('/api/agents',    require('./routes/agents'));
+// Brand Visibility agent: lexicon config CRUD, proxied to the Python FastAPI backend
+app.use('/api/brand-visibility/config', require('./routes/brand-visibility-config'));
 // X Agent (this repo's own agent): its dashboard data + run APIs
 app.use('/api/keywords',  require('./routes/keywords'));
 app.use('/api/accounts',  require('./routes/accounts'));

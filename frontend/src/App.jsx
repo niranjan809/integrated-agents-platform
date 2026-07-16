@@ -18,6 +18,17 @@ import PromptsPage    from './pages/x/PromptsPage';
 import TasksPage      from './pages/x/TasksPage';
 import TaskDetailPage from './pages/x/TaskDetailPage';
 
+// Brand Visibility agent (multi-platform: X + LinkedIn)
+import BrandVisibilityLayout from './components/brand-visibility/Layout';
+import BvOverview  from './pages/brand-visibility/x/Overview';
+import BvTweets    from './pages/brand-visibility/x/Tweets';
+import BvKeywords  from './pages/brand-visibility/x/Keywords';
+import BvPrompts   from './pages/brand-visibility/x/Prompts';
+import BvScheduler from './pages/brand-visibility/x/Scheduler';
+import BvManualRun from './pages/brand-visibility/x/ManualRun';
+import BvHistory   from './pages/brand-visibility/x/History';
+import BvLinkedInOverview from './pages/brand-visibility/linkedin/Overview';
+
 // The X Agent dashboard (sidebar layout). Mounted under the platform catch-all so the
 // landing + agent-section pages can live at the top level.
 function AppLayout() {
@@ -62,6 +73,24 @@ export default function App() {
       <Route path="/" element={<ProtectedRoute><LandingPage /></ProtectedRoute>} />
       <Route path="/section/:sectionId" element={<ProtectedRoute><SectionPage /></ProtectedRoute>} />
       <Route path="/embed/:agentId" element={<ProtectedRoute><AgentEmbedPage /></ProtectedRoute>} />
+
+      {/* Brand Visibility agent dashboard (X + LinkedIn platforms, own sidebar) */}
+      <Route path="/brand-visibility" element={
+        <ProtectedRoute>
+          <BrandVisibilityLayout />
+        </ProtectedRoute>
+      }>
+        <Route index element={<Navigate to="x/overview" replace />} />
+        <Route path="x/overview"  element={<BvOverview />} />
+        <Route path="x/tweets"    element={<BvTweets />} />
+        <Route path="x/keywords"  element={<BvKeywords />} />
+        <Route path="x/prompts"   element={<BvPrompts />} />
+        <Route path="x/scheduler" element={<BvScheduler />} />
+        <Route path="x/manual"    element={<BvManualRun />} />
+        <Route path="x/history"   element={<BvHistory />} />
+        <Route path="linkedin/overview" element={<BvLinkedInOverview />} />
+        <Route path="linkedin/*" element={<Navigate to="/brand-visibility/linkedin/overview" replace />} />
+      </Route>
 
       {/* X Agent dashboard (everything else, with sidebar) */}
       <Route path="/*" element={

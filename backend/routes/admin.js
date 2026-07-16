@@ -81,7 +81,7 @@ router.get('/overview', requirePanelAdmin, async (req, res) => {
 });
 
 // ── per-agent detail probe (health + DB status + data counts) ────────────────
-async function fetchJson(url, ms = 4000) {
+async function fetchJson(url, ms = 15000) {
   const res = await fetch(url, { signal: AbortSignal.timeout(ms) });
   if (!res.ok) throw new Error('HTTP ' + res.status);
   return res.json();

@@ -1166,3 +1166,115 @@ code, .mono, pre { font-family: var(--mono); }
   border-radius: 8px;
 }
 .view-on-x:hover { opacity: 0.9; }
+
+/* ── Brand Visibility: Keywords page (per-class query CRUD) ──────────────── */
+.keywords-header { display: flex; justify-content: space-between; align-items: flex-start; }
+.kw-toolbar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+.kw-toolbar .search-input { flex: 1; min-width: 180px; }
+
+.keyword-class-card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg2);
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+.keyword-class-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 14px 16px;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+}
+.keyword-class-header:hover { background: rgba(255, 255, 255, 0.03); }
+.kw-class-dot { width: 10px; height: 10px; border-radius: 50%; flex: 0 0 auto; }
+.kw-class-name { font-weight: 700; font-size: 14px; }
+.kw-class-meta { margin-left: auto; font-size: 12px; color: var(--text2); }
+.kw-class-caret { font-size: 10px; color: var(--text2); }
+
+.keyword-list { border-top: 1px solid var(--border); }
+.keyword-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+.keyword-row:last-child { border-bottom: none; }
+.keyword-row.disabled { opacity: 0.5; }
+.keyword-query-text {
+  flex: 1;
+  min-width: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.keyword-row-actions { display: flex; gap: 4px; flex: 0 0 auto; }
+.kw-icon-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  padding: 4px 8px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.kw-icon-btn:hover { border-color: var(--blue); }
+.kw-icon-btn.danger:hover { border-color: #EF4444; }
+
+/* Modal (add/edit/confirm) */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 48px 16px;
+  overflow-y: auto;
+  z-index: 1000;
+}
+.modal-card {
+  width: 100%;
+  max-width: 560px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+}
+.modal-card h2 { margin: 0 0 16px; font-size: 18px; }
+.modal-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+.modal-field > span { font-size: 12px; color: var(--text2); }
+.modal-field-row { display: flex; gap: 12px; }
+.modal-field-row .modal-field { flex: 1; }
+.modal-textarea {
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+  resize: vertical;
+  outline: none;
+}
+.modal-textarea:focus { border-color: var(--blue); }
+.modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 8px; }
+.keyword-confirm .keyword-query-text {
+  display: block;
+  white-space: normal;
+  word-break: break-word;
+  padding: 10px;
+  background: var(--bg3);
+  border-radius: 8px;
+  margin: 12px 0;
+}

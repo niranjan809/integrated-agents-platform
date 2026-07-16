@@ -1,0 +1,12 @@
+__pycache__
+*.pyc
+*.pyo
+.venv
+venv
+.env
+.env.example
+.python-version
+debug_scrape.py
+*.log
+.git
+.gitignore

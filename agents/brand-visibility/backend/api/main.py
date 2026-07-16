@@ -24,6 +24,7 @@ from fastapi.templating import Jinja2Templates
 from agents.brand_visibility.linkedin.db import LinkedInDatabase
 from agents.brand_visibility.x.db import Database as XDatabase
 from shared.db.postgres_client import close_pool
+from api.routers import config as config_router
 from api.routers import dashboards as dashboards_router
 from api.routers import linkedin as linkedin_router
 from api.routers import x as x_router
@@ -113,6 +114,7 @@ app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
 # Platform routers
 app.include_router(linkedin_router.router, prefix="/api/linkedin", tags=["linkedin"])
 app.include_router(x_router.router, prefix="/api/x", tags=["x"])
+app.include_router(config_router.router, prefix="/api/config", tags=["config"])
 # Server-rendered HTML dashboards
 app.include_router(dashboards_router.router, tags=["dashboards"])
 

@@ -1278,3 +1278,54 @@ code, .mono, pre { font-family: var(--mono); }
   border-radius: 8px;
   margin: 12px 0;
 }
+
+/* ── Brand Visibility: Prompts page (classifier prompt editor) ──────────── */
+.page-success {
+  padding: 12px 16px;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  border-radius: 8px;
+  color: #10B981;
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+.prompts-header { display: flex; justify-content: space-between; align-items: flex-start; }
+.prompt-version-badge {
+  padding: 5px 12px;
+  background: rgba(0, 245, 212, 0.12);
+  border: 1px solid rgba(0, 245, 212, 0.4);
+  border-radius: 999px;
+  color: #00F5D4;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.prompt-editor {
+  width: 100%;
+  min-height: 460px;
+  padding: 16px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  resize: vertical;
+  outline: none;
+}
+.prompt-editor:focus { border-color: var(--blue); }
+.prompt-meta { margin: 10px 2px; font-size: 12px; color: var(--text2); }
+.prompt-dirty { color: #F59E0B; }
+.prompt-actions {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+.prompt-version-field { display: flex; flex-direction: column; gap: 6px; }
+.prompt-version-field > span { font-size: 12px; color: var(--text2); }
+.prompt-version-field .search-input { width: 160px; flex: none; }
+.prompt-actions-btns { display: flex; gap: 10px; }

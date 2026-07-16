@@ -157,21 +157,30 @@ def stats() -> dict:
     Public (no keys returned) — used by the KiteAI admin to show data totals."""
     from shared.db.postgres_client import get_connection
 
-    tables = [
-        "scraped_tweets", "agent_runs", "content_themes", "useful_promoters",
-        "influencers", "keywords",
-        "linkedin_posts", "linkedin_runs", "linkedin_keywords",
-    ]
-    counts: dict = {}
+    # One round trip instead of nine: Postgres evaluates the per-table COUNT
+    # subqueries internally, far faster than sequential SELECTs against the
+    # remote RDS instance. Column order/names mirror the previous table list, so
+    # the {"counts": {...}} response shape is unchanged for the frontend.
     try:
         with get_connection() as conn:
             with conn.cursor() as cur:
-                for t in tables:
-                    try:
-                        cur.execute('SELECT COUNT(*) FROM "%s"' % t)
-                        counts[t] = cur.fetchone()[0]
-                    except Exception:
-                        counts[t] = None
+                cur.execute(
+                    """
+                    SELECT
+                        (SELECT COUNT(*) FROM scraped_tweets)    AS scraped_tweets,
+                        (SELECT COUNT(*) FROM agent_runs)        AS agent_runs,
+                        (SELECT COUNT(*) FROM content_themes)    AS content_themes,
+                        (SELECT COUNT(*) FROM useful_promoters)  AS useful_promoters,
+                        (SELECT COUNT(*) FROM influencers)       AS influencers,
+                        (SELECT COUNT(*) FROM keywords)          AS keywords,
+                        (SELECT COUNT(*) FROM linkedin_posts)    AS linkedin_posts,
+                        (SELECT COUNT(*) FROM linkedin_runs)     AS linkedin_runs,
+                        (SELECT COUNT(*) FROM linkedin_keywords) AS linkedin_keywords
+                    """
+                )
+                row = cur.fetchone()
+                columns = [desc[0] for desc in cur.description]
+                counts = dict(zip(columns, row))
         return {"db": "connected", "counts": counts}
     except Exception as e:  # noqa: BLE001
-        return {"db": "error", "error": str(e)[:200], "counts": counts}
+        return {"db": "error", "error": str(e)[:200], "counts": {}}

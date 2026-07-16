@@ -13,8 +13,7 @@ const SORT_OPTIONS = [
   { value: 'recent_classifications', label: 'Recently classified' },
 ];
 
-// priority_flag enum (from assign_priority + classification_rules). Filtered
-// server-side via repeated ?priority_flag= params.
+// priority_flag enum — filtered server-side via repeated ?priority_flag= params.
 const PRIORITY_OPTIONS = [
   { value: 'URGENT_VIRAL',            label: 'Viral',      color: '#EF4444' },
   { value: 'URGENT_INFLUENCER_REPLY', label: 'Influencer', color: '#F59E0B' },
@@ -37,8 +36,86 @@ function relativeTime(iso) {
   return new Date(iso).toLocaleDateString();
 }
 
+function tweetUrl(p) {
+  return `https://x.com/${p.author_handle}/status/${p.tweet_id}`;
+}
+
+// ── Compact list row ──────────────────────────────────────────────────────────
+function TweetListRow({ post, selected, onSelect }) {
+  const label = getClassLabel(post.classification);
+  const preview = (post.content || '').replace(/\s+/g, ' ').trim();
+  return (
+    <button
+      type="button"
+      className={`tweet-list-row${selected ? ' selected' : ''}`}
+      style={{ borderLeftColor: label.color }}
+      onClick={() => onSelect(post)}
+    >
+      <div className="tweet-list-row-head">
+        <span className="tweet-list-author">@{post.author_handle}</span>
+        <span className="tweet-list-time">{relativeTime(post.posted_at)}</span>
+      </div>
+      <div className="tweet-list-preview">{preview.slice(0, 90)}{preview.length > 90 ? '…' : ''}</div>
+      <div className="tweet-list-tags">
+        <span className="class-badge" style={{ background: label.color }} title={label.short}>
+          {post.classification || '—'}
+        </span>
+        {post.priority_flag && post.priority_flag !== 'STANDARD' && (
+          <span className="tweet-list-prio">{post.priority_flag.replace(/_/g, ' ').toLowerCase()}</span>
+        )}
+      </div>
+    </button>
+  );
+}
+
+// ── Detail panel ──────────────────────────────────────────────────────────────
+function TweetDetailPanel({ post }) {
+  if (!post) {
+    return (
+      <div className="tweet-detail-panel">
+        <div className="tweet-detail-empty">Select a tweet on the left to view details.</div>
+      </div>
+    );
+  }
+  const label = getClassLabel(post.classification);
+  const meta = [
+    { k: 'Class', v: `${post.classification || '—'} · ${label.short}` },
+    { k: 'Priority', v: post.priority_flag || '—' },
+    { k: 'Quality', v: post.quality_score ?? '—' },
+    { k: 'Velocity', v: post.velocity != null ? Number(post.velocity).toFixed(2) : '—' },
+    { k: 'Engagement', v: post.engagement ?? 0 },
+    { k: 'Builder', v: post.is_builder ? 'yes' : 'no' },
+  ];
+  return (
+    <div className="tweet-detail-panel">
+      <div className="tweet-detail-author">
+        <span className="tweet-detail-name">{post.author_name || post.author_handle}</span>
+        <span className="tweet-detail-handle">@{post.author_handle}</span>
+        <span className="tweet-detail-dot">·</span>
+        <span className="tweet-detail-time" title={post.posted_at || ''}>{relativeTime(post.posted_at)}</span>
+      </div>
+
+      <div className="tweet-content">{post.content}</div>
+
+      <div className="tweet-metadata-row">
+        {meta.map(m => (
+          <div key={m.k} className="tweet-meta-item">
+            <span className="tweet-meta-label">{m.k}</span>
+            <span className="tweet-meta-value">{m.v}</span>
+          </div>
+        ))}
+      </div>
+
+      <a className="view-on-x" href={tweetUrl(post)} target="_blank" rel="noreferrer">
+        View on X ↗
+      </a>
+    </div>
+  );
+}
+
 export default function Tweets() {
   const [posts, setPosts] = useState([]);
+  const [selected, setSelected] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -68,7 +145,13 @@ export default function Tweets() {
     let alive = true;
     pythonFetch(`/api/x/posts?${params.toString()}`)
       .then(r => r.ok ? r.json() : Promise.reject(new Error(`posts ${r.status}`)))
-      .then(data => { if (alive) { setPosts(Array.isArray(data) ? data : []); setLoading(false); } })
+      .then(data => {
+        if (!alive) return;
+        const rows = Array.isArray(data) ? data : [];
+        setPosts(rows);
+        setSelected(rows[0] || null); // auto-select first; resets on filter/page change
+        setLoading(false);
+      })
       .catch(e => { if (alive) { setError(e.message); setLoading(false); } });
     return () => { alive = false; };
   }, [selectedClasses, selectedPriorities, searchTerm, sortBy, offset]);
@@ -79,7 +162,6 @@ export default function Tweets() {
     setOffset(0);
     setSelectedClasses(prev => prev.includes(c) ? prev.filter(x => x !== c) : [...prev, c]);
   }
-
   function togglePriority(p) {
     setOffset(0);
     setSelectedPriorities(prev => prev.includes(p) ? prev.filter(x => x !== p) : [...prev, p]);
@@ -92,7 +174,7 @@ export default function Tweets() {
         <p className="page-sub">X · Voice AI signal feed</p>
       </div>
 
-      {/* Class filter chips (multi-select) */}
+      {/* Class filter chips */}
       <div className="filters-row">
         <span className="filter-label">Class</span>
         {CLASS_OPTIONS.map(c => {
@@ -114,7 +196,7 @@ export default function Tweets() {
         })}
       </div>
 
-      {/* Priority filter chips (multi-select, server-side) */}
+      {/* Priority filter chips */}
       <div className="filters-row">
         <span className="filter-label">Priority</span>
         {PRIORITY_OPTIONS.map(o => {
@@ -148,7 +230,7 @@ export default function Tweets() {
         </select>
       </div>
 
-      {/* Table */}
+      {/* Two-panel layout */}
       {loading ? (
         <div className="page-loader"><div className="spinner" /></div>
       ) : error ? (
@@ -156,49 +238,18 @@ export default function Tweets() {
       ) : posts.length === 0 ? (
         <div className="empty-state">No tweets match current filters.</div>
       ) : (
-        <div style={{ overflowX: 'auto' }}>
-          <table className="bv-table">
-            <thead>
-              <tr>
-                <th>Author</th>
-                <th>Class</th>
-                <th>Priority</th>
-                <th>Quality</th>
-                <th>Engagement</th>
-                <th>Posted</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {posts.map(p => {
-                const label = getClassLabel(p.classification);
-                return (
-                  <tr key={p.tweet_id}>
-                    <td>@{p.author_handle}</td>
-                    <td>
-                      <span className="class-badge" style={{ background: label.color }} title={label.short}>
-                        {p.classification || '—'}
-                      </span>
-                    </td>
-                    <td>{p.priority_flag || '—'}</td>
-                    <td>{p.quality_score ?? '—'}</td>
-                    <td>{p.engagement ?? 0}</td>
-                    <td title={p.posted_at || ''}>{relativeTime(p.posted_at)}</td>
-                    <td>
-                      <a
-                        href={`https://x.com/${p.author_handle}/status/${p.tweet_id}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="bv-link"
-                      >
-                        View ↗
-                      </a>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        <div className="tweets-layout">
+          <div className="tweets-list">
+            {posts.map(p => (
+              <TweetListRow
+                key={p.tweet_id}
+                post={p}
+                selected={selected?.tweet_id === p.tweet_id}
+                onSelect={setSelected}
+              />
+            ))}
+          </div>
+          <TweetDetailPanel post={selected} />
         </div>
       )}
 

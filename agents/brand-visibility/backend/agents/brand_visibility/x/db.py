@@ -994,7 +994,7 @@ class Database:
         if key == "max_keywords":
             return _as_int("max_keywords", 1, 50)
         if key == "max_api_calls":
-            return _as_int("max_api_calls", 1, 100)
+            return _as_int("max_api_calls", 1, 1000)
         if key == "since_hours":
             if value is None or str(value).strip() == "":
                 return None  # NULL = no time filter

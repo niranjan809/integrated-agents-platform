@@ -1,5 +1,9 @@
 const BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
-const LS_PREFIX = "vac:";
+// Bump this whenever a fix could invalidate previously-cached data (e.g. a stat
+// that was wrong upstream and got corrected directly in the DB) — it orphans
+// every existing localStorage entry so the next load re-fetches instead of
+// serving a stale value for up to its TTL.
+const LS_PREFIX = "vac:v2:";
 
 // In-memory cache: key → { data, expiresAt }
 const _cache = new Map<string, { data: unknown; expiresAt: number }>();
@@ -244,7 +248,11 @@ export const api = {
     });
   },
   adminUpdate: (id: number, data: Record<string, unknown>) => {
+    // Editing a leaderboard can change its `domain`, which shifts per-category
+    // counts — invalidate the list and domain-categories too, not just this row.
     invalidateCache(`/leaderboards/${id}`);
+    invalidateCache("/leaderboards");
+    invalidateCache("/domain-categories");
     return req<unknown>(`/admin/leaderboards/${id}`, {
       method: "PUT", headers: jsonHeaders(), body: JSON.stringify(data),
     });

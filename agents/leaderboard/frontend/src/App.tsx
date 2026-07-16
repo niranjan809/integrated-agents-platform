@@ -21,9 +21,11 @@ export default function App() {
           <Route path="/leaderboard/:id" element={<LeaderboardPage />} />
           <Route path="/compare" element={<ComparePage />} />
           <Route path="/search" element={<SearchPage />} />
-          <Route path="/admin" element={<AdminPage />} />
-          <Route path="/admin/domain/:slug" element={<AdminDomainPage />} />
         </Route>
+        {/* No Layout wrapper — embedded standalone in the platform admin panel's
+            Manage section, so no app nav / Compare button should show through. */}
+        <Route path="/admin" element={<div className="max-w-7xl mx-auto px-4 py-6"><AdminPage /></div>} />
+        <Route path="/admin/domain/:slug" element={<div className="max-w-7xl mx-auto px-4 py-6"><AdminDomainPage /></div>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

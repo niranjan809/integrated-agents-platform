@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { api, DomainCategory, Leaderboard, PromptConfig, getCached, invalidateCache } from "@/lib/api";
 import { timeAgo, matchesDomain } from "@/lib/utils";
+import { useAuth } from "@/lib/auth";
 
 const COLOR_MAP: Record<string, { border: string; gradient: string; iconBg: string; accent: string }> = {
   purple:  { border: "border-purple-700/50 hover:border-purple-500/70",  gradient: "from-purple-900/40 to-purple-800/20",  iconBg: "bg-purple-900/60",  accent: "text-purple-400" },
@@ -113,6 +114,8 @@ function ScanStatusWidget() {
 
 export default function AdminPage() {
   const navigate = useNavigate();
+  const { isAdmin, login } = useAuth();
+  const [authError, setAuthError] = useState<string | null>(null);
   const [categories, setCategories] = useState<DomainCategory[]>(
     () => getCached<DomainCategory[]>("/domain-categories") ?? []
   );
@@ -150,7 +153,13 @@ export default function AdminPage() {
   const [savingPrompt, setSavingPrompt] = useState<string | null>(null);
   const [promptMsg, setPromptMsg] = useState<{ key: string; ok: boolean; text: string } | null>(null);
 
-  useEffect(() => { loadAll(); }, []);
+  useEffect(() => {
+    if (isAdmin) { loadAll(); return; }
+    const u = import.meta.env.VITE_ADMIN_USERNAME;
+    const p = import.meta.env.VITE_ADMIN_PASSWORD;
+    if (!u || !p) { setAuthError("Admin credentials not configured (VITE_ADMIN_USERNAME/VITE_ADMIN_PASSWORD)."); return; }
+    login(u, p).catch((e: unknown) => setAuthError((e as Error).message || "Auto sign-in failed"));
+  }, [isAdmin]);
 
   useEffect(() => {
     if (!showPrompts || prompts.length > 0) return;
@@ -192,7 +201,7 @@ export default function AdminPage() {
     setAssigningLb(lb.id);
     setCatError(null);
     try {
-      const newInclude = [...(targetCat.include_domains ?? []), lb.domain];
+      const newInclude = Array.from(new Set([...(targetCat.include_domains ?? []), lb.domain]));
       await api.adminUpdateDomainCategory(catId, { include_domains: newInclude });
       setCategories((prev) =>
         prev.map((c) => c.id === catId ? { ...c, include_domains: newInclude } : c)
@@ -302,7 +311,7 @@ export default function AdminPage() {
     if (!editingCat) return;
     setUpdatingCat(true);
     setCatError(null);
-    const newInclude = editCatForm.include_domains.split(",").map((s) => s.trim()).filter(Boolean);
+    const newInclude = Array.from(new Set(editCatForm.include_domains.split(",").map((s) => s.trim()).filter(Boolean)));
     try {
       await api.adminUpdateDomainCategory(editingCat.id, {
         name: editCatForm.name,
@@ -345,6 +354,14 @@ export default function AdminPage() {
     } finally { setDeletingCat(null); }
   }
 
+  if (!isAdmin) {
+    return (
+      <div className="max-w-sm mx-auto mt-20 text-center text-sm text-gray-500">
+        {authError ? <p className="text-red-400">{authError}</p> : <p>Signing in…</p>}
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       <ScanStatusWidget />
@@ -355,13 +372,13 @@ export default function AdminPage() {
         </div>
         <div className="flex gap-2">
           <button
-            onClick={() => setShowWorkflow((v) => !v)}
+            onClick={() => { setShowWorkflow((v) => !v); setShowPrompts(false); }}
             className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${showWorkflow ? "bg-indigo-950 border-indigo-700 text-indigo-300" : "border-gray-700 text-gray-400 hover:border-gray-500 hover:text-gray-200"}`}
           >
             ⚙ Pipeline
           </button>
           <button
-            onClick={() => setShowPrompts((v) => !v)}
+            onClick={() => { setShowPrompts((v) => !v); setShowWorkflow(false); }}
             className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${showPrompts ? "bg-violet-950 border-violet-700 text-violet-300" : "border-gray-700 text-gray-400 hover:border-gray-500 hover:text-gray-200"}`}
           >
             📝 Prompts

@@ -220,6 +220,13 @@ export default function AdminPage() {
                     <h2 className="admin-h">Integrations (APIs in use)</h2>
                     <div>{(a?.integrations || []).map(i => <span key={i} className="admin-chip">{i}</span>)}</div>
 
+                    {a?.manageUrl && (
+                      <>
+                        <h2 className="admin-h">Manage</h2>
+                        <iframe title={`${a.name} admin console`} src={a.manageUrl} className="admin-embed-frame" />
+                      </>
+                    )}
+
                     {a?.manageKeywords && (
                       <>
                         <h2 className="admin-h">Keywords</h2>

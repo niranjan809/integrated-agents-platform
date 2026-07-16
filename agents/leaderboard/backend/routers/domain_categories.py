@@ -15,7 +15,8 @@ def verify_admin(request: Request):
 def _build_category_dict(cat: DomainCategory, domain_counts: dict[str, int]) -> dict:
     """Build a category dict using pre-fetched domain counts — no extra DB query."""
     if cat.include_domains:
-        count = sum(domain_counts.get(d, 0) for d in cat.include_domains)
+        # de-dup — a domain tag repeated in include_domains must not be summed twice
+        count = sum(domain_counts.get(d, 0) for d in set(cat.include_domains))
     elif cat.exclude_domains:
         count = sum(v for d, v in domain_counts.items() if d not in cat.exclude_domains)
     else:

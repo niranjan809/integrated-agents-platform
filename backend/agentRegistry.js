@@ -75,6 +75,9 @@ const AGENTS = [
     status: process.env.LEADERBOARD_URL ? 'live' : 'soon',
     surface: 'iframe',
     embedUrl: process.env.LEADERBOARD_URL || null,
+    // Leaderboard agent's own add/edit/delete console — embedded in the admin panel's
+    // agent detail view (see AdminPage.jsx), gated by that agent's own login.
+    manageUrl: process.env.LEADERBOARD_URL ? `${process.env.LEADERBOARD_URL}/admin` : null,
     description:
       'A master directory of AI leaderboards — discover, explore and compare every leaderboard ' +
       'tracking model performance across voice, speech, language, coding and more. Click to open ' +
@@ -128,7 +131,7 @@ function publicAgent(a) {
   return {
     id: a.id, sectionId: a.sectionId, name: a.name, icon: a.icon,
     status: a.status, surface: a.surface, path: a.path || null,
-    embedUrl: a.embedUrl || null, description: a.description,
+    embedUrl: a.embedUrl || null, manageUrl: a.manageUrl || null, description: a.description,
     creator: a.creator || null, version: a.version,
   };
 }
@@ -139,7 +142,7 @@ function adminAgents() {
   return AGENTS.filter(a => a.status !== 'off').map(a => ({
     id: a.id, name: a.name, sectionId: a.sectionId, section: sectionName[a.sectionId] || a.sectionId,
     creator: a.creator || '—', status: a.status, surface: a.surface,
-    path: a.path || null, embedUrl: a.embedUrl || null,
+    path: a.path || null, embedUrl: a.embedUrl || null, manageUrl: a.manageUrl || null,
     description: a.description, integrations: a.integrations || [],
     manageKeywords: a.manageKeywords || false,
   }));

@@ -984,3 +984,80 @@ code, .mono, pre { font-family: var(--mono); }
   color: #00F5D4;
   border-bottom-color: #00F5D4;
 }
+
+/* ── Brand Visibility: tweets list (filters, table, pagination) ──────────── */
+.filters-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.class-chip {
+  padding: 5px 12px;
+  font-size: 13px;
+  font-weight: 700;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.bv-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.bv-table th {
+  text-align: left;
+  padding: 10px 12px;
+  color: var(--text2);
+  font-weight: 600;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--border);
+}
+.bv-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  vertical-align: middle;
+}
+.bv-table tbody tr:hover { background: rgba(255, 255, 255, 0.03); }
+.class-badge {
+  display: inline-block;
+  min-width: 26px;
+  text-align: center;
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #0b0f14;
+  border-radius: 6px;
+}
+.bv-link { color: var(--blue); text-decoration: none; white-space: nowrap; }
+.bv-link:hover { text-decoration: underline; }
+.pagination {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  margin-top: 18px;
+}
+.page-btn {
+  padding: 8px 16px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+}
+.page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.page-btn:not(:disabled):hover { border-color: var(--blue); }
+.page-info { color: var(--text2); font-size: 13px; }
+
+.filter-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-right: 2px;
+}

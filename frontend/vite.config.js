@@ -9,6 +9,7 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    strictPort: true, // fail fast if 5173 is taken instead of drifting to 5174 (origin-scoped session would break)
     // Dev proxy — only used locally, Vercel uses VITE_BACKEND_URL directly
     proxy: {
       '/api': {

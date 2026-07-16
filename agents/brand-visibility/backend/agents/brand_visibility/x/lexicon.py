@@ -66,21 +66,36 @@ def load_from_turso(db: Any) -> dict[str, Any]:
         priority = _row_get(row, "priority", 2)
 
         kw_rows = db.query(
-            "SELECT keyword FROM keywords "
+            "SELECT keyword, search_query FROM keywords "
             "WHERE class_key = %s AND enabled = 1 "
-            "ORDER BY keyword",
+            "ORDER BY id",
             (class_key,),
         )
-        keywords = [_row_get(r, "keyword", 0) for r in kw_rows]
+        # A row carrying a search_query holds a fully-formed X query
+        # (parenthesised, OR-joined, operator suffix baked in) — emit it verbatim
+        # and never re-chunk (re-chunking double-quotes, double-suffixes, and
+        # fuses rows past X's length limit). Rows with only a raw keyword term are
+        # OR-chunked into query strings as before. Insertion order (id) is
+        # preserved so migrated queries match the source file's ordering.
+        prechunked: list[str] = []
+        raw_keywords: list[str] = []
+        for r in kw_rows:
+            search_query = _row_get(r, "search_query", 1)
+            if search_query:
+                prechunked.append(search_query)
+            else:
+                raw_keywords.append(_row_get(r, "keyword", 0))
 
-        if not keywords:
+        queries = prechunked + _chunk_keywords(raw_keywords, class_key)
+
+        if not queries:
             logger.info("class %s has no enabled keywords — skipping", class_key)
             continue
 
         classes_out[class_key] = {
             "name": name,
             "priority": priority or "STANDARD",
-            "queries": _chunk_keywords(keywords, class_key),
+            "queries": queries,
         }
 
     inf_rows = db.query(
@@ -127,8 +142,10 @@ def load_lexicon() -> dict[str, Any]:
 def load(db: Any) -> dict[str, Any]:
     """
     Primary: Turso. Fallback: genesis_lexicon.json.
-    Override: if env var USE_V2_LEXICON is set (truthy), load directly from
-    LEXICON_PATH and bypass Turso. Used for v2 lexicon pilot.
+    Override: if env var USE_V2_LEXICON is truthy, load directly from
+    LEXICON_PATH and bypass the DB. Used for v2 lexicon pilot. Note that the
+    value is parsed as a boolean: "0", "false", "no", "off" and "" all mean OFF
+    (a bare `os.environ.get` would treat the string "0" as truthy).
     Logs which source was used. Never raises.
     """
     import os
@@ -146,7 +163,7 @@ def load(db: Any) -> dict[str, Any]:
             logger.error(
                 "KA017_LEXICON_FILE set but file load failed (%s) — falling through", exc
             )
-    if os.environ.get("USE_V2_LEXICON"):
+    if os.environ.get("USE_V2_LEXICON", "").strip().lower() not in ("", "0", "false", "no", "off"):
         try:
             lex = load_from_file()
             lex["source"] = "v2-file-override"

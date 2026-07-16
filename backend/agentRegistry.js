@@ -92,8 +92,8 @@ const AGENTS = [
     integrations: ['Postgres', 'RapidAPI (twitter241)', 'OpenRouter (Gemini 2.5 Flash)'],
     icon: '𝕏',
     status: process.env.BRAND_VISIBILITY_URL ? 'live' : 'soon',
-    surface: 'iframe',
-    embedUrl: process.env.BRAND_VISIBILITY_URL ? `${process.env.BRAND_VISIBILITY_URL}/dashboard/x` : null,
+    surface: 'app',
+    path: '/brand-visibility/x/overview',
     description:
       'Voice-AI builder signals on X (Twitter) — sweeps, classifies and surfaces the accounts and ' +
       'posts that matter for your brand’s visibility. Opens the live X dashboard.',
@@ -108,8 +108,8 @@ const AGENTS = [
     integrations: ['Postgres', 'RapidAPI (Fresh LinkedIn)', 'OpenRouter (Gemini 2.5 Flash)'],
     icon: 'in',
     status: process.env.BRAND_VISIBILITY_URL ? 'live' : 'soon',
-    surface: 'iframe',
-    embedUrl: process.env.BRAND_VISIBILITY_URL ? `${process.env.BRAND_VISIBILITY_URL}/dashboard/linkedin` : null,
+    surface: 'app',
+    path: '/brand-visibility/linkedin/overview',
     description:
       'Voice-AI builder signals on LinkedIn — scrapes, classifies and surfaces the people and posts ' +
       'driving your brand’s visibility on the professional graph. Opens the live LinkedIn dashboard.',

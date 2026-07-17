@@ -75,6 +75,18 @@ async def lifespan(app: FastAPI):
     except Exception:
         logger.exception("X DB init/connectivity check FAILED (dashboard /dashboard/x may error)")
 
+    # Orphan-run cleanup. A container restart kills the in-process BackgroundTask
+    # that owned any in-flight sweep, leaving its agent_runs row stuck at
+    # 'running' — which blocks the run-now 409 already_running guard until it ages
+    # out (30 min). Nothing can be sweeping while we start up, so mark such rows
+    # failed now. Runs AFTER the DB is reachable, BEFORE uvicorn accepts requests.
+    try:
+        orphan_ids = XDatabase(skip_schema_init=True).mark_orphan_runs_failed()
+        logger.info("Startup cleanup: marked %d orphan runs failed (ids=%s)",
+                    len(orphan_ids), orphan_ids)
+    except Exception:
+        logger.exception("Startup orphan-run cleanup FAILED (non-fatal, continuing)")
+
     yield
     # Shutdown: close the shared Postgres connection pool cleanly.
     close_pool()

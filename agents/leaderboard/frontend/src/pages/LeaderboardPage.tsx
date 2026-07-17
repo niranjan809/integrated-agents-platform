@@ -1,7 +1,11 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { api, Leaderboard, RankingEntry, ScanLog, getCached, DomainCategory } from "@/lib/api";
+import { api, Leaderboard, RankingEntry, ScanLog, getCached, invalidateCache, DomainCategory } from "@/lib/api";
 import { statusDot, statusColor } from "@/lib/utils";
+
+// Same base + endpoint the ScanProgressBanner polls; rescan is now a background
+// task, so we watch /scan-status to know when the scrape has actually finished.
+const BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 export default function LeaderboardPage() {
   const { id } = useParams<{ id: string }>();
@@ -65,25 +69,69 @@ export default function LeaderboardPage() {
   async function handleRescan() {
     setRescanning(true);
     setError(null);
+
+    // The rescan endpoint now returns 202 immediately (the scrape runs as a
+    // background task), so there are no results to read from this response —
+    // we poll /scan-status until the scrape clears, then refetch fresh data.
     try {
       await api.rescan(lbId);
-      const [data, updatedLb, logs] = await Promise.all([
-        api.getRankings(lbId, false),
-        api.getLeaderboard(lbId),
-        api.getScanLogs(lbId),
-      ]);
-      setEntries(data.entries);
-      setIsStale(data.is_stale ?? false);
-      setLb(updatedLb);
-      setScanLogs(logs);
-      setTimeout(async () => {
-        try { setLb(await api.getLeaderboard(lbId)); } catch {}
-      }, 30000);
     } catch (e: unknown) {
       setError((e as Error).message || "Rescan failed");
-    } finally {
       setRescanning(false);
+      return;
     }
+
+    const startedAt = Date.now();
+    const MAX_POLL_MS = 5 * 60 * 1000; // failsafe: refetch anyway after 5 min
+
+    async function refresh() {
+      try {
+        // rankings/leaderboard caches were invalidated by api.rescan() at
+        // trigger time and never refetched during polling, so these hit network.
+        const [data, updatedLb, logs] = await Promise.all([
+          api.getRankings(lbId, false),
+          api.getLeaderboard(lbId),
+          api.getScanLogs(lbId),
+        ]);
+        setEntries(data.entries);
+        setIsStale(data.is_stale ?? false);
+        setLb(updatedLb);
+        setScanLogs(logs);
+        // scraper_note/scope enrichment runs server-side a few seconds after the
+        // scan clears; pick it up with one delayed, cache-busting metadata refetch.
+        setTimeout(async () => {
+          try {
+            invalidateCache(`/leaderboards/${lbId}`);
+            setLb(await api.getLeaderboard(lbId));
+          } catch { /* ignore — enrichment is best-effort */ }
+        }, 30000);
+      } catch (e: unknown) {
+        setError((e as Error).message || "Failed to refresh after rescan");
+      } finally {
+        setRescanning(false);
+      }
+    }
+
+    // Poll on the same 3s cadence as ScanProgressBanner. The endpoint sets
+    // scan_state.start() synchronously before returning 202, so a running scan
+    // is already reflected; a fast (cached) scrape that finishes first simply
+    // means the first poll sees active=false and we refetch right away.
+    const timer = setInterval(async () => {
+      let cleared = false;
+      try {
+        const res = await fetch(`${BASE}/scan-status`);
+        if (res.ok) {
+          const st = await res.json();
+          cleared = !st.active; // only trust a successful response
+        }
+      } catch {
+        // transient (e.g. backend waking) — keep polling; the failsafe still fires
+      }
+      if (cleared || Date.now() - startedAt > MAX_POLL_MS) {
+        clearInterval(timer);
+        refresh();
+      }
+    }, 3000);
   }
 
   // Prefer explicit column_order from scraper; fall back to score keys from first entry

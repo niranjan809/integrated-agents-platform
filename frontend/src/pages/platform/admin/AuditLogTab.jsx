@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useAuth } from '../../../context/AuthContext';
 
 const LIMIT = 100;
 
@@ -9,12 +8,10 @@ function fmtTs(ts) {
   return Number.isNaN(d.getTime()) ? ts : d.toLocaleString();
 }
 
-// Admin-only audit trail viewer. Server-side filtering + offset pagination via
-// GET /api/admin/audit-log. Action/actor dropdowns are built from the currently
-// loaded page (per the Phase 2 spec).
-export default function AuditLogTab() {
-  const { apiFetch } = useAuth();
-
+// Audit trail viewer. Auth-source-agnostic: parent passes `fetcher`
+// (fetch(path, opts)=>Response carrying the panel-admin or user-admin token).
+// Server-side filtering + offset pagination via GET /api/admin/audit-log.
+export default function AuditLogTab({ fetcher }) {
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -41,7 +38,7 @@ export default function AuditLogTab() {
   function load(off) {
     setLoading(true);
     setError(null);
-    apiFetch(`/api/admin/audit-log?${buildQuery(off)}`)
+    fetcher(`/api/admin/audit-log?${buildQuery(off)}`)
       .then(r => (r.ok ? r.json() : Promise.reject(new Error(`audit-log ${r.status}`))))
       .then(d => { setEntries(d.entries || []); setOffset(off); setLoading(false); })
       .catch(e => { setError(e.message); setLoading(false); });

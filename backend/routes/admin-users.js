@@ -7,12 +7,13 @@
 const express = require('express');
 const bcrypt  = require('bcryptjs');
 const { db }  = require('../db');
-const { requireAuth, requireRole } = require('../middleware/auth');
+const { requireAdminOrPanel } = require('../middleware/auth');
 
 const router = express.Router();
 
-// Every endpoint here is admin-only. Applied once so no route can be left open.
-router.use(requireAuth, requireRole('admin'));
+// Admin-management surface. Accessible by a user JWT with role='admin' OR a
+// panel-admin session (dual auth) — applied once so no route can be left open.
+router.use(requireAdminOrPanel);
 
 const VALID_ROLES    = ['viewer', 'editor', 'admin'];
 const VALID_SECTIONS = ['brand-visibility', 'pr', 'leaderboard'];
@@ -23,7 +24,8 @@ async function logAudit(db, actor, action, targetType, targetId, meta) {
   await db.execute({
     sql: 'INSERT INTO audit_log (actor_id, actor_email, action, target_type, target_id, meta_json) VALUES (?, ?, ?, ?, ?, ?)',
     args: [
-      actor.id,
+      // actor_id is NOT NULL; panel-admin has no user row (id null/0) -> store 0.
+      actor.id ?? 0,
       actor.email,
       action,
       targetType || null,

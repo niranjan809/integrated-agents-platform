@@ -411,7 +411,7 @@ Why compute from accounts.run_id (not the runs table)?
 - So COUNT(*) WHERE run_id = lastRunId = everything touched that run
 - Accurate even when the run record never finalized (dev restart mid-run)
 
-GET /api/dashboard/last-run returns:
+GET /api/pr/dashboard/last-run returns:
   { runId, status, totalFetched, newAccounts, updatedAccounts,
     a1, a2, trackB, other }
   a1 = run_id=last AND track='A' AND promotion_type='explicit'

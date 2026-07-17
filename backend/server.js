@@ -9,6 +9,7 @@ const { db, initDB } = require('./db');
 const { aiScoreBatch, aiAnalyseTweets, analysePaidPattern, BATCH_SIZE, SCORING_MODEL } = require('./openrouter');
 const { classifyFromBio } = require('./promotionClassifier');
 const { getFriendSearchQueries, getFriendInfluencerHandles, testFriendDb } = require('./friendDb');
+const { requireAuth, requireSection } = require('./middleware/auth');
 
 const app  = express();
 app.set('trust proxy', 1); // Required on Render â€” sits behind a reverse proxy
@@ -61,12 +62,14 @@ app.use('/api/sections',  require('./routes/sections'));
 app.use('/api/agents',    require('./routes/agents'));
 // Brand Visibility agent: lexicon config CRUD, proxied to the Python FastAPI backend
 app.use('/api/brand-visibility/config', require('./routes/brand-visibility-config'));
-// X Agent (this repo's own agent): its dashboard data + run APIs
-app.use('/api/keywords',  require('./routes/keywords'));
-app.use('/api/accounts',  require('./routes/accounts'));
-app.use('/api/dashboard', require('./routes/dashboard'));
-app.use('/api/settings',  require('./routes/settings'));
-app.use('/api/tasks',     require('./routes/tasks'));
+// X Agent (this repo's own agent, in the 'pr' section): its dashboard data + run
+// APIs. RBAC Phase 3.1 — mounted under /api/pr/* and gated by requireSection('pr')
+// at the mount level (hard cut, no /api/* aliases). Panel-admin bypasses the gate.
+app.use('/api/pr/keywords',  requireAuth, requireSection('pr'), require('./routes/keywords'));
+app.use('/api/pr/accounts',  requireAuth, requireSection('pr'), require('./routes/accounts'));
+app.use('/api/pr/dashboard', requireAuth, requireSection('pr'), require('./routes/dashboard'));
+app.use('/api/pr/settings',  requireAuth, requireSection('pr'), require('./routes/settings'));
+app.use('/api/pr/tasks',     requireAuth, requireSection('pr'), require('./routes/tasks'));
 
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // PROACTIVE RATE LIMITER â€” prevents blocks before they happen

@@ -303,7 +303,7 @@ export function AgentProvider({ children }) {
     if (!token) { setConnErr('Not authenticated — please log in again.'); setRunning(false); return; }
 
     try {
-      const r = await fetch(`${API}/api/tasks/${taskId}/run`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+      const r = await fetch(`${API}/api/pr/tasks/${taskId}/run`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
       const d = await r.json().catch(() => ({}));
       if (d.budgetReached) { setConnErr(`⛔ ${d.message}`); addLog(d.message, 'error'); setRunning(false); return; }
       if (d.alreadyRunning) addLog('A run was already in progress — attaching to it.', 'warn');

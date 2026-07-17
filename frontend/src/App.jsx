@@ -97,10 +97,13 @@ export default function App() {
         <Route path="linkedin/*" element={<Navigate to="/brand-visibility/linkedin/overview" replace />} />
       </Route>
 
-      {/* X Agent dashboard (everything else, with sidebar) */}
+      {/* X Agent dashboard (everything else, with sidebar) — the X Agent is the
+          'pr' section, so gate the whole shell on pr access. */}
       <Route path="/*" element={
         <ProtectedRoute>
-          <AppLayout />
+          <SectionGuard section="pr">
+            <AppLayout />
+          </SectionGuard>
         </ProtectedRoute>
       } />
     </Routes>

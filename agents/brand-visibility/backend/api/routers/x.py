@@ -13,7 +13,7 @@ import logging
 import os
 from typing import Optional
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
 from agents.brand_visibility.x.db import Database
@@ -102,6 +102,21 @@ class UpdateScheduleRequest(BaseModel):
     max_api_calls: Optional[int] = None
 
 
+class RunNowRequest(BaseModel):
+    """Optional body for POST /api/x/run-now — per-run overrides of the saved
+    sweep config. Field names mirror UpdateScheduleRequest exactly. Any field
+    left None falls back to the stored x_schedule value; overrides are merged
+    for this run only and never written back to the DB. Values are validated via
+    db._validate_schedule_field (same ranges as the schedule editor -> 400)."""
+    mode: Optional[str] = None
+    sweep_type: Optional[str] = None
+    max_pages: Optional[int] = None
+    max_keywords: Optional[int] = None
+    max_api_calls: Optional[int] = None
+    since_hours: Optional[int] = None
+    class_filter: Optional[str] = None
+
+
 def get_x_db() -> Database:
     """One X Database per request. skip_schema_init=True: the X tables already
     exist in Turso, so dashboard reads never replay schema DDL.
@@ -175,12 +190,21 @@ def update_schedule(payload: UpdateScheduleRequest, db: Database = Depends(get_x
         raise HTTPException(status_code=422, detail=str(exc))
 
 
-def _start_x_run(background_tasks: BackgroundTasks, db: Database) -> dict:
+def _start_x_run(
+    background_tasks: BackgroundTasks,
+    db: Database,
+    config: dict | None = None,
+) -> dict:
     """Guards + start logic for a run-now sweep (Sub-phase X5). Trusted internal
     entry with NO auth — shared by the public run_now endpoint (which adds the
     X-Cron-Secret check) and the dashboard wrapper (server-side, already trusted).
     Scrape+classify ONLY (post_enabled never True). Raises 409 if a run is
-    already 'running', 429 if it could exceed the monthly scrape-call budget."""
+    already 'running', 429 if it could exceed the monthly scrape-call budget.
+
+    config: the effective sweep config for this run. None (the default, used by
+    the dashboard wrapper) re-reads the stored schedule; run_now passes the saved
+    schedule already merged with any per-run overrides. Either way it is used for
+    the budget guard and threaded to the background task — never written back."""
     existing = db.get_running_run()
     if existing:
         raise HTTPException(status_code=409, detail={
@@ -189,7 +213,7 @@ def _start_x_run(background_tasks: BackgroundTasks, db: Database) -> dict:
             "started_at": existing["started_at"],
         })
 
-    schedule = db.get_schedule()
+    schedule = dict(config) if config is not None else db.get_schedule()
     this_month_calls = db.api_calls_this_month()
     requested = int(schedule.get("max_api_calls") or 0)
     if this_month_calls + requested > X_MONTHLY_API_BUDGET:
@@ -209,15 +233,23 @@ def _start_x_run(background_tasks: BackgroundTasks, db: Database) -> dict:
 
 
 @router.post("/run-now", status_code=202)
-def run_now(
-    background_tasks: BackgroundTasks,
+async def run_now(
+    request: Request,
+    override: RunNowRequest | None = None,
+    background_tasks: BackgroundTasks = None,
     db: Database = Depends(get_x_db),
     x_cron_secret: str | None = Header(None, alias="X-Cron-Secret"),
 ) -> dict:
     """Public run-now endpoint (GitHub Actions cron + any external caller).
     Requires the X-Cron-Secret header to match the X_CRON_SECRET env var, then
     delegates to _start_x_run. 500 if the secret isn't configured server-side,
-    401 if the header is missing or wrong."""
+    401 if the header is missing or wrong.
+
+    Optional JSON body (RunNowRequest) overrides individual sweep-config fields
+    for this run only — the stored x_schedule row is never changed. No body (or
+    an all-None body) preserves the original behavior of running the saved
+    config. Each provided field is validated against the same ranges as the
+    schedule editor; a bad value returns 400 before any run is started."""
     if not _X_CRON_SECRET:
         raise HTTPException(status_code=500, detail={
             "reason": "server_misconfigured",
@@ -226,7 +258,18 @@ def run_now(
     if x_cron_secret != _X_CRON_SECRET:
         raise HTTPException(status_code=401, detail={"reason": "invalid_cron_secret"})
 
-    return _start_x_run(background_tasks, db)
+    # Start from the saved schedule, then layer on any per-run overrides. Each
+    # override is coerced + range-checked by the same validator the schedule
+    # editor uses; an invalid value is a client error (400), not a 422/500.
+    config = dict(db.get_schedule())
+    if override is not None:
+        for field, value in override.model_dump(exclude_none=True).items():
+            try:
+                config[field] = db._validate_schedule_field(field, value)
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail=str(exc))
+
+    return _start_x_run(background_tasks, db, config=config)
 
 
 @router.get("/run-status/{run_id}")

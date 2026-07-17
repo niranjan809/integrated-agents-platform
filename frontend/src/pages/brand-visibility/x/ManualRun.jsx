@@ -11,7 +11,7 @@ const MODE_OPTIONS = ['all', 'keywords', 'influencers', 'reply_trees', 'classify
 const SWEEP_TYPE_OPTIONS = ['Latest', 'Top'];
 
 // Ranges mirror the backend validator (db._validate_schedule_field) exactly.
-const RANGES = { max_pages: [1, 10], max_keywords: [1, 50], max_api_calls: [1, 1000] };
+const RANGES = { max_pages: [1, 10], max_keywords: [1, 1000], max_api_calls: [1, 1000] };
 const SINCE_RANGE = [1, 720];
 const CLASS_CODES = new Set(['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'NOISE', 'GOVT_PROMOTION']);
 
@@ -355,9 +355,9 @@ export default function ManualRun() {
           </div>
         </div>
         <div className="config-field">
-          <label>Max keywords <span className="config-hint">queries per sweep · 1–50</span></label>
+          <label>Max keywords <span className="config-hint">queries per sweep · 1–1000</span></label>
           <div style={{ flex: 1, maxWidth: 280 }}>
-            <input className="search-input" style={{ width: '100%' }} type="number" min="1" max="50" value={form.max_keywords}
+            <input className="search-input" style={{ width: '100%' }} type="number" min="1" max="1000" value={form.max_keywords}
               onChange={(e) => setField('max_keywords', e.target.value)} />
             {errors.max_keywords && <div className="field-error">{errors.max_keywords}</div>}
           </div>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
-import { api, Leaderboard, RankingEntry, ScanLog, getCached, invalidateCache, DomainCategory } from "@/lib/api";
+import { useParams, useNavigate } from "react-router-dom";
+import { api, Leaderboard, RankingEntry, ScanLog, getCached, invalidateCache } from "@/lib/api";
 import { statusDot, statusColor } from "@/lib/utils";
 
 // Same base + endpoint the ScanProgressBanner polls; rescan is now a background
@@ -30,28 +30,15 @@ export default function LeaderboardPage() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [sortCol, setSortCol] = useState<string>("");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
-  const [adminCat, setAdminCat] = useState<DomainCategory | null>(null);
 
   useEffect(() => {
     // Fetch metadata + rankings + logs in parallel; only rankings is slow (may scrape live)
-    const catPromise = (() => {
-      const cached = getCached<DomainCategory[]>("/domain-categories");
-      return cached ? Promise.resolve(cached) : api.listDomainCategories();
-    })();
-
     Promise.all([
       api.getLeaderboard(lbId),
-      catPromise,
       api.getScanLogs(lbId).catch(() => [] as ScanLog[]),
-    ]).then(([data, cats, logs]) => {
+    ]).then(([data, logs]) => {
       setLb(data);
       setScanLogs(logs);
-      const cat = cats.find((c: DomainCategory) =>
-        c.include_domains.length > 0
-          ? c.include_domains.includes(data.domain)
-          : !c.exclude_domains.includes(data.domain)
-      ) ?? null;
-      setAdminCat(cat);
     }).catch(() => {
       setError("Leaderboard not found");
       setInitialLoading(false);
@@ -216,14 +203,6 @@ export default function LeaderboardPage() {
             )}
           </div>
           <div className="flex shrink-0 gap-2">
-            {lb && (
-              <Link
-                to={adminCat ? `/admin/domain/${adminCat.slug}?edit=${lb.id}` : `/admin`}
-                className="px-4 py-2 text-sm font-medium border border-gray-700 text-gray-400 rounded-lg hover:bg-gray-800 transition-colors"
-              >
-                ✎ Edit
-              </Link>
-            )}
             <button
               onClick={handleRescan}
               disabled={rescanning || initialLoading}

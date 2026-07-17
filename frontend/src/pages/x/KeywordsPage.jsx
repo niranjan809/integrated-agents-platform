@@ -57,14 +57,14 @@ export default function KeywordsPage() {
   const [error,       setError]       = useState('');
 
   function loadOwn() {
-    apiFetch('/api/keywords')
+    apiFetch('/api/pr/keywords')
       .then(r => r.json())
       .then(d => { setOwnKw(d.keywords || []); setOwnLoad(false); })
       .catch(err => { setError(err.message || 'Failed to load keywords'); setOwnLoad(false); });
   }
 
   function loadFriend() {
-    apiFetch('/api/keywords/friend')
+    apiFetch('/api/pr/keywords/friend')
       .then(r => r.json())
       .then(d => { setFriendData(d); setFriendLoad(false); })
       .catch(() => setFriendLoad(false)); // friend DB errors are non-blocking
@@ -77,7 +77,7 @@ export default function KeywordsPage() {
     if (!newKw.trim()) return;
     setAdding(true);
     try {
-      const r = await apiFetch('/api/keywords', {
+      const r = await apiFetch('/api/pr/keywords', {
         method: 'POST',
         body: JSON.stringify({ keyword: newKw.trim(), category: newCat, class: newCls }),
       });
@@ -91,7 +91,7 @@ export default function KeywordsPage() {
 
   async function toggleKw(id, currentActive) {
     try {
-      await apiFetch(`/api/keywords/${id}`, { method: 'PATCH', body: JSON.stringify({ active: !currentActive }) });
+      await apiFetch(`/api/pr/keywords/${id}`, { method: 'PATCH', body: JSON.stringify({ active: !currentActive }) });
       setOwnKw(prev => prev.map(k => k.id === id ? { ...k, active: currentActive ? 0 : 1 } : k));
     } catch (err) { setError(err.message || 'Failed to update keyword'); }
   }
@@ -99,7 +99,7 @@ export default function KeywordsPage() {
   async function deleteKw(id) {
     if (!confirm('Delete this keyword?')) return;
     try {
-      await apiFetch(`/api/keywords/${id}`, { method: 'DELETE' });
+      await apiFetch(`/api/pr/keywords/${id}`, { method: 'DELETE' });
       setOwnKw(prev => prev.filter(k => k.id !== id));
     } catch (err) { setError(err.message || 'Failed to delete keyword'); }
   }

@@ -23,7 +23,7 @@ function FriendDbTestButton({ apiFetch }) {
   async function test() {
     setBusy(true);
     try {
-      const r = await apiFetch('/api/settings/test-friend-db');
+      const r = await apiFetch('/api/pr/settings/test-friend-db');
       const d = await r.json();
       setRes(d);
     } catch (e) { setRes({ ok: false, error: e.message }); }
@@ -67,8 +67,8 @@ export default function SettingsPage() {
   function loadSettings() {
     setLoading(true);
     Promise.all([
-      apiFetch('/api/settings').then(r => r.json()),
-      apiFetch('/api/settings/keys').then(r => r.json()).catch(() => ({ keys: [] })),
+      apiFetch('/api/pr/settings').then(r => r.json()),
+      apiFetch('/api/pr/settings/keys').then(r => r.json()).catch(() => ({ keys: [] })),
     ]).then(([cfg, ks]) => {
       setConfig(cfg.config);
       setKeyStats(ks.keys || []);
@@ -83,7 +83,7 @@ export default function SettingsPage() {
     setTestingKeys(true);
     setKeyTestRes(null);
     try {
-      const r = await apiFetch('/api/settings/keys/test', { method: 'POST', body: '{}' });
+      const r = await apiFetch('/api/pr/settings/keys/test', { method: 'POST', body: '{}' });
       const d = await r.json();
       setKeyTestRes(d.results || []);
       flash(`Key test complete — check results below`, 'success');
@@ -92,7 +92,7 @@ export default function SettingsPage() {
     } finally {
       setTestingKeys(false);
       // Refresh key stats after test
-      apiFetch('/api/settings/keys').then(r => r.json()).then(d => setKeyStats(d.keys || []));
+      apiFetch('/api/pr/settings/keys').then(r => r.json()).then(d => setKeyStats(d.keys || []));
     }
   }
 
@@ -100,7 +100,7 @@ export default function SettingsPage() {
     setTesting(true);
     setTestResult(null);
     try {
-      const r = await apiFetch('/api/settings/test-openrouter', { method: 'POST', body: '{}' });
+      const r = await apiFetch('/api/pr/settings/test-openrouter', { method: 'POST', body: '{}' });
       const d = await r.json();
       setTestResult(d);
     } catch (err) {
@@ -113,7 +113,7 @@ export default function SettingsPage() {
   async function toggleAutoRun(val) {
     setAutoRun(val);
     try {
-      await apiFetch('/api/settings/auto_run_enabled', {
+      await apiFetch('/api/pr/settings/auto_run_enabled', {
         method: 'PATCH',
         body: JSON.stringify({ value: val ? '1' : '0' }),
       });

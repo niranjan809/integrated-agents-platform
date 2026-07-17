@@ -47,7 +47,7 @@ export default function TaskDetailPage() {
   const [error,   setError]   = useState('');
 
   const load = useCallback(() => {
-    apiFetch(`/api/tasks/${id}`).then(r => r.json())
+    apiFetch(`/api/pr/tasks/${id}`).then(r => r.json())
       .then(d => { if (d.error) throw new Error(d.error); setData(d); setLoading(false); })
       .catch(e => { setError(e.message); setLoading(false); });
   }, [id]);

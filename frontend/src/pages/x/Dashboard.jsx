@@ -160,8 +160,8 @@ export default function Dashboard() {
     if (isRefresh) setRefreshing(true); else setLoading(true);
     setError('');
     Promise.all([
-      apiFetch('/api/dashboard/stats').then(r => r.json()),
-      apiFetch('/api/dashboard/last-run').then(r => r.json()).catch(() => ({ lastRun: null })),
+      apiFetch('/api/pr/dashboard/stats').then(r => r.json()),
+      apiFetch('/api/pr/dashboard/last-run').then(r => r.json()).catch(() => ({ lastRun: null })),
       apiFetch('/api/health').then(r => r.json()).catch(() => null),
     ])
       .then(([d, lr, h]) => {

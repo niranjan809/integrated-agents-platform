@@ -336,7 +336,7 @@ function ResolveUnknownsPanel({ onDone }) {
   const esRef = useRef(null);
 
   const loadStats = useCallback(() => {
-    apiFetch('/api/accounts/promotion-stats').then(r => r.json()).then(setStats).catch(() => {});
+    apiFetch('/api/pr/accounts/promotion-stats').then(r => r.json()).then(setStats).catch(() => {});
   }, [apiFetch]);
 
   useEffect(() => { loadStats(); }, [loadStats]);
@@ -476,10 +476,10 @@ export default function AccountsPage({ mode }) {
   const [cleaning,    setCleaning]    = useState(false);
 
   const endpoint = mode === 'all'
-    ? '/api/accounts?limit=1000'
+    ? '/api/pr/accounts?limit=1000'
     : mode === 'influencers'
-    ? '/api/accounts/influencers'
-    : '/api/accounts/pr-pages';
+    ? '/api/pr/accounts/influencers'
+    : '/api/pr/accounts/pr-pages';
 
   const title = mode === 'all'
     ? 'All Accounts'
@@ -561,7 +561,7 @@ export default function AccountsPage({ mode }) {
     if (!confirm('Delete all accounts with overall < 20 AND AI relevance < 15 (non-relevant accounts)?')) return;
     setCleaning(true);
     try {
-      const r = await apiFetch('/api/accounts/cleanup', { method: 'DELETE' });
+      const r = await apiFetch('/api/pr/accounts/cleanup', { method: 'DELETE' });
       const d = await r.json();
       alert(`Deleted ${d.deleted} non-relevant accounts. ${d.remaining} remaining.`);
       // Reload

@@ -15,7 +15,7 @@ export default function TasksPage() {
 
   function load() {
     setLoading(true);
-    apiFetch('/api/tasks').then(r => r.json())
+    apiFetch('/api/pr/tasks').then(r => r.json())
       .then(d => { setTasks(d.tasks || []); setLoading(false); })
       .catch(e => { setError(e.message); setLoading(false); });
   }
@@ -26,7 +26,7 @@ export default function TasksPage() {
     if (!name.trim() || !keywords.trim()) return;
     setSaving(true); setError('');
     try {
-      const r = await apiFetch('/api/tasks', {
+      const r = await apiFetch('/api/pr/tasks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: name.trim(), company: company.trim(), keywords }),
@@ -41,7 +41,7 @@ export default function TasksPage() {
 
   async function remove(id) {
     if (!window.confirm('Delete this task? (Accounts stay in the database — only the task link is removed.)')) return;
-    await apiFetch(`/api/tasks/${id}`, { method: 'DELETE' });
+    await apiFetch(`/api/pr/tasks/${id}`, { method: 'DELETE' });
     load();
   }
 

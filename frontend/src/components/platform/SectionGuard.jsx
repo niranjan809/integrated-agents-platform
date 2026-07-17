@@ -13,6 +13,11 @@ export default function SectionGuard({ section, children }) {
 
   if (!user) return <Navigate to="/login" state={{ from: location }} replace />;
 
+  // Panel-admin sees everything (parity with backend requireSection). Inert in
+  // the current model — panel-admin has no user-JWT session, so `user` is null
+  // and we already redirected above — but kept intentional for future parity.
+  if (user.scope === 'panel-admin') return children;
+
   const allowed = user.sections_allowed || [];
   if (target && !allowed.includes(target)) {
     return <Navigate to="/" state={{ deniedSection: target }} replace />;

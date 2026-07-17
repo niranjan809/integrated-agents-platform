@@ -53,6 +53,8 @@ app.use('/api',      rateLimit({ windowMs: 1 * 60 * 1000,  max: 120, standardHea
 // Platform (shared by every agent): auth + the section/agent catalogue gateway + admin panel
 app.use('/api/auth',      require('./routes/auth'));
 app.use('/api/admin',     require('./routes/admin'));
+// RBAC Phase 1 — admin user management + audit log (routes are /api/admin/users, etc.)
+app.use('/api',           require('./routes/admin-users'));
 app.use('/api/sections',  require('./routes/sections'));
 app.use('/api/agents',    require('./routes/agents'));
 // Brand Visibility agent: lexicon config CRUD, proxied to the Python FastAPI backend

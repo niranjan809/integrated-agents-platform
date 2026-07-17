@@ -22,4 +22,20 @@ function requireAuth(req, res, next) {
   }
 }
 
-module.exports = { requireAuth };
+// Role gate — use AFTER requireAuth (which populates req.user from the JWT).
+// Usage: router.get('/admin/users', requireAuth, requireRole('admin'), handler)
+function requireRole(...allowedRoles) {
+  return (req, res, next) => {
+    if (!req.user) return res.status(401).json({ error: 'Not authenticated' });
+    if (!allowedRoles.includes(req.user.role)) {
+      return res.status(403).json({
+        error: 'Insufficient role',
+        required: allowedRoles,
+        have: req.user.role,
+      });
+    }
+    next();
+  };
+}
+
+module.exports = { requireAuth, requireRole };

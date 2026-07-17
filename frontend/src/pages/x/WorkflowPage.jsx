@@ -1082,44 +1082,44 @@ export default function WorkflowPage() {
 
           {/* Accounts */}
           <div style={{ fontSize: 12, fontWeight: 700, color: C.blue, margin: '16px 0 8px', letterSpacing: 0.5 }}>ACCOUNTS</div>
-          <RouteRow method="GET" path="/api/accounts" auth={true}
+          <RouteRow method="GET" path="/api/pr/accounts" auth={true}
             returns="{ accounts[], total } — filters: track, type, tier, min_score, limit(1000), offset(0). Note: total is unfiltered count." />
-          <RouteRow method="GET" path="/api/accounts/influencers" auth={true}
+          <RouteRow method="GET" path="/api/pr/accounts/influencers" auth={true}
             returns="{ accounts[] } — track='A', overall DESC, LIMIT 1000" />
-          <RouteRow method="GET" path="/api/accounts/pr-pages" auth={true}
+          <RouteRow method="GET" path="/api/pr/accounts/pr-pages" auth={true}
             returns="{ accounts[] } — track='B', overall DESC, LIMIT 1000" />
-          <RouteRow method="GET" path="/api/accounts/promotion-stats" auth={true}
+          <RouteRow method="GET" path="/api/pr/accounts/promotion-stats" auth={true}
             returns="{ a1, a2, none, unknown, a2_genuine, a2_salesy, a2_unscored, resolvable, threshold }" />
-          <RouteRow method="DELETE" path="/api/accounts/cleanup" auth={true}
+          <RouteRow method="DELETE" path="/api/pr/accounts/cleanup" auth={true}
             returns="Deletes overall<20 AND d3<15 → { deleted, remaining }" />
-          <RouteRow method="GET" path="/api/accounts/:handle" auth={true}
+          <RouteRow method="GET" path="/api/pr/accounts/:handle" auth={true}
             returns="{ account } or 404 — handle lowercased before lookup" />
 
           {/* Dashboard */}
           <div style={{ fontSize: 12, fontWeight: 700, color: C.blue, margin: '16px 0 8px', letterSpacing: 0.5 }}>DASHBOARD</div>
-          <RouteRow method="GET" path="/api/dashboard/stats" auth={true}
+          <RouteRow method="GET" path="/api/pr/dashboard/stats" auth={true}
             returns="{ totals, byType, byTier, byTrack, topAccounts, recentRuns, config }" />
-          <RouteRow method="GET" path="/api/dashboard/last-run" auth={true}
+          <RouteRow method="GET" path="/api/pr/dashboard/last-run" auth={true}
             returns="{ lastRun: { totalFetched, newAccounts, updatedAccounts, a1, a2, trackB, other } } — from run_id" />
           <RouteRow method="GET" path="/api/resolve-unknowns" auth={true}
             returns="text/event-stream — classifies unknown/none + scores A2 authenticity. Live A1/A2/genuine/salesy tally." />
 
           {/* Keywords */}
           <div style={{ fontSize: 12, fontWeight: 700, color: C.green, margin: '16px 0 8px', letterSpacing: 0.5 }}>KEYWORDS</div>
-          <RouteRow method="GET"    path="/api/keywords"           auth={true}  returns="All keywords ordered by class, category, keyword" />
-          <RouteRow method="POST"   path="/api/keywords"           auth={true}  returns="Add keyword { keyword, category?, class? } → 409 if duplicate" />
-          <RouteRow method="PATCH"  path="/api/keywords/:id"       auth={true}  returns="Toggle active flag { active: bool }" />
-          <RouteRow method="DELETE" path="/api/keywords/:id"       auth={true}  returns="Permanently delete keyword by ID" />
-          <RouteRow method="GET"    path="/api/keywords/friend"    auth={true}  returns="{ classes, keywords, influencers, totals } from read-only friend DB" />
+          <RouteRow method="GET"    path="/api/pr/keywords"           auth={true}  returns="All keywords ordered by class, category, keyword" />
+          <RouteRow method="POST"   path="/api/pr/keywords"           auth={true}  returns="Add keyword { keyword, category?, class? } → 409 if duplicate" />
+          <RouteRow method="PATCH"  path="/api/pr/keywords/:id"       auth={true}  returns="Toggle active flag { active: bool }" />
+          <RouteRow method="DELETE" path="/api/pr/keywords/:id"       auth={true}  returns="Permanently delete keyword by ID" />
+          <RouteRow method="GET"    path="/api/pr/keywords/friend"    auth={true}  returns="{ classes, keywords, influencers, totals } from read-only friend DB" />
 
           {/* Settings */}
           <div style={{ fontSize: 12, fontWeight: 700, color: C.gold, margin: '16px 0 8px', letterSpacing: 0.5 }}>SETTINGS</div>
-          <RouteRow method="GET"   path="/api/settings"                  auth={true}  returns="Non-sensitive agent_config rows + runtime flags (openrouter_env_set, model_chain, db_url, safe_rpm, friend_db_set)" />
-          <RouteRow method="GET"   path="/api/settings/keys"             auth={true}  returns="Live RapidAPI key status (no key values exposed)" />
-          <RouteRow method="POST"  path="/api/settings/keys/test"        auth={true}  returns="Per-key live test result: ok | quota_exhausted | not_subscribed | invalid_key | error" />
-          <RouteRow method="POST"  path="/api/settings/test-openrouter"  auth={true}  returns="{ ok, model, response } or 502 — fires live test prompt via OpenRouter" />
-          <RouteRow method="GET"   path="/api/settings/test-friend-db"   auth={true}  returns="{ ok, keywordCount, influencerCount } — tests read-only friend Turso connection" />
-          <RouteRow method="PATCH" path="/api/settings/:configKey"       auth={true}  returns="Upserts agent_config value — blocks openrouter/jwt/turso/rapidapi keys" />
+          <RouteRow method="GET"   path="/api/pr/settings"                  auth={true}  returns="Non-sensitive agent_config rows + runtime flags (openrouter_env_set, model_chain, db_url, safe_rpm, friend_db_set)" />
+          <RouteRow method="GET"   path="/api/pr/settings/keys"             auth={true}  returns="Live RapidAPI key status (no key values exposed)" />
+          <RouteRow method="POST"  path="/api/pr/settings/keys/test"        auth={true}  returns="Per-key live test result: ok | quota_exhausted | not_subscribed | invalid_key | error" />
+          <RouteRow method="POST"  path="/api/pr/settings/test-openrouter"  auth={true}  returns="{ ok, model, response } or 502 — fires live test prompt via OpenRouter" />
+          <RouteRow method="GET"   path="/api/pr/settings/test-friend-db"   auth={true}  returns="{ ok, keywordCount, influencerCount } — tests read-only friend Turso connection" />
+          <RouteRow method="PATCH" path="/api/pr/settings/:configKey"       auth={true}  returns="Upserts agent_config value — blocks openrouter/jwt/turso/rapidapi keys" />
 
           {/* Agent */}
           <div style={{ fontSize: 12, fontWeight: 700, color: C.red, margin: '16px 0 8px', letterSpacing: 0.5 }}>AGENT</div>

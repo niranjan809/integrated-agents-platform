@@ -1,9 +1,12 @@
 // RBAC Phase 1 — admin user management + audit log.
 //
-// Mounted at /api (see server.js), so routes resolve to /api/admin/users,
-// /api/admin/audit-log, etc. Every route in this router is JWT-authed AND
-// role-gated to 'admin' via the router-level middleware below. No section-level
-// permission enforcement here — that's Phase 3.
+// Mounted at /api/admin (see server.js) with relative paths, so routes resolve
+// to /api/admin/users, /api/admin/audit-log, etc. Mounting at the narrow
+// /api/admin prefix (not /api) keeps this router's admin gate from intercepting
+// unrelated /api/* routes (sections, agents, …). The panel-admin router
+// (routes/admin.js, also /api/admin) is mounted first; its specific routes win
+// and /users, /audit-log fall through to here. Every route is admin-gated via
+// the router-level middleware below. No section-level enforcement — that's Phase 3.
 const express = require('express');
 const bcrypt  = require('bcryptjs');
 const { db }  = require('../db');
@@ -63,7 +66,7 @@ const USER_COLS =
   'id, email, role, sections_allowed, created_at, last_login_at, password_updated_at, created_by';
 
 // ── GET /admin/users — list all users (never returns password_hash) ───────────
-router.get('/admin/users', async (_req, res) => {
+router.get('/users', async (_req, res) => {
   try {
     const { rows } = await db.execute(`SELECT ${USER_COLS} FROM users ORDER BY id`);
     res.json({ users: rows.map(serializeUser) });
@@ -74,7 +77,7 @@ router.get('/admin/users', async (_req, res) => {
 });
 
 // ── POST /admin/users — create a user ─────────────────────────────────────────
-router.post('/admin/users', async (req, res) => {
+router.post('/users', async (req, res) => {
   const { email, password, role } = req.body || {};
   const sections_allowed = req.body?.sections_allowed ?? [];
 
@@ -107,7 +110,7 @@ router.post('/admin/users', async (req, res) => {
 });
 
 // ── PATCH /admin/users/:id — update role and/or sections_allowed ───────────────
-router.patch('/admin/users/:id', async (req, res) => {
+router.patch('/users/:id', async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) return res.status(400).json({ error: 'Invalid user id' });
   if ('email' in (req.body || {})) return res.status(400).json({ error: 'email is immutable' });
@@ -153,7 +156,7 @@ router.patch('/admin/users/:id', async (req, res) => {
 });
 
 // ── POST /admin/users/:id/reset-password — admin sets another user's password ──
-router.post('/admin/users/:id/reset-password', async (req, res) => {
+router.post('/users/:id/reset-password', async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) return res.status(400).json({ error: 'Invalid user id' });
   const { new_password } = req.body || {};
@@ -183,7 +186,7 @@ router.post('/admin/users/:id/reset-password', async (req, res) => {
 });
 
 // ── DELETE /admin/users/:id — delete a user ───────────────────────────────────
-router.delete('/admin/users/:id', async (req, res) => {
+router.delete('/users/:id', async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) return res.status(400).json({ error: 'Invalid user id' });
   if (id === req.user.id) return res.status(400).json({ error: 'You cannot delete yourself' });
@@ -211,7 +214,7 @@ router.delete('/admin/users/:id', async (req, res) => {
 });
 
 // ── GET /admin/audit-log — paginated, newest first, with filters ──────────────
-router.get('/admin/audit-log', async (req, res) => {
+router.get('/audit-log', async (req, res) => {
   const limit  = Math.min(500, Math.max(1, Number(req.query.limit)  || 100));
   const offset = Math.max(0, Number(req.query.offset) || 0);
 

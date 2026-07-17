@@ -19,7 +19,7 @@ export default function PlatformShell({ children }) {
         </Link>
         <div className="shell-userbox">
           <span className="status-pill"><span className="dot" />All systems operational</span>
-          {user?.email && <span>{user.email}</span>}
+          {user?.email && <Link to="/account" className="shell-account-link">{user.email}</Link>}
           <button className="shell-logout" onClick={() => { logout(); navigate('/login'); }}>Sign out</button>
         </div>
       </div>

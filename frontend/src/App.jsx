@@ -8,6 +8,7 @@ import LandingPage    from './pages/platform/LandingPage';
 import SectionPage    from './pages/platform/SectionPage';
 import AgentEmbedPage from './pages/platform/AgentEmbedPage';
 import AdminPage      from './pages/platform/AdminPage';
+import AccountPage    from './pages/platform/AccountPage';
 import Dashboard      from './pages/x/Dashboard';
 import AgentRunner    from './pages/x/AgentRunner';
 import AccountsPage   from './pages/x/AccountsPage';
@@ -73,6 +74,7 @@ export default function App() {
       <Route path="/" element={<ProtectedRoute><LandingPage /></ProtectedRoute>} />
       <Route path="/section/:sectionId" element={<ProtectedRoute><SectionPage /></ProtectedRoute>} />
       <Route path="/embed/:agentId" element={<ProtectedRoute><AgentEmbedPage /></ProtectedRoute>} />
+      <Route path="/account" element={<ProtectedRoute><AccountPage /></ProtectedRoute>} />
 
       {/* Brand Visibility agent dashboard (X + LinkedIn platforms, own sidebar) */}
       <Route path="/brand-visibility" element={

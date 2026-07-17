@@ -1381,3 +1381,19 @@ code, .mono, pre { font-family: var(--mono); }
 .run-elapsed { font-family: var(--mono); font-size: 12px; color: var(--text2); }
 .run-summary { margin-top: 14px; font-size: 12px; color: var(--text2); background: rgba(0,0,0,.2); border: 1px solid var(--border); border-radius: 8px; padding: 12px; overflow-x: auto; white-space: pre-wrap; word-break: break-word; }
 .field-error { color: var(--red); font-size: 11px; margin-top: 6px; }
+
+/* ── RBAC Phase 2: /account (tabs, chips, audit meta) ────────────────────── */
+.admin-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin: 20px 0 20px; }
+.admin-tab { padding: 10px 16px; background: transparent; border: none; border-bottom: 2px solid transparent; color: var(--text2); font-size: 13px; font-weight: 600; cursor: pointer; transition: color .15s, border-color .15s; }
+.admin-tab:hover { color: var(--text); }
+.admin-tab-active { color: var(--blue); border-bottom-color: var(--blue); }
+.account-tabpane { display: block; }
+
+.user-chip { display: inline-block; padding: 2px 9px; margin: 2px 4px 2px 0; border-radius: var(--r-pill, 20px); background: rgba(74,144,255,.1); border: 1px solid rgba(74,144,255,.3); color: var(--blue); font-size: 11px; font-weight: 600; white-space: nowrap; }
+.user-row.self td { background: rgba(74,144,255,.06); }
+
+.audit-meta-collapsed { color: var(--text2); }
+.audit-meta-expanded { margin: 8px 0 0; padding: 10px; background: rgba(0,0,0,.2); border: 1px solid var(--border); border-radius: 8px; font-size: 11px; color: var(--text2); white-space: pre-wrap; word-break: break-word; max-width: 420px; overflow-x: auto; }
+
+.shell-account-link { color: var(--text2); text-decoration: none; border-bottom: 1px dotted transparent; transition: color .15s, border-color .15s; }
+.shell-account-link:hover { color: var(--blue); border-bottom-color: var(--blue); }

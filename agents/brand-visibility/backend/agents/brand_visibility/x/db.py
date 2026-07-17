@@ -1074,6 +1074,25 @@ class Database:
         )
         return rows[0] if rows else None
 
+    def mark_orphan_runs_failed(self) -> list[int]:
+        """Startup cleanup for zombie runs. A container restart kills the
+        in-process BackgroundTask that owned an in-flight sweep, leaving its
+        agent_runs row stuck at 'running' — which then blocks the run-now 409
+        already_running guard until it ages out (see get_running_run's 30-minute
+        window). No sweep can be running while the process is starting up, so any
+        surviving 'running' row is definitionally orphaned. The 5-second guard
+        only shields the razor-thin race where startup coincides with a brand-new
+        run insert. Returns the ids that were marked failed."""
+        rows = self.query(
+            "UPDATE agent_runs "
+            "SET status = 'failed', ended_at = NOW(), "
+            "    error_message = 'Orphaned by container restart (startup cleanup)' "
+            "WHERE status = 'running' "
+            "AND started_at < NOW() - INTERVAL '5 seconds' "
+            "RETURNING id"
+        )
+        return [r["id"] for r in rows]
+
     def get_run(self, run_id: int) -> dict | None:
         """Single agent_runs row by id (None if not found)."""
         rows = self.query("SELECT * FROM agent_runs WHERE id = %s", (run_id,))

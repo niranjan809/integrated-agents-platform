@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useAuth } from '../../../context/AuthContext';
 import { ROLES, ROLE_LABELS, SECTIONS, SECTION_LABELS } from '../../../constants/rbac';
 
+// Auth-source-agnostic: the parent passes `fetcher` (a fetch(path, opts)=>Response
+// wrapper carrying whichever token applies — panel-admin in AdminPage) and
+// `currentUser` (the acting user, or null for a panel-admin session, in which
+// case no "self" restrictions apply). Backend accepts either via requireAdminOrPanel.
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function timeAgo(ts) {
@@ -18,9 +21,7 @@ function timeAgo(ts) {
 
 const BLANK_CREATE = { email: '', password: '', role: 'viewer', sections: [...SECTIONS] };
 
-export default function UsersTab() {
-  const { apiFetch, user } = useAuth();
-
+export default function UsersTab({ fetcher, currentUser }) {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -41,7 +42,7 @@ export default function UsersTab() {
 
   function load() {
     setLoading(true); setError(null);
-    apiFetch('/api/admin/users')
+    fetcher('/api/admin/users')
       .then(r => (r.ok ? r.json() : Promise.reject(new Error(`users ${r.status}`))))
       .then(d => { setUsers(d.users || []); setLoading(false); })
       .catch(e => { setError(e.message); setLoading(false); });
@@ -78,7 +79,7 @@ export default function UsersTab() {
     if (form.password.length < 8)   { setModalError('Password must be at least 8 characters.'); return; }
     setSaving(true); setModalError(null);
     try {
-      const r = await apiFetch('/api/admin/users', {
+      const r = await fetcher('/api/admin/users', {
         method: 'POST',
         body: JSON.stringify({ email: form.email.trim(), password: form.password, role: form.role, sections_allowed: form.sections }),
       });
@@ -93,7 +94,7 @@ export default function UsersTab() {
     e.preventDefault();
     setSaving(true); setModalError(null);
     try {
-      const r = await apiFetch(`/api/admin/users/${modal.row.id}`, {
+      const r = await fetcher(`/api/admin/users/${modal.row.id}`, {
         method: 'PATCH',
         body: JSON.stringify({ role: form.role, sections_allowed: form.sections }),
       });
@@ -110,7 +111,7 @@ export default function UsersTab() {
     if (pw1 !== pw2)    { setModalError('Passwords do not match.'); return; }
     setSaving(true); setModalError(null);
     try {
-      const r = await apiFetch(`/api/admin/users/${modal.row.id}/reset-password`, {
+      const r = await fetcher(`/api/admin/users/${modal.row.id}/reset-password`, {
         method: 'POST', body: JSON.stringify({ new_password: pw1 }),
       });
       const d = await r.json().catch(() => ({}));
@@ -123,7 +124,7 @@ export default function UsersTab() {
   async function submitDelete() {
     setSaving(true); setModalError(null);
     try {
-      const r = await apiFetch(`/api/admin/users/${modal.row.id}`, { method: 'DELETE' });
+      const r = await fetcher(`/api/admin/users/${modal.row.id}`, { method: 'DELETE' });
       const d = await r.json().catch(() => ({}));
       if (!r.ok) { setModalError(d.error || `Delete failed (${r.status}).`); return; }
       setBanner('User deleted.'); closeModal(); load();
@@ -159,8 +160,7 @@ export default function UsersTab() {
           <tbody>
             {filtered.length === 0 && <tr><td colSpan={6}><div className="empty-state">No users match.</div></td></tr>}
             {filtered.map(u => {
-              const isSelf = u.id === user?.id;
-              const isLastAdmin = u.role === 'admin' && adminCount <= 1;
+              const isSelf = currentUser && u.id === currentUser.id;
               return (
                 <tr key={u.id} className={isSelf ? 'user-row self' : ''}>
                   <td>{u.email}{isSelf && <span className="user-chip" style={{ marginLeft: 8 }}>you</span>}</td>

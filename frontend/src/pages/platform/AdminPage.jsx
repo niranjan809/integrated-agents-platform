@@ -1,5 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
-import { Link, Navigate } from 'react-router-dom';
+import { Link, Navigate, useSearchParams } from 'react-router-dom';
+import UsersTab from './admin/UsersTab';
+import AuditLogTab from './admin/AuditLogTab';
 
 const API  = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 const TKEY = 'kiteai_admin_token';
@@ -9,10 +11,14 @@ const TKEY = 'kiteai_admin_token';
 // integrations, and a live "Test connection" probe). No API keys are ever shown.
 export default function AdminPage() {
   const [token] = useState(() => sessionStorage.getItem(TKEY));
+  const [params, setParams] = useSearchParams();
   const [ov, setOv]   = useState(null);
   const [err, setErr] = useState(null);
 
-  const [view, setView]           = useState('overview'); // 'overview' | 'section' | 'agent'
+  const _initialTab = params.get('tab');
+  const [view, setView]           = useState(
+    (_initialTab === 'users' || _initialTab === 'audit') ? _initialTab : 'overview'
+  ); // 'overview' | 'section' | 'agent' | 'users' | 'audit'
   const [sectionId, setSectionId] = useState(null);
   const [agentId, setAgentId]     = useState(null);
   const [detail, setDetail]       = useState(null);
@@ -23,6 +29,16 @@ export default function AdminPage() {
 
   const authHeaders = { Authorization: `Bearer ${token}` };
   const jsonHeaders = { ...authHeaders, 'Content-Type': 'application/json' };
+
+  // Fetch wrapper handed to the RBAC tabs. Carries the panel-admin token; the
+  // dual-auth backend (requireAdminOrPanel) accepts it. Returns the raw Response.
+  const adminFetch = (path, options = {}) => fetch(`${API}${path}`, {
+    ...options,
+    headers: { 'Content-Type': 'application/json', ...authHeaders, ...(options.headers || {}) },
+  });
+
+  // Switch a top-level view and keep ?tab in sync (deep-linkable Users/Audit).
+  function goTab(v) { setView(v); setParams(v === 'overview' ? {} : { tab: v }); }
 
   useEffect(() => {
     if (!token) return;
@@ -89,8 +105,14 @@ export default function AdminPage() {
           <span className="admin-brand-tag">Admin</span>
         </div>
         <nav className="admin-nav">
-          <button className={`admin-nav-item${view === 'overview' ? ' active' : ''}`} onClick={() => setView('overview')}>
+          <button className={`admin-nav-item${view === 'overview' ? ' active' : ''}`} onClick={() => goTab('overview')}>
             <span className="ni">◫</span> Overview
+          </button>
+          <button className={`admin-nav-item${view === 'users' ? ' active' : ''}`} onClick={() => goTab('users')}>
+            <span className="ni">◪</span> Users
+          </button>
+          <button className={`admin-nav-item${view === 'audit' ? ' active' : ''}`} onClick={() => goTab('audit')}>
+            <span className="ni">▤</span> Audit Log
           </button>
           {(ov?.sections || []).map(s => (
             <div key={s.id} className="admin-nav-group">
@@ -115,8 +137,21 @@ export default function AdminPage() {
 
       {/* ── Main ── */}
       <main className="admin-main">
-        {err && <div className="embed-msg embed-error">{err}</div>}
-        {!ov && !err && <div className="embed-msg">Loading…</div>}
+        {err && view !== 'users' && view !== 'audit' && <div className="embed-msg embed-error">{err}</div>}
+        {!ov && !err && view !== 'users' && view !== 'audit' && <div className="embed-msg">Loading…</div>}
+
+        {view === 'users' && (
+          <>
+            <h1 className="admin-title">Users</h1>
+            <UsersTab fetcher={adminFetch} currentUser={null} />
+          </>
+        )}
+        {view === 'audit' && (
+          <>
+            <h1 className="admin-title">Audit Log</h1>
+            <AuditLogTab fetcher={adminFetch} />
+          </>
+        )}
 
         {ov && view === 'overview' && (
           <>

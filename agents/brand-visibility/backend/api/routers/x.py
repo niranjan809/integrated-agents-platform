@@ -17,6 +17,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, 
 from pydantic import BaseModel, Field
 
 from agents.brand_visibility.x.db import Database
+from api.deps import verify_cron_secret
 
 router = APIRouter()
 
@@ -163,7 +164,7 @@ def active_prompt(db: Database = Depends(get_x_db)) -> dict:
     return db.get_active_prompt()
 
 
-@router.post("/active-prompt")
+@router.post("/active-prompt", dependencies=[Depends(verify_cron_secret)])
 def update_active_prompt(payload: UpdatePromptRequest, db: Database = Depends(get_x_db)) -> dict:
     """Save a new active prompt version (Sub-phase X3). Mirrors LinkedIn's
     POST /api/linkedin/active-prompt: deactivates the current active row and
@@ -179,7 +180,7 @@ def schedule(db: Database = Depends(get_x_db)) -> dict:
     return db.get_schedule()
 
 
-@router.put("/schedule")
+@router.put("/schedule", dependencies=[Depends(verify_cron_secret)])
 def update_schedule(payload: UpdateScheduleRequest, db: Database = Depends(get_x_db)) -> dict:
     """Partial update of the single-row sweep config (Sub-phase X4). Config-only —
     Render Cron owns cadence. Only fields present in the body are changed."""

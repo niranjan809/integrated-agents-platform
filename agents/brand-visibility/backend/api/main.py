@@ -101,11 +101,10 @@ _STATIC_DIR.mkdir(exist_ok=True)
 
 app = FastAPI(title="Brand Visibility Agent API", version=API_VERSION, lifespan=lifespan)
 
-# CORS: origins come from ALLOWED_ORIGINS (comma-separated) env var, defaulting
-# to "*" — so local dev (Vite on :5173) and the current Vercel embed both work
-# unchanged. Set an explicit list to tighten (planned for the Railway migration),
-# e.g. ALLOWED_ORIGINS="http://localhost:5173,https://your-app.vercel.app".
-# allow_credentials stays False — incompatible with the "*" wildcard, no cookie auth.
+# CORS: origins come from ALLOWED_ORIGINS (comma-separated) env var. P0 lockdown —
+# set an EXPLICIT allowlist in production (see .env.example); "*" is a dev-only
+# fallback. Auth is header-based (X-Cron-Secret on writes), so allow_credentials
+# stays False (also required — "*" + credentials is an invalid CORS combo).
 _origins_env = os.getenv("ALLOWED_ORIGINS", "*").strip()
 _allowed_origins = (
     ["*"] if _origins_env in ("", "*")

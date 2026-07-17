@@ -17,6 +17,8 @@ from enum import Enum
 from typing import Optional
 
 from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Query
+
+from api.deps import verify_cron_secret
 from pydantic import BaseModel, Field, model_validator
 
 from agents.brand_visibility.linkedin.db import LinkedInDatabase
@@ -485,7 +487,7 @@ def _run_sweep_bg(run_id: int, params: dict) -> None:
 # Phase 3 — write endpoints
 # --------------------------------------------------------------------------
 
-@router.post("/active-prompt", response_model=UpdatePromptResponse)
+@router.post("/active-prompt", response_model=UpdatePromptResponse, dependencies=[Depends(verify_cron_secret)])
 def update_active_prompt(
     payload: UpdatePromptRequest,
     db: LinkedInDatabase = Depends(get_db),
@@ -501,7 +503,7 @@ def update_active_prompt(
     )
 
 
-@router.put("/schedule", response_model=ScheduleResponse)
+@router.put("/schedule", response_model=ScheduleResponse, dependencies=[Depends(verify_cron_secret)])
 def update_schedule_endpoint(
     payload: UpdateScheduleRequest,
     db: LinkedInDatabase = Depends(get_db),

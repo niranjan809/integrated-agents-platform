@@ -32,6 +32,13 @@ async function proxyRequest(req, res, path) {
     method: req.method,
     headers: { 'Content-Type': 'application/json' },
   };
+  // P0 lockdown: the Python API now requires X-Cron-Secret on write endpoints
+  // (config CRUD included). Inject it server-side so it's never exposed to the
+  // browser. Harmless on GET reads (Python ignores it there). If the gateway
+  // secret isn't configured, writes will 401 upstream — set X_CRON_SECRET_BV.
+  if (process.env.X_CRON_SECRET_BV) {
+    options.headers['X-Cron-Secret'] = process.env.X_CRON_SECRET_BV;
+  }
   if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method) && Object.keys(req.body || {}).length) {
     options.body = JSON.stringify(req.body);
   }
@@ -110,5 +117,13 @@ router.post('/x/run-now', async (req, res) => {
 // routed via the gateway so the browser uses one authed origin instead of the
 // internal-only Python URL.
 router.get('/x/run-status/:runId', (req, res) => proxyRequest(req, res, `/api/x/run-status/${encodeURIComponent(req.params.runId)}`));
+
+// Scheduler save (PUT) + Prompt save (POST). These hit Python WRITE endpoints,
+// which now require X-Cron-Secret (P0 lockdown) — proxyRequest injects it
+// server-side. JWT + brand-visibility section gating already applied by the
+// router.use above; the browser never sees the secret. Body/method pass through.
+// (GET reads of schedule/active-prompt still go browser->Python directly for now.)
+router.put('/x/schedule', (req, res) => proxyRequest(req, res, '/api/x/schedule'));
+router.post('/x/active-prompt', (req, res) => proxyRequest(req, res, '/api/x/active-prompt'));
 
 module.exports = router;

@@ -98,6 +98,9 @@ CREATE TABLE IF NOT EXISTS task_accounts (
   FOREIGN KEY (task_id) REFERENCES tasks(id)
 );
 
+-- Audit log: actor_id/actor_email are DENORMALIZED historical values. No FK on
+-- actor_id so we can delete users while preserving their audit trail. Standard
+-- audit-log pattern.
 CREATE TABLE IF NOT EXISTS audit_log (
   id           INTEGER PRIMARY KEY AUTOINCREMENT,
   actor_id     INTEGER NOT NULL,
@@ -106,8 +109,7 @@ CREATE TABLE IF NOT EXISTS audit_log (
   target_type  TEXT,
   target_id    TEXT,
   meta_json    TEXT,
-  created_at   TEXT    DEFAULT (datetime('now')),
-  FOREIGN KEY (actor_id) REFERENCES users(id)
+  created_at   TEXT    DEFAULT (datetime('now'))
 );
 `;
 

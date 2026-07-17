@@ -1,0 +1,29 @@
+name: X agent cron (twice daily)
+
+# Reliable twice-daily trigger for the X agent sweep. Runs on GitHub Actions,
+# hits the Railway kite-python service via the authenticated /api/x/run-now
+# endpoint. Wake-up curl is kept as a lightweight ping (Railway containers don't
+# sleep, but the ping surfaces cold-start / DNS issues early in the run log).
+on:
+  schedule:
+    # 00:00 and 12:00 UTC = 05:30 and 17:30 IST (IST = UTC+5:30)
+    - cron: '0 0,12 * * *'
+  workflow_dispatch: {}   # also lets you trigger it manually from the Actions tab
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Railway backend (surfaces cold-start / DNS issues early)
+        run: curl -fsS --max-time 90 "${{ secrets.X_BACKEND_URL }}/health" || true
+
+      - name: Trigger X agent sweep
+        run: |
+          code=$(curl -s -o /tmp/out.txt -w "%{http_code}" -X POST \
+            "${{ secrets.X_BACKEND_URL }}/api/x/run-now" \
+            -H "X-Cron-Secret: ${{ secrets.X_CRON_SECRET }}" \
+            --max-time 120)
+          echo "HTTP $code"
+          cat /tmp/out.txt
+          echo
+          test "$code" = "202"

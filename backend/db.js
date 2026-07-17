@@ -97,6 +97,20 @@ CREATE TABLE IF NOT EXISTS task_accounts (
   PRIMARY KEY (task_id, handle),
   FOREIGN KEY (task_id) REFERENCES tasks(id)
 );
+
+-- Audit log: actor_id/actor_email are DENORMALIZED historical values. No FK on
+-- actor_id so we can delete users while preserving their audit trail. Standard
+-- audit-log pattern.
+CREATE TABLE IF NOT EXISTS audit_log (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  actor_id     INTEGER NOT NULL,
+  actor_email  TEXT    NOT NULL,
+  action       TEXT    NOT NULL,
+  target_type  TEXT,
+  target_id    TEXT,
+  meta_json    TEXT,
+  created_at   TEXT    DEFAULT (datetime('now'))
+);
 `;
 
 // ── Seed keywords from Google Sheets class structure ──────────────────────────
@@ -202,6 +216,14 @@ async function initDB() {
     `ALTER TABLE accounts ADD COLUMN repost_ratio INTEGER`,
     // 0-100 — % of recent posts that are pure reposts/retweets (NULL = not analyzed).
     // >= REPOST_THRESHOLD marks the account a "reposter / amplifier" (own section, out of A1/A2)
+    // ── RBAC Phase 1 — user management columns ──────────────────────────────────
+    // sections_allowed: comma-separated section slugs the user may access (used by
+    // Phase 3 gating; not enforced yet). SQLite backfills existing rows with the
+    // default. The other three are audit/ops metadata (NULL for pre-existing rows).
+    `ALTER TABLE users ADD COLUMN sections_allowed    TEXT DEFAULT 'brand-visibility,pr,leaderboard'`,
+    `ALTER TABLE users ADD COLUMN password_updated_at TEXT`,
+    `ALTER TABLE users ADD COLUMN created_by          INTEGER`,
+    `ALTER TABLE users ADD COLUMN last_login_at       TEXT`,
   ];
   for (const m of migrations) {
     try { await db.execute(m); }
@@ -261,6 +283,14 @@ async function initDB() {
         console.log(`  Admin password updated: ${adminEmail}`);
       }
     }
+    // Safety net: an admin row created before the sections_allowed migration would
+    // (on some engines) have NULL — grant full section access so it isn't locked
+    // out once Phase 3 gating lands. New rows already get the column default.
+    await db.execute({
+      sql: `UPDATE users SET sections_allowed = 'brand-visibility,pr,leaderboard'
+            WHERE email = ? AND sections_allowed IS NULL`,
+      args: [adminEmail],
+    });
   }
 
   // Seed default agent config

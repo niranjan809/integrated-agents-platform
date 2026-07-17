@@ -3,6 +3,7 @@ import { useAuth }       from './context/AuthContext';
 import { AgentProvider } from './context/AgentContext';
 import Sidebar        from './components/x/Sidebar';
 import ProtectedRoute from './components/platform/ProtectedRoute';
+import SectionGuard   from './components/platform/SectionGuard';
 import LoginPage      from './pages/platform/LoginPage';
 import LandingPage    from './pages/platform/LandingPage';
 import SectionPage    from './pages/platform/SectionPage';
@@ -72,14 +73,16 @@ export default function App() {
 
       {/* Landing + section pages (agent catalogue, no sidebar) */}
       <Route path="/" element={<ProtectedRoute><LandingPage /></ProtectedRoute>} />
-      <Route path="/section/:sectionId" element={<ProtectedRoute><SectionPage /></ProtectedRoute>} />
+      <Route path="/section/:sectionId" element={<ProtectedRoute><SectionGuard><SectionPage /></SectionGuard></ProtectedRoute>} />
       <Route path="/embed/:agentId" element={<ProtectedRoute><AgentEmbedPage /></ProtectedRoute>} />
       <Route path="/account" element={<ProtectedRoute><AccountPage /></ProtectedRoute>} />
 
       {/* Brand Visibility agent dashboard (X + LinkedIn platforms, own sidebar) */}
       <Route path="/brand-visibility" element={
         <ProtectedRoute>
-          <BrandVisibilityLayout />
+          <SectionGuard section="brand-visibility">
+            <BrandVisibilityLayout />
+          </SectionGuard>
         </ProtectedRoute>
       }>
         <Route index element={<Navigate to="x/overview" replace />} />

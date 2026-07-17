@@ -1,14 +1,23 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import PlatformShell from '../../components/platform/PlatformShell';
+import { useAuth } from '../../context/AuthContext';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
-// The landing catalogue is driven by the gateway registry (/api/sections).
-// Adding a section = one entry in backend/agentRegistry.js — this page needs no edit.
+// The landing catalogue is driven by the gateway registry (/api/sections), which
+// returns ALL sections. RBAC Phase 3: we hide sections the user isn't allowed to
+// see (JWT sections_allowed) — the backend enforces access on the section's own
+// routes; this is the UX filter. Adding a section = one entry in
+// backend/agentRegistry.js — this page needs no edit.
 export default function LandingPage() {
+  const { user } = useAuth();
+  const location = useLocation();
   const [sections, setSections] = useState(null);
   const [error,    setError]    = useState(null);
+
+  const allowed = user?.sections_allowed || [];
+  const deniedSection = location.state?.deniedSection || null;
 
   useEffect(() => {
     fetch(`${API}/api/sections`, {
@@ -19,9 +28,13 @@ export default function LandingPage() {
       .catch(e => setError(e.message));
   }, []);
 
-  // live sections first, then coming-soon
-  const ordered = (sections || []).slice().sort((a, b) =>
-    (a.status === 'live' ? 0 : 1) - (b.status === 'live' ? 0 : 1));
+  // Only sections the user may access, live first then coming-soon.
+  const visibleSections = (sections || [])
+    .filter(s => allowed.includes(s.id))
+    .slice()
+    .sort((a, b) => (a.status === 'live' ? 0 : 1) - (b.status === 'live' ? 0 : 1));
+
+  const nameById = Object.fromEntries((sections || []).map(s => [s.id, s.name]));
 
   return (
     <PlatformShell>
@@ -32,11 +45,20 @@ export default function LandingPage() {
         Choose a section to get started — each groups the agents that share a goal.
       </p>
 
+      {deniedSection && (
+        <p className="shell-sub" style={{ color: '#e0b000' }}>
+          Access denied for {nameById[deniedSection] || deniedSection}. Contact your admin.
+        </p>
+      )}
       {error && <p className="shell-sub" style={{ color: '#e06a6a' }}>Couldn’t load sections: {error}</p>}
       {!sections && !error && <p className="shell-sub">Loading sections…</p>}
 
+      {sections && !error && visibleSections.length === 0 && (
+        <p className="shell-sub">You don’t have access to any sections yet. Contact your admin.</p>
+      )}
+
       <div className="agent-grid">
-        {ordered.map((s, i) => {
+        {visibleSections.map((s, i) => {
           const live = s.status === 'live';
           return (
             <Link key={s.id} to={`/section/${s.id}`} className="agent-option-card" style={{ animationDelay: `${i * 90}ms` }}>

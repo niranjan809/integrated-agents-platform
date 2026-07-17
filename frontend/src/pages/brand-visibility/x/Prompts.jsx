@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { pythonFetch } from '../../../utils/pythonApi';
+import { useAuth } from '../../../context/AuthContext';
 
 // Suggest the next version from the current one: v1 -> v2, else append -next.
 function suggestNextVersion(ver) {
@@ -9,6 +10,7 @@ function suggestNextVersion(ver) {
 }
 
 export default function Prompts() {
+  const { apiFetch } = useAuth();
   const [prompt, setPrompt] = useState(null);       // { version, content, updated_at }
   const [content, setContent] = useState('');        // working copy
   const [version, setVersion] = useState('');        // version to save as
@@ -47,7 +49,9 @@ export default function Prompts() {
     setSaving(true);
     setStatus(null);
     try {
-      const r = await pythonFetch('/api/x/active-prompt', {
+      // Write goes through the JWT-authed Node gateway (which injects X-Cron-Secret).
+      // Python's POST /api/x/active-prompt is locked down (P0); direct would 401.
+      const r = await apiFetch('/api/brand-visibility/config/x/active-prompt', {
         method: 'POST',
         body: JSON.stringify({ prompt_text: content, prompt_version: version.trim() }),
       });

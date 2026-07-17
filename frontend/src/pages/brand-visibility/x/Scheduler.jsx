@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { pythonFetch } from '../../../utils/pythonApi';
+import { useAuth } from '../../../context/AuthContext';
 
 // Editable subset of x_schedule (matches UpdateScheduleRequest).
 const EDITABLE = ['mode', 'sweep_type', 'max_pages', 'max_keywords', 'class_filter', 'since_hours', 'max_api_calls'];
@@ -13,6 +14,7 @@ const SWEEP_TYPE_OPTIONS = ['Latest', 'Top'];
 const asStr = (v) => (v == null ? '' : String(v));
 
 export default function Scheduler() {
+  const { apiFetch } = useAuth();
   const [loaded, setLoaded] = useState(null);   // full GET row (incl. read-only fields)
   const [form, setForm] = useState({});          // editable working copy (strings)
   const [loading, setLoading] = useState(true);
@@ -74,7 +76,9 @@ export default function Scheduler() {
     setSaving(true);
     setStatus(null);
     try {
-      const r = await pythonFetch('/api/x/schedule', { method: 'PUT', body: JSON.stringify(buildPayload()) });
+      // Write goes through the JWT-authed Node gateway (which injects X-Cron-Secret).
+      // Python's PUT /api/x/schedule is locked down (P0); direct pythonFetch would 401.
+      const r = await apiFetch('/api/brand-visibility/config/x/schedule', { method: 'PUT', body: JSON.stringify(buildPayload()) });
       const d = await r.json();
       if (!r.ok) throw new Error(d.detail || d.error || `save failed (${r.status})`);
       hydrate(d);

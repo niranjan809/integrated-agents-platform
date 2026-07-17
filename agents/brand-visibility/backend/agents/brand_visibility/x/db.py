@@ -992,7 +992,7 @@ class Database:
         if key == "max_pages":
             return _as_int("max_pages", 1, 10)
         if key == "max_keywords":
-            return _as_int("max_keywords", 1, 50)
+            return _as_int("max_keywords", 1, 1000)
         if key == "max_api_calls":
             return _as_int("max_api_calls", 1, 1000)
         if key == "since_hours":

@@ -139,8 +139,8 @@ export default function Scheduler() {
             onChange={e => setField('max_pages', e.target.value)} />
         </div>
         <div className="config-field">
-          <label>Max keywords <span className="config-hint">queries per sweep · 1–50</span></label>
-          <input className="search-input" type="number" min="1" max="50" value={form.max_keywords}
+          <label>Max keywords <span className="config-hint">queries per sweep · 1–1000</span></label>
+          <input className="search-input" type="number" min="1" max="1000" value={form.max_keywords}
             onChange={e => setField('max_keywords', e.target.value)} />
         </div>
         <div className="config-field">

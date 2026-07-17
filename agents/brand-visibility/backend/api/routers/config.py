@@ -26,7 +26,9 @@ import logging
 from typing import Any, Optional
 
 import psycopg
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
+
+from api.deps import verify_cron_secret
 from pydantic import BaseModel
 
 from agents.brand_visibility.x.db import Database
@@ -165,7 +167,7 @@ def get_class(class_key: str) -> KeywordClassResponse:
     return KeywordClassResponse(**rows[0])
 
 
-@router.post("/classes", response_model=KeywordClassResponse, status_code=201)
+@router.post("/classes", response_model=KeywordClassResponse, status_code=201, dependencies=[Depends(verify_cron_secret)])
 def create_class(body: ClassCreateRequest) -> KeywordClassResponse:
     db = get_db()
     try:
@@ -182,7 +184,7 @@ def create_class(body: ClassCreateRequest) -> KeywordClassResponse:
     return KeywordClassResponse(**rows[0])
 
 
-@router.put("/classes/{class_key}", response_model=KeywordClassResponse)
+@router.put("/classes/{class_key}", response_model=KeywordClassResponse, dependencies=[Depends(verify_cron_secret)])
 def update_class(class_key: str, body: ClassUpdateRequest) -> KeywordClassResponse:
     db = get_db()
     sql, values = build_update(
@@ -197,7 +199,7 @@ def update_class(class_key: str, body: ClassUpdateRequest) -> KeywordClassRespon
     return KeywordClassResponse(**rows[0])
 
 
-@router.delete("/classes/{class_key}")
+@router.delete("/classes/{class_key}", dependencies=[Depends(verify_cron_secret)])
 def delete_class(class_key: str) -> dict:
     db = get_db()
     # FK is not ON DELETE CASCADE — remove keywords then the class in one txn.
@@ -298,7 +300,7 @@ def get_keyword(keyword_id: int) -> KeywordResponse:
     return KeywordResponse(**rows[0])
 
 
-@router.post("/keywords", response_model=KeywordResponse, status_code=201)
+@router.post("/keywords", response_model=KeywordResponse, status_code=201, dependencies=[Depends(verify_cron_secret)])
 def create_keyword(body: KeywordCreateRequest) -> KeywordResponse:
     db = get_db()
     try:
@@ -323,7 +325,7 @@ def create_keyword(body: KeywordCreateRequest) -> KeywordResponse:
     return KeywordResponse(**rows[0])
 
 
-@router.put("/keywords/{keyword_id}", response_model=KeywordResponse)
+@router.put("/keywords/{keyword_id}", response_model=KeywordResponse, dependencies=[Depends(verify_cron_secret)])
 def update_keyword(keyword_id: int, body: KeywordUpdateRequest) -> KeywordResponse:
     db = get_db()
     sql, values = build_update(
@@ -342,7 +344,7 @@ def update_keyword(keyword_id: int, body: KeywordUpdateRequest) -> KeywordRespon
     return KeywordResponse(**rows[0])
 
 
-@router.delete("/keywords/{keyword_id}")
+@router.delete("/keywords/{keyword_id}", dependencies=[Depends(verify_cron_secret)])
 def delete_keyword(keyword_id: int) -> dict:
     db = get_db()
     deleted = _rows(db, "DELETE FROM keywords WHERE id = %s RETURNING id", (keyword_id,))
@@ -351,7 +353,7 @@ def delete_keyword(keyword_id: int) -> dict:
     return {"ok": True}
 
 
-@router.patch("/keywords/{keyword_id}/toggle", response_model=KeywordResponse)
+@router.patch("/keywords/{keyword_id}/toggle", response_model=KeywordResponse, dependencies=[Depends(verify_cron_secret)])
 def toggle_keyword(keyword_id: int) -> KeywordResponse:
     db = get_db()
     rows = _rows(
@@ -435,7 +437,7 @@ def get_influencer(handle: str) -> InfluencerResponse:
     return InfluencerResponse(**rows[0])
 
 
-@router.post("/influencers", response_model=InfluencerResponse, status_code=201)
+@router.post("/influencers", response_model=InfluencerResponse, status_code=201, dependencies=[Depends(verify_cron_secret)])
 def create_influencer(body: InfluencerCreateRequest) -> InfluencerResponse:
     db = get_db()
     handle = normalize_handle(body.handle)
@@ -453,7 +455,7 @@ def create_influencer(body: InfluencerCreateRequest) -> InfluencerResponse:
     return InfluencerResponse(**rows[0])
 
 
-@router.put("/influencers/{handle}", response_model=InfluencerResponse)
+@router.put("/influencers/{handle}", response_model=InfluencerResponse, dependencies=[Depends(verify_cron_secret)])
 def update_influencer(handle: str, body: InfluencerUpdateRequest) -> InfluencerResponse:
     db = get_db()
     handle = normalize_handle(handle)
@@ -468,7 +470,7 @@ def update_influencer(handle: str, body: InfluencerUpdateRequest) -> InfluencerR
     return InfluencerResponse(**rows[0])
 
 
-@router.delete("/influencers/{handle}")
+@router.delete("/influencers/{handle}", dependencies=[Depends(verify_cron_secret)])
 def delete_influencer(handle: str) -> dict:
     db = get_db()
     handle = normalize_handle(handle)
@@ -478,7 +480,7 @@ def delete_influencer(handle: str) -> dict:
     return {"ok": True}
 
 
-@router.patch("/influencers/{handle}/toggle", response_model=InfluencerResponse)
+@router.patch("/influencers/{handle}/toggle", response_model=InfluencerResponse, dependencies=[Depends(verify_cron_secret)])
 def toggle_influencer(handle: str) -> InfluencerResponse:
     db = get_db()
     handle = normalize_handle(handle)

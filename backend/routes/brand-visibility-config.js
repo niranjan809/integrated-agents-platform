@@ -32,6 +32,13 @@ async function proxyRequest(req, res, path) {
     method: req.method,
     headers: { 'Content-Type': 'application/json' },
   };
+  // P0 lockdown: the Python API now requires X-Cron-Secret on write endpoints
+  // (config CRUD included). Inject it server-side so it's never exposed to the
+  // browser. Harmless on GET reads (Python ignores it there). If the gateway
+  // secret isn't configured, writes will 401 upstream — set X_CRON_SECRET_BV.
+  if (process.env.X_CRON_SECRET_BV) {
+    options.headers['X-Cron-Secret'] = process.env.X_CRON_SECRET_BV;
+  }
   if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method) && Object.keys(req.body || {}).length) {
     options.body = JSON.stringify(req.body);
   }

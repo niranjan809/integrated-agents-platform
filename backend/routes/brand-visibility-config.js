@@ -71,4 +71,43 @@ router.put('/influencers/:handle', (req, res) => proxyRequest(req, res, `/api/co
 router.delete('/influencers/:handle', (req, res) => proxyRequest(req, res, `/api/config/influencers/${encodeURIComponent(req.params.handle)}`));
 router.patch('/influencers/:handle/toggle', (req, res) => proxyRequest(req, res, `/api/config/influencers/${encodeURIComponent(req.params.handle)}/toggle`));
 
+// ── X (KA017) manual sweep trigger + status ──────────────────────────────────
+// Both routes are JWT-guarded by the global router.use(requireAuth) above.
+//
+// run-now can't reuse proxyRequest: it must inject the X-Cron-Secret header that
+// Python's /api/x/run-now requires. The secret lives only on the gateway
+// (X_CRON_SECRET_BV) and never reaches the browser. Body is optional — an empty
+// body runs the saved schedule; a JSON body carries per-run overrides.
+router.post('/x/run-now', async (req, res) => {
+  const cronSecret = process.env.X_CRON_SECRET_BV;
+  if (!cronSecret) {
+    return res.status(500).json({ error: 'X_CRON_SECRET_BV not configured on gateway' });
+  }
+  const url = `${PYTHON_API_URL}/api/x/run-now`;
+  const options = {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Cron-Secret': cronSecret },
+  };
+  if (Object.keys(req.body || {}).length) {
+    options.body = JSON.stringify(req.body);
+  }
+  try {
+    const upstream = await fetch(url, options);
+    const contentType = upstream.headers.get('content-type') || '';
+    const body = contentType.includes('application/json')
+      ? await upstream.json()
+      : await upstream.text();
+    res.status(upstream.status).json(body);
+  } catch (err) {
+    console.error(`[brand-visibility-config] run-now proxy error to ${url}:`, err.message);
+    res.status(502).json({ error: 'Upstream Python API unreachable', detail: err.message });
+  }
+});
+
+// Status poll for a run started via run-now. Python's run-status is unguarded,
+// so a plain pass-through (no cron secret) through the existing helper suffices —
+// routed via the gateway so the browser uses one authed origin instead of the
+// internal-only Python URL.
+router.get('/x/run-status/:runId', (req, res) => proxyRequest(req, res, `/api/x/run-status/${encodeURIComponent(req.params.runId)}`));
+
 module.exports = router;

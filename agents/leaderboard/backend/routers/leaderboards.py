@@ -158,21 +158,52 @@ def get_rankings(lb_id: int, background_tasks: BackgroundTasks, force: bool = Fa
     }
 
 
-@router.post("/{lb_id}/rescan")
+def _run_rescan(lb_id: int, lb_name: str) -> None:
+    """Background worker for POST /{lb_id}/rescan. Runs the (200+s) scrape off
+    the request thread so the Railway proxy doesn't time out the HTTP response.
+
+    Owns its own DB session: the request-scoped Depends(get_db) session is closed
+    when the 202 response returns, before this task runs — same reason
+    _enrich_leaderboard opens its own SessionLocal(). scan_state.start() is called
+    synchronously in the endpoint (so the 409 guard reserves the slot before this
+    task is scheduled); this worker only marks progress and always finish()es."""
+    db = SessionLocal()
+    try:
+        from agent.scraper import scrape_leaderboard, get_last_body_text
+        scan_state.update(name=lb_name, index=1)
+        try:
+            result = scrape_leaderboard(lb_id, db, triggered_by="rescan")
+        finally:
+            scan_state.finish()
+        # Already in a background task — call enrichment inline (it opens its own
+        # session) rather than scheduling another BackgroundTask.
+        if result.get("status") == "success":
+            _enrich_leaderboard(lb_id, get_last_body_text())
+    finally:
+        db.close()
+
+
+@router.post("/{lb_id}/rescan", status_code=202)
 def rescan_leaderboard(lb_id: int, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     lb = db.query(Leaderboard).filter(Leaderboard.id == lb_id).first()
     if not lb:
         raise HTTPException(status_code=404, detail="Leaderboard not found")
-    from agent.scraper import scrape_leaderboard, get_last_body_text
+
+    # Conflict guard: scan_state is a shared in-memory lock — a scheduled bulk
+    # scan (main.py) or another rescan may already be running. Concurrent scrapes
+    # would clobber scan_state and race, so reject with the current scan info.
+    current = scan_state.get()
+    if current.get("active"):
+        raise HTTPException(status_code=409, detail={
+            "reason": "scan_in_progress",
+            "scan": current,
+        })
+
+    # Reserve the slot synchronously (closes the check→schedule race) before
+    # handing the long scrape off to the background task.
     scan_state.start(total=1, triggered_by="rescan")
-    scan_state.update(name=lb.name, index=1)
-    try:
-        result = scrape_leaderboard(lb_id, db, triggered_by="rescan")
-    finally:
-        scan_state.finish()
-    if result.get("status") == "success":
-        background_tasks.add_task(_enrich_leaderboard, lb_id, get_last_body_text())
-    return result
+    background_tasks.add_task(_run_rescan, lb_id, lb.name)
+    return {"leaderboard_id": lb_id, "status": "rescan_scheduled"}
 
 
 @router.get("/{lb_id}/scan-logs")

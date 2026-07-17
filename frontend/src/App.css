@@ -1361,3 +1361,23 @@ code, .mono, pre { font-family: var(--mono); }
 .config-field .filter-select { flex: 1; max-width: 280px; }
 .config-updated { font-size: 12px; color: var(--text2); margin: 4px 2px 16px; }
 .config-actions { display: flex; justify-content: flex-end; gap: 10px; }
+
+/* ── Manual Run: per-run trigger + progress ──────────────────────────────── */
+.run-progress-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 20px 22px; margin: 0 0 24px; }
+.run-progress-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+.run-progress-head h3 { margin: 0; font-size: 15px; }
+.status-pill.running           { color: var(--blue);  border-color: rgba(74,144,255,.4); background: rgba(74,144,255,.08); }
+.status-pill.completed         { color: var(--green); border-color: rgba(0,200,150,.4); background: rgba(0,200,150,.08); }
+.status-pill.completed-partial { color: #f0a500;      border-color: rgba(240,165,0,.4);  background: rgba(240,165,0,.08); }
+.status-pill.failed            { color: var(--red);   border-color: rgba(255,68,68,.4);  background: rgba(255,68,68,.08); }
+.status-pill.running .dot,
+.status-pill.completed .dot,
+.status-pill.completed-partial .dot,
+.status-pill.failed .dot { background: currentColor; }
+.status-pill:not(.running) .dot { animation: none; box-shadow: none; }
+.run-metrics { display: flex; flex-wrap: wrap; gap: 28px; margin-bottom: 10px; }
+.run-metric-value { font-size: 22px; font-weight: 600; color: var(--text); }
+.run-metric-label { font-size: 12px; color: var(--text2); margin-top: 2px; }
+.run-elapsed { font-family: var(--mono); font-size: 12px; color: var(--text2); }
+.run-summary { margin-top: 14px; font-size: 12px; color: var(--text2); background: rgba(0,0,0,.2); border: 1px solid var(--border); border-radius: 8px; padding: 12px; overflow-x: auto; white-space: pre-wrap; word-break: break-word; }
+.field-error { color: var(--red); font-size: 11px; margin-top: 6px; }

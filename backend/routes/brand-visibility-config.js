@@ -7,14 +7,15 @@
 // libraries. Matches routes/keywords.js conventions: destructured requireAuth,
 // { error } envelope, module.exports = router.
 const express = require('express');
-const { requireAuth } = require('../middleware/auth');
+const { requireAuth, requireSection } = require('../middleware/auth');
 
 const router = express.Router();
 
 const PYTHON_API_URL = process.env.PYTHON_API_URL || 'http://localhost:8000';
 
-// All config routes require a valid JWT.
-router.use(requireAuth);
+// All config routes require a valid JWT AND access to the brand-visibility
+// section (RBAC Phase 3). Panel-admin bypasses via requireSection.
+router.use(requireAuth, requireSection('brand-visibility'));
 
 // Generic pass-through to the Python API. Preserves method, query string, and
 // JSON body; relays the upstream status + body verbatim (so FastAPI's

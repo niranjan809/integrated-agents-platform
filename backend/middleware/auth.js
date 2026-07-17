@@ -75,4 +75,28 @@ function requireAdminOrPanel(req, res, next) {
   });
 }
 
-module.exports = { requireAuth, requireRole, requireAdminOrPanel };
+// Section-level gate (RBAC Phase 3). Use AFTER requireAuth (or requireAdminOrPanel),
+// which populates req.user. Grants access if the user's sections_allowed intersects
+// requiredSections. Panel-admin sees everything — bypass whether it arrived via
+// requireAdminOrPanel (req.authType) or a plain requireAuth verify of a panel-admin
+// JWT (req.user.scope). Note: role='admin' does NOT bypass — access is purely by
+// sections_allowed, so an admin scoped to fewer sections is still gated.
+function requireSection(...requiredSections) {
+  return (req, res, next) => {
+    if (!req.user) return res.status(401).json({ error: 'Not authenticated' });
+    if (req.authType === 'panel_admin' || req.user.scope === 'panel-admin') return next();
+
+    const allowed = req.user.sections_allowed || [];
+    const hasAccess = requiredSections.some(s => allowed.includes(s));
+    if (!hasAccess) {
+      return res.status(403).json({
+        error: 'Section access denied',
+        required: requiredSections,
+        have: allowed,
+      });
+    }
+    next();
+  };
+}
+
+module.exports = { requireAuth, requireRole, requireAdminOrPanel, requireSection };

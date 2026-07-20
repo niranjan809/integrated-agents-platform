@@ -4,9 +4,8 @@ Brand Visibility Agent API — FastAPI entrypoint (Phase 1 skeleton).
 Run locally (from python-backend/):
     uvicorn api.main:app --reload --port 8000
 
-Phase 1 exposes only /health and /agent/info. Data endpoints (X, LinkedIn) and
-HTML dashboards come in later phases; templates/ and static/ are created now so
-those can be added without restructuring.
+Phase 1 exposes only /health and /agent/info. Data endpoints (X, LinkedIn) are
+served as JSON under /api/*.
 """
 from __future__ import annotations
 
@@ -14,19 +13,15 @@ import logging
 import os
 import sys
 from contextlib import asynccontextmanager
-from pathlib import Path
 
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
 
 from agents.brand_visibility.linkedin.db import LinkedInDatabase
 from agents.brand_visibility.x.db import Database as XDatabase
 from shared.db.postgres_client import close_pool
 from api.deps import verify_cron_secret
 from api.routers import config as config_router
-from api.routers import dashboards as dashboards_router
 from api.routers import linkedin as linkedin_router
 from api.routers import x as x_router
 
@@ -93,13 +88,6 @@ async def lifespan(app: FastAPI):
     close_pool()
     logger.info("API shutdown complete")
 
-# Resolve api/ dir so paths work regardless of the process CWD.
-_API_DIR = Path(__file__).resolve().parent
-_TEMPLATES_DIR = _API_DIR / "templates"
-_STATIC_DIR = _API_DIR / "static"
-_TEMPLATES_DIR.mkdir(exist_ok=True)
-_STATIC_DIR.mkdir(exist_ok=True)
-
 app = FastAPI(title="Brand Visibility Agent API", version=API_VERSION, lifespan=lifespan)
 
 # CORS: origins come from ALLOWED_ORIGINS (comma-separated) env var. P0 lockdown —
@@ -119,16 +107,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Configured for future HTML responses (unused in Phase 1).
-templates = Jinja2Templates(directory=str(_TEMPLATES_DIR))
-app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
-
 # Platform routers
 app.include_router(linkedin_router.router, prefix="/api/linkedin", tags=["linkedin"])
 app.include_router(x_router.router, prefix="/api/x", tags=["x"])
 app.include_router(config_router.router, prefix="/api/config", tags=["config"])
-# Server-rendered HTML dashboards
-app.include_router(dashboards_router.router, tags=["dashboards"])
 
 
 @app.get("/health")

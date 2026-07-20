@@ -85,37 +85,22 @@ const AGENTS = [
     runUrl: null,
     version: 1,
   },
-  // Brand Visibility agent (partner) — ONE FastAPI service that serves two dashboards
-  // (X + LinkedIn). Both go live when BRAND_VISIBILITY_URL is set (the service base URL).
+  // Brand Visibility agent (partner) — ONE FastAPI service with in-dashboard platform
+  // tabs (X + LinkedIn). Goes live when BRAND_VISIBILITY_URL is set (the service base
+  // URL). X is wired to real data; LinkedIn is a "Coming soon" placeholder for now.
   {
-    id: 'brand-x',
+    id: 'brand-visibility',
     sectionId: 'brand-visibility',
-    name: 'Brand Visibility — X',
+    name: 'Brand Visibility Agent',
     creator: 'Anooj',
-    integrations: ['Postgres', 'RapidAPI (twitter241)', 'OpenRouter (Gemini 2.5 Flash)'],
-    icon: '𝕏',
+    integrations: ['Postgres', 'RapidAPI (twitter241)', 'RapidAPI (Fresh LinkedIn)', 'OpenRouter (Gemini 2.5 Flash)'],
+    icon: '◎',
     status: process.env.BRAND_VISIBILITY_URL ? 'live' : 'soon',
     surface: 'app',
-    path: '/brand-visibility/x/overview',
+    path: '/brand-visibility/overview',
     description:
-      'Voice-AI builder signals on X (Twitter) — sweeps, classifies and surfaces the accounts and ' +
-      'posts that matter for your brand’s visibility. Opens the live X dashboard.',
-    runUrl: null,
-    version: 1,
-  },
-  {
-    id: 'brand-linkedin',
-    sectionId: 'brand-visibility',
-    name: 'Brand Visibility — LinkedIn',
-    creator: 'Anooj',
-    integrations: ['Postgres', 'RapidAPI (Fresh LinkedIn)', 'OpenRouter (Gemini 2.5 Flash)'],
-    icon: 'in',
-    status: process.env.BRAND_VISIBILITY_URL ? 'live' : 'soon',
-    surface: 'app',
-    path: '/brand-visibility/linkedin/overview',
-    description:
-      'Voice-AI builder signals on LinkedIn — scrapes, classifies and surfaces the people and posts ' +
-      'driving your brand’s visibility on the professional graph. Opens the live LinkedIn dashboard.',
+      'Voice-AI builder signals across X and LinkedIn — sweeps, classifies, and surfaces the ' +
+      'accounts and posts driving your brand visibility on both platforms.',
     runUrl: null,
     version: 1,
   },

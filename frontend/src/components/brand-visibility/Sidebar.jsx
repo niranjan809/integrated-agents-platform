@@ -1,4 +1,4 @@
-import { NavLink, useNavigate, useLocation } from 'react-router-dom';
+import { NavLink, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
 const NAV = [
@@ -14,11 +14,11 @@ const NAV = [
 export default function Sidebar() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
+  const [searchParams] = useSearchParams();
 
-  // Section links preserve the active platform (x / linkedin), derived from the URL.
-  const parts = location.pathname.split('/').filter(Boolean); // ['brand-visibility', platform, section]
-  const platform = parts[1] || 'x';
+  // Section links preserve the active platform (x / linkedin), which lives in the
+  // URL query (?platform=). Sidebar items are platform-agnostic paths now.
+  const platform = searchParams.get('platform') || 'x';
 
   function handleLogout() { logout(); navigate('/login'); }
 
@@ -38,7 +38,7 @@ export default function Sidebar() {
         {NAV.map(({ to, icon, label }) => (
           <NavLink
             key={to}
-            to={`/brand-visibility/${platform}/${to}`}
+            to={{ pathname: `/brand-visibility/${to}`, search: `?platform=${platform}` }}
             className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
           >
             <span className="nav-icon">{icon}</span>

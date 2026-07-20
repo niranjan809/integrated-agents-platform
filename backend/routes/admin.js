@@ -173,10 +173,11 @@ router.get('/agents/:id', requirePanelAdmin, async (req, res) => {
     const api = process.env.LEADERBOARD_API_URL;
     health = { status: api ? await ping(`${api}/health`) : 'unknown', url: api || 'not configured' };
     probe  = await probeLeaderboard();
-  } else if (agent.id === 'brand-x' || agent.id === 'brand-linkedin') {
+  } else if (agent.id === 'brand-visibility') {
     const base = process.env.BRAND_VISIBILITY_URL;
     health = { status: base ? await ping(`${base}/health`) : 'unknown', url: base ? `${base}/health` : 'not configured' };
-    probe  = await probeBrand(agent.id === 'brand-linkedin' ? 'linkedin' : 'x');
+    // X is the only platform wired to real data; probe its counts.
+    probe  = await probeBrand('x');
   }
 
   res.json({ agent, health, db: probe.db, stats: probe.stats, checkedAt: new Date().toISOString() });

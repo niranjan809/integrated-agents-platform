@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import { pythonFetch } from '../../../utils/pythonApi';
 import { useAuth } from '../../../context/AuthContext';
 
 // Editable subset of x_schedule (matches UpdateScheduleRequest).
@@ -30,7 +29,7 @@ export default function Scheduler() {
   function load() {
     setLoading(true);
     setError(null);
-    pythonFetch('/api/x/schedule')
+    apiFetch('/api/brand-visibility/config/x/schedule')
       .then(r => r.ok ? r.json() : Promise.reject(new Error(`schedule ${r.status}`)))
       .then(d => { hydrate(d); setLoading(false); })
       .catch(e => { setError(e.message); setLoading(false); });

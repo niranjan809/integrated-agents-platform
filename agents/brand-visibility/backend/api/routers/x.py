@@ -127,12 +127,12 @@ def get_x_db() -> Database:
     return Database(skip_schema_init=True, sync_interval=None)
 
 
-@router.get("/stats")
+@router.get("/stats", dependencies=[Depends(verify_cron_secret)])
 def stats(db: Database = Depends(get_x_db)) -> dict:
     return db.kpi_stats()
 
 
-@router.get("/posts")
+@router.get("/posts", dependencies=[Depends(verify_cron_secret)])
 def posts(
     db: Database = Depends(get_x_db),
     cls: Optional[list[str]] = Query(None, alias="class"),
@@ -149,17 +149,17 @@ def posts(
     )
 
 
-@router.get("/runs")
+@router.get("/runs", dependencies=[Depends(verify_cron_secret)])
 def runs(db: Database = Depends(get_x_db), limit: int = Query(20, ge=1, le=100)) -> list[dict]:
     return db.get_recent_runs(limit=limit)
 
 
-@router.get("/cost-summary")
+@router.get("/cost-summary", dependencies=[Depends(verify_cron_secret)])
 def cost_summary(db: Database = Depends(get_x_db)) -> dict:
     return db.cost_summary()
 
 
-@router.get("/active-prompt")
+@router.get("/active-prompt", dependencies=[Depends(verify_cron_secret)])
 def active_prompt(db: Database = Depends(get_x_db)) -> dict:
     return db.get_active_prompt()
 
@@ -175,7 +175,7 @@ def update_active_prompt(payload: UpdatePromptRequest, db: Database = Depends(ge
         raise HTTPException(status_code=422, detail=str(exc))
 
 
-@router.get("/schedule")
+@router.get("/schedule", dependencies=[Depends(verify_cron_secret)])
 def schedule(db: Database = Depends(get_x_db)) -> dict:
     return db.get_schedule()
 
@@ -273,7 +273,7 @@ async def run_now(
     return _start_x_run(background_tasks, db, config=config)
 
 
-@router.get("/run-status/{run_id}")
+@router.get("/run-status/{run_id}", dependencies=[Depends(verify_cron_secret)])
 def run_status(run_id: int, db: Database = Depends(get_x_db)) -> dict:
     run = db.get_run(run_id)
     if not run:

@@ -112,18 +112,31 @@ router.post('/x/run-now', async (req, res) => {
   }
 });
 
-// Status poll for a run started via run-now. Python's run-status is unguarded,
-// so a plain pass-through (no cron secret) through the existing helper suffices —
-// routed via the gateway so the browser uses one authed origin instead of the
+// Status poll for a run started via run-now. Python's run-status is now locked
+// down (P0.5), so this routes through proxyRequest — which injects the cron
+// secret server-side — and the browser uses one authed origin instead of the
 // internal-only Python URL.
 router.get('/x/run-status/:runId', (req, res) => proxyRequest(req, res, `/api/x/run-status/${encodeURIComponent(req.params.runId)}`));
+
+// ── X (KA017) reads ───────────────────────────────────────────────────────
+// P0.5: reads migrated browser->Python->direct to browser->Node->Python. The
+// Python GET endpoints are now locked down (require X-Cron-Secret), so these
+// must route through proxyRequest, which injects the secret server-side. The
+// helper also forwards the query string verbatim, so pagination (posts:
+// limit/offset) and date-range params (cost-summary) pass through unchanged.
+router.get('/x/stats', (req, res) => proxyRequest(req, res, '/api/x/stats'));
+router.get('/x/cost-summary', (req, res) => proxyRequest(req, res, '/api/x/cost-summary'));
+router.get('/x/posts', (req, res) => proxyRequest(req, res, '/api/x/posts'));
 
 // Scheduler save (PUT) + Prompt save (POST). These hit Python WRITE endpoints,
 // which now require X-Cron-Secret (P0 lockdown) — proxyRequest injects it
 // server-side. JWT + brand-visibility section gating already applied by the
 // router.use above; the browser never sees the secret. Body/method pass through.
-// (GET reads of schedule/active-prompt still go browser->Python directly for now.)
+// GET reads of schedule/active-prompt also route here (P0.5) so the browser hits
+// one authed origin and the now-locked Python reads receive the cron secret.
+router.get('/x/schedule', (req, res) => proxyRequest(req, res, '/api/x/schedule'));
 router.put('/x/schedule', (req, res) => proxyRequest(req, res, '/api/x/schedule'));
+router.get('/x/active-prompt', (req, res) => proxyRequest(req, res, '/api/x/active-prompt'));
 router.post('/x/active-prompt', (req, res) => proxyRequest(req, res, '/api/x/active-prompt'));
 
 module.exports = router;

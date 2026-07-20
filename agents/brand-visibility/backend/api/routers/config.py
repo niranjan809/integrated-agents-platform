@@ -143,7 +143,7 @@ class ClassUpdateRequest(BaseModel):
     color_hex: str | None = None
 
 
-@router.get("/classes", response_model=KeywordClassListResponse)
+@router.get("/classes", response_model=KeywordClassListResponse, dependencies=[Depends(verify_cron_secret)])
 def list_classes() -> KeywordClassListResponse:
     db = get_db()
     rows = _rows(
@@ -158,7 +158,7 @@ def list_classes() -> KeywordClassListResponse:
     return KeywordClassListResponse(classes=classes, total=len(classes))
 
 
-@router.get("/classes/{class_key}", response_model=KeywordClassResponse)
+@router.get("/classes/{class_key}", response_model=KeywordClassResponse, dependencies=[Depends(verify_cron_secret)])
 def get_class(class_key: str) -> KeywordClassResponse:
     db = get_db()
     rows = _rows(db, "SELECT * FROM keyword_classes WHERE class_key = %s", (class_key,))
@@ -267,7 +267,7 @@ class KeywordUpdateRequest(BaseModel):
     notes: str | None = None
 
 
-@router.get("/keywords", response_model=KeywordListResponse)
+@router.get("/keywords", response_model=KeywordListResponse, dependencies=[Depends(verify_cron_secret)])
 def list_keywords(
     class_key: Optional[str] = Query(None),
     enabled: Optional[int] = Query(None),
@@ -291,7 +291,7 @@ def list_keywords(
     return KeywordListResponse(keywords=keywords, total=len(keywords))
 
 
-@router.get("/keywords/{keyword_id}", response_model=KeywordResponse)
+@router.get("/keywords/{keyword_id}", response_model=KeywordResponse, dependencies=[Depends(verify_cron_secret)])
 def get_keyword(keyword_id: int) -> KeywordResponse:
     db = get_db()
     rows = _rows(db, "SELECT * FROM keywords WHERE id = %s", (keyword_id,))
@@ -407,7 +407,7 @@ class InfluencerUpdateRequest(BaseModel):
     notes: str | None = None
 
 
-@router.get("/influencers", response_model=InfluencerListResponse)
+@router.get("/influencers", response_model=InfluencerListResponse, dependencies=[Depends(verify_cron_secret)])
 def list_influencers(
     follower_tier: Optional[str] = Query(None),
     enabled: Optional[int] = Query(None),
@@ -427,7 +427,7 @@ def list_influencers(
     return InfluencerListResponse(influencers=influencers, total=len(influencers))
 
 
-@router.get("/influencers/{handle}", response_model=InfluencerResponse)
+@router.get("/influencers/{handle}", response_model=InfluencerResponse, dependencies=[Depends(verify_cron_secret)])
 def get_influencer(handle: str) -> InfluencerResponse:
     db = get_db()
     handle = normalize_handle(handle)

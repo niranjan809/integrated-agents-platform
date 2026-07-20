@@ -271,7 +271,7 @@ def _classification(row: dict) -> Optional[LinkedinClassification]:
 # Endpoints
 # --------------------------------------------------------------------------
 
-@router.get("/stats", response_model=LinkedinStatsResponse)
+@router.get("/stats", response_model=LinkedinStatsResponse, dependencies=[Depends(verify_cron_secret)])
 def stats(db: LinkedInDatabase = Depends(get_db)) -> LinkedinStatsResponse:
     total_posts = _scalar(db, "SELECT COUNT(*) FROM linkedin_posts")
     unique_authors = _scalar(db, "SELECT COUNT(DISTINCT author_name) FROM linkedin_posts")
@@ -305,7 +305,7 @@ def stats(db: LinkedInDatabase = Depends(get_db)) -> LinkedinStatsResponse:
     )
 
 
-@router.get("/posts", response_model=LinkedinPostListResponse)
+@router.get("/posts", response_model=LinkedinPostListResponse, dependencies=[Depends(verify_cron_secret)])
 def posts(
     db: LinkedInDatabase = Depends(get_db),
     limit: int = Query(50, ge=1, le=200),
@@ -356,7 +356,7 @@ def posts(
     return LinkedinPostListResponse(total=total, limit=limit, offset=offset, posts=items)
 
 
-@router.get("/runs", response_model=LinkedinRunListResponse)
+@router.get("/runs", response_model=LinkedinRunListResponse, dependencies=[Depends(verify_cron_secret)])
 def runs(
     db: LinkedInDatabase = Depends(get_db),
     limit: int = Query(20, ge=1, le=100),
@@ -370,7 +370,7 @@ def runs(
     return LinkedinRunListResponse(runs=[LinkedinRun(**r) for r in rows])
 
 
-@router.get("/active-prompt", response_model=ActivePromptResponse)
+@router.get("/active-prompt", response_model=ActivePromptResponse, dependencies=[Depends(verify_cron_secret)])
 def active_prompt(db: LinkedInDatabase = Depends(get_db)) -> ActivePromptResponse:
     row = db.get_active_prompt()
     if not row:
@@ -382,7 +382,7 @@ def active_prompt(db: LinkedInDatabase = Depends(get_db)) -> ActivePromptRespons
     )
 
 
-@router.get("/schedule", response_model=ScheduleResponse)
+@router.get("/schedule", response_model=ScheduleResponse, dependencies=[Depends(verify_cron_secret)])
 def schedule(db: LinkedInDatabase = Depends(get_db)) -> ScheduleResponse:
     row = db.get_schedule()
     return ScheduleResponse(
@@ -400,7 +400,7 @@ def schedule(db: LinkedInDatabase = Depends(get_db)) -> ScheduleResponse:
     )
 
 
-@router.get("/cost-summary", response_model=CostSummaryResponse)
+@router.get("/cost-summary", response_model=CostSummaryResponse, dependencies=[Depends(verify_cron_secret)])
 def cost_summary(db: LinkedInDatabase = Depends(get_db)) -> CostSummaryResponse:
     this_month = round(float(db.total_cost_this_month()), 6)
     all_time = round(float(_scalar(
@@ -517,7 +517,7 @@ def update_schedule_endpoint(
     return schedule(db)  # reuse the GET handler to return the full updated row
 
 
-@router.post("/run-now", response_model=RunNowResponse, status_code=202)
+@router.post("/run-now", response_model=RunNowResponse, status_code=202, dependencies=[Depends(verify_cron_secret)])
 def run_now(
     background_tasks: BackgroundTasks,
     payload: Optional[RunNowRequest] = Body(default=None),
@@ -573,7 +573,7 @@ def run_now(
     )
 
 
-@router.get("/run-status/{run_id}", response_model=RunStatusResponse)
+@router.get("/run-status/{run_id}", response_model=RunStatusResponse, dependencies=[Depends(verify_cron_secret)])
 def run_status(run_id: int, db: LinkedInDatabase = Depends(get_db)) -> RunStatusResponse:
     rows = db.query(
         "SELECT id, started_at, completed_at, keywords_queried, api_calls_made, "

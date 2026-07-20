@@ -16,7 +16,7 @@ import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -24,6 +24,7 @@ from fastapi.templating import Jinja2Templates
 from agents.brand_visibility.linkedin.db import LinkedInDatabase
 from agents.brand_visibility.x.db import Database as XDatabase
 from shared.db.postgres_client import close_pool
+from api.deps import verify_cron_secret
 from api.routers import config as config_router
 from api.routers import dashboards as dashboards_router
 from api.routers import linkedin as linkedin_router
@@ -143,7 +144,7 @@ def health() -> dict:
     }
 
 
-@app.get("/agent/info")
+@app.get("/agent/info", dependencies=[Depends(verify_cron_secret)])
 def agent_info() -> dict:
     """Agent metadata consumed by the React Level-2 platform selector.
 
@@ -162,7 +163,7 @@ def agent_info() -> dict:
     }
 
 
-@app.get("/api/stats")
+@app.get("/api/stats", dependencies=[Depends(verify_cron_secret)])
 def stats() -> dict:
     """Read-only DB row counts + connection status for the platform admin console.
     Public (no keys returned) — used by the KiteAI admin to show data totals."""

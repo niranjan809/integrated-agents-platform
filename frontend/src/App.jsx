@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useSearchParams, useParams } from 'react-router-dom';
 import { useAuth }       from './context/AuthContext';
 import { AgentProvider } from './context/AgentContext';
 import Sidebar        from './components/x/Sidebar';
@@ -29,7 +29,7 @@ import BvPrompts   from './pages/brand-visibility/x/Prompts';
 import BvScheduler from './pages/brand-visibility/x/Scheduler';
 import BvManualRun from './pages/brand-visibility/x/ManualRun';
 import BvHistory   from './pages/brand-visibility/x/History';
-import BvLinkedInOverview from './pages/brand-visibility/linkedin/Overview';
+import LinkedInComingSoon from './pages/brand-visibility/linkedin/ComingSoon';
 
 // The X Agent dashboard (sidebar layout). Mounted under the platform catch-all so the
 // landing + agent-section pages can live at the top level.
@@ -60,6 +60,31 @@ function AppLayout() {
   );
 }
 
+// Brand Visibility platform routing. Platform is chosen via ?platform=x|linkedin
+// (default x). X sections render the real X pages; LinkedIn renders the Coming Soon
+// placeholder for every section until LinkedIn data is wired up.
+function PlatformRouter({ X }) {
+  const [searchParams] = useSearchParams();
+  const platform = searchParams.get('platform') || 'x';
+  if (platform === 'linkedin') return <LinkedInComingSoon />;
+  return <X />;
+}
+
+// Index / unknown sub-path → land on Overview, keeping the active platform.
+function PlatformIndexRedirect() {
+  const [searchParams] = useSearchParams();
+  const platform = searchParams.get('platform') || 'x';
+  return <Navigate to={`/brand-visibility/overview?platform=${platform}`} replace />;
+}
+
+// Backwards-compat for the old /brand-visibility/{platform}/{section} URLs:
+// redirect to the new /brand-visibility/{section}?platform={platform} shape so
+// existing bookmarks and links keep working.
+function LegacyRedirect({ platform }) {
+  const { section } = useParams();
+  return <Navigate to={`/brand-visibility/${section || 'overview'}?platform=${platform}`} replace />;
+}
+
 export default function App() {
   const { loading } = useAuth();
   if (loading) return <div className="full-loader"><div className="spinner" /></div>;
@@ -85,16 +110,21 @@ export default function App() {
           </SectionGuard>
         </ProtectedRoute>
       }>
-        <Route index element={<Navigate to="x/overview" replace />} />
-        <Route path="x/overview"  element={<BvOverview />} />
-        <Route path="x/tweets"    element={<BvTweets />} />
-        <Route path="x/keywords"  element={<BvKeywords />} />
-        <Route path="x/prompts"   element={<BvPrompts />} />
-        <Route path="x/scheduler" element={<BvScheduler />} />
-        <Route path="x/manual"    element={<BvManualRun />} />
-        <Route path="x/history"   element={<BvHistory />} />
-        <Route path="linkedin/overview" element={<BvLinkedInOverview />} />
-        <Route path="linkedin/*" element={<Navigate to="/brand-visibility/linkedin/overview" replace />} />
+        <Route index element={<PlatformIndexRedirect />} />
+        {/* Single set of section routes; ?platform= selects X vs LinkedIn. */}
+        <Route path="overview"  element={<PlatformRouter X={BvOverview} />} />
+        <Route path="tweets"    element={<PlatformRouter X={BvTweets} />} />
+        <Route path="keywords"  element={<PlatformRouter X={BvKeywords} />} />
+        <Route path="prompts"   element={<PlatformRouter X={BvPrompts} />} />
+        <Route path="scheduler" element={<PlatformRouter X={BvScheduler} />} />
+        <Route path="manual"    element={<PlatformRouter X={BvManualRun} />} />
+        <Route path="history"   element={<PlatformRouter X={BvHistory} />} />
+        {/* Backwards-compat: old /brand-visibility/{platform}/{section} → new shape. */}
+        <Route path="x" element={<Navigate to="/brand-visibility/overview?platform=x" replace />} />
+        <Route path="x/:section" element={<LegacyRedirect platform="x" />} />
+        <Route path="linkedin" element={<Navigate to="/brand-visibility/overview?platform=linkedin" replace />} />
+        <Route path="linkedin/:section" element={<LegacyRedirect platform="linkedin" />} />
+        <Route path="*" element={<PlatformIndexRedirect />} />
       </Route>
 
       {/* X Agent dashboard (everything else, with sidebar) — the X Agent is the

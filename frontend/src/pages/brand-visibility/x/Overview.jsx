@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { pythonFetch } from '../../../utils/pythonApi';
+import { useAuth } from '../../../context/AuthContext';
 import { getClassLabel } from '../../../utils/classLabels';
 
 export default function BvOverview() {
+  const { apiFetch } = useAuth();
   const [stats, setStats] = useState(null);
   const [costs, setCosts] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -11,8 +12,8 @@ export default function BvOverview() {
   useEffect(() => {
     let alive = true;
     Promise.all([
-      pythonFetch('/api/x/stats').then(r => r.ok ? r.json() : Promise.reject(new Error(`stats ${r.status}`))),
-      pythonFetch('/api/x/cost-summary').then(r => r.ok ? r.json() : Promise.reject(new Error(`costs ${r.status}`))),
+      apiFetch('/api/brand-visibility/config/x/stats').then(r => r.ok ? r.json() : Promise.reject(new Error(`stats ${r.status}`))),
+      apiFetch('/api/brand-visibility/config/x/cost-summary').then(r => r.ok ? r.json() : Promise.reject(new Error(`costs ${r.status}`))),
     ])
       .then(([s, c]) => { if (alive) { setStats(s); setCosts(c); setLoading(false); } })
       .catch(e => { if (alive) { setError(e.message); setLoading(false); } });

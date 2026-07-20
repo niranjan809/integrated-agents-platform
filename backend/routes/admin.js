@@ -81,8 +81,8 @@ router.get('/overview', requirePanelAdmin, async (req, res) => {
 });
 
 // ── per-agent detail probe (health + DB status + data counts) ────────────────
-async function fetchJson(url, ms = 15000) {
-  const res = await fetch(url, { signal: AbortSignal.timeout(ms) });
+async function fetchJson(url, ms = 15000, headers = {}) {
+  const res = await fetch(url, { signal: AbortSignal.timeout(ms), headers });
   if (!res.ok) throw new Error('HTTP ' + res.status);
   return res.json();
 }
@@ -132,8 +132,13 @@ async function probeLeaderboard() {
 async function probeBrand(kind) {
   const base = process.env.BRAND_VISIBILITY_URL;
   if (!base) return { db: { status: 'unknown', note: 'BRAND_VISIBILITY_URL not set' }, stats: [] };
+  // P0.5: Python's /api/stats is now locked behind X-Cron-Secret. Inject it
+  // server-side (never exposed to the browser) so the panel-admin probe works.
+  const secretHeaders = process.env.X_CRON_SECRET_BV
+    ? { 'X-Cron-Secret': process.env.X_CRON_SECRET_BV }
+    : {};
   try {
-    const s = await fetchJson(`${base}/api/stats`);
+    const s = await fetchJson(`${base}/api/stats`, 15000, secretHeaders);
     const c = s.counts || {};
     const stats = kind === 'linkedin'
       ? [

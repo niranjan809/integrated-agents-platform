@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import { pythonFetch } from '../../../utils/pythonApi';
 import { useAuth } from '../../../context/AuthContext';
 
 // Suggest the next version from the current one: v1 -> v2, else append -next.
@@ -22,7 +21,7 @@ export default function Prompts() {
   function load() {
     setLoading(true);
     setError(null);
-    pythonFetch('/api/x/active-prompt')
+    apiFetch('/api/brand-visibility/config/x/active-prompt')
       .then(r => r.ok ? r.json() : Promise.reject(new Error(`prompt ${r.status}`)))
       .then(d => {
         setPrompt(d);

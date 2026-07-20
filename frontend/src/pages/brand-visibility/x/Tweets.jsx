@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { pythonFetch } from '../../../utils/pythonApi';
+import { useAuth } from '../../../context/AuthContext';
 import { getClassLabel } from '../../../utils/classLabels';
 
 const PAGE_SIZE = 50;
@@ -114,6 +114,7 @@ function TweetDetailPanel({ post }) {
 }
 
 export default function Tweets() {
+  const { apiFetch } = useAuth();
   const [posts, setPosts] = useState([]);
   const [selected, setSelected] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -143,7 +144,7 @@ export default function Tweets() {
     params.set('limit', String(PAGE_SIZE));
     params.set('offset', String(offset));
     let alive = true;
-    pythonFetch(`/api/x/posts?${params.toString()}`)
+    apiFetch(`/api/brand-visibility/config/x/posts?${params.toString()}`)
       .then(r => r.ok ? r.json() : Promise.reject(new Error(`posts ${r.status}`)))
       .then(data => {
         if (!alive) return;

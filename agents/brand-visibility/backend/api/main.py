@@ -128,19 +128,15 @@ def health() -> dict:
 
 @app.get("/agent/info", dependencies=[Depends(verify_cron_secret)])
 def agent_info() -> dict:
-    """Agent metadata consumed by the React Level-2 platform selector.
-
-    dashboard_url values are RELATIVE — the frontend joins them with the API base
-    URL to build iframe sources.
-    """
+    """Agent metadata consumed by the React Level-2 platform selector."""
     return {
         "slug": "brand-visibility",
         "name": "Brand Visibility Agent",
         "description": "Voice AI builder signals from X and LinkedIn",
         "has_platforms": True,
         "platforms": [
-            {"slug": "x", "name": "X", "dashboard_url": "/dashboard/x"},
-            {"slug": "linkedin", "name": "LinkedIn", "dashboard_url": "/dashboard/linkedin"},
+            {"slug": "x", "name": "X"},
+            {"slug": "linkedin", "name": "LinkedIn"},
         ],
     }
 

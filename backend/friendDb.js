@@ -1,39 +1,59 @@
 /**
- * friendDb.js — READ-ONLY connection to friend's Turso DB.
+ * friendDb.js — READ-ONLY connection to friend's PostgreSQL DB (keyword source).
  * STRICT RULE: Only SELECT queries. Never INSERT / UPDATE / DELETE.
  *
+ * Migrated from Turso (libSQL) → PostgreSQL. The exported function signatures are
+ * unchanged, so the X Agent engine (server.js) and the keyword/admin/settings
+ * routes that consume this module need no edits.
+ *
+ * Connection: process.env.POSTGRES_URL
+ *   e.g. postgresql://user:pass@host:5432/kiteai_brand_visibility?sslmode=require
+ *
  * Friend's DB tables (confirmed):
- *   keywords        (1506 rows) — keyword, search_query, class_key, priority, enabled
- *   keyword_classes (9 rows)    — class_key, name, description, color_hex
- *   influencers     (42 rows)   — handle, display_name, follower_tier, priority, enabled
+ *   keywords        — keyword, search_query, class_key, priority, enabled, ...
+ *   keyword_classes — class_key, name, description, color_hex, display_order
+ *   influencers     — handle, display_name, follower_tier, priority, enabled, ...
  */
 
-const { createClient } = require('@libsql/client');
+const { Pool } = require('pg');
 
-let _client = null;
+let _pool = null;
 
-function getClient() {
-  if (_client) return _client;
-  const url   = process.env.FRIEND_TURSO_URL?.trim();
-  const token = process.env.FRIEND_TURSO_TOKEN?.trim();
-  if (!url || !token) return null;
-  try { _client = createClient({ url, authToken: token }); } catch { return null; }
-  return _client;
+function getPool() {
+  if (_pool) return _pool;
+  const url = (process.env.POSTGRES_URL || '').trim();
+  if (!url) return null;
+  try {
+    _pool = new Pool({
+      // strip any ?sslmode=... so our explicit ssl opts apply (the DB uses a
+      // self-signed cert, so we require SSL but skip strict CA verification)
+      connectionString: url.split('?')[0],
+      ssl: { rejectUnauthorized: false },
+      max: 4,
+      connectionTimeoutMillis: 15000,
+      idleTimeoutMillis: 30000,
+    });
+    _pool.on('error', (e) => console.warn('[FriendDB] pool error:', e.message));
+  } catch (err) {
+    console.warn('[FriendDB] pool init failed:', err.message);
+    return null;
+  }
+  return _pool;
 }
 
 /** Pull enabled search queries for agent runs — High priority first, capped at maxRows */
 async function getFriendSearchQueries({ maxRows = 300 } = {}) {
-  const client = getClient();
-  if (!client) return [];
+  const pool = getPool();
+  if (!pool) return [];
   try {
-    const { rows } = await client.execute(`
+    const { rows } = await pool.query(`
       SELECT search_query, keyword, class_key, priority
       FROM   keywords
       WHERE  enabled = 1
         AND  search_query IS NOT NULL
         AND  length(trim(search_query)) > 1
       ORDER BY CASE priority WHEN 'High' THEN 1 WHEN 'STANDARD' THEN 2 ELSE 3 END, class_key, id
-      LIMIT ${maxRows}`);
+      LIMIT ${Number(maxRows) || 300}`);
     const seen = new Set();
     const queries = [];
     for (const r of rows) {
@@ -47,10 +67,10 @@ async function getFriendSearchQueries({ maxRows = 300 } = {}) {
 
 /** Pull known influencer handles for direct profile fetch */
 async function getFriendInfluencerHandles() {
-  const client = getClient();
-  if (!client) return [];
+  const pool = getPool();
+  if (!pool) return [];
   try {
-    const { rows } = await client.execute(`
+    const { rows } = await pool.query(`
       SELECT handle FROM influencers WHERE enabled = 1
       ORDER BY CASE priority WHEN 'P1' THEN 1 WHEN 'P2' THEN 2 ELSE 3 END`);
     const handles = rows.map(r => (r.handle || '').trim().replace(/^@/, '').toLowerCase()).filter(h => h.length > 0);
@@ -61,16 +81,16 @@ async function getFriendInfluencerHandles() {
 
 /** Full data for the Keywords page UI */
 async function getFriendKeywordsForUI() {
-  const client = getClient();
-  if (!client) return null;
+  const pool = getPool();
+  if (!pool) return null;
   try {
     const [classRes, kwRes, infRes] = await Promise.all([
-      client.execute(`SELECT class_key, name, description, color_hex FROM keyword_classes ORDER BY display_order`),
-      client.execute(`SELECT id, keyword, class_key, sub_category, intent, priority, search_query, enabled
-                      FROM keywords ORDER BY class_key,
-                        CASE priority WHEN 'High' THEN 1 WHEN 'STANDARD' THEN 2 ELSE 3 END, keyword`),
-      client.execute(`SELECT handle, display_name, specialty, follower_tier, priority, enabled
-                      FROM influencers ORDER BY CASE priority WHEN 'P1' THEN 1 WHEN 'P2' THEN 2 ELSE 3 END`),
+      pool.query(`SELECT class_key, name, description, color_hex FROM keyword_classes ORDER BY display_order`),
+      pool.query(`SELECT id, keyword, class_key, sub_category, intent, priority, search_query, enabled
+                  FROM keywords ORDER BY class_key,
+                    CASE priority WHEN 'High' THEN 1 WHEN 'STANDARD' THEN 2 ELSE 3 END, keyword`),
+      pool.query(`SELECT handle, display_name, specialty, follower_tier, priority, enabled
+                  FROM influencers ORDER BY CASE priority WHEN 'P1' THEN 1 WHEN 'P2' THEN 2 ELSE 3 END`),
     ]);
     return {
       configured:  true,
@@ -91,14 +111,14 @@ async function getFriendKeywordsForUI() {
 
 /** Connection test */
 async function testFriendDb() {
-  const url = process.env.FRIEND_TURSO_URL?.trim();
-  if (!url) return { ok: false, error: 'FRIEND_TURSO_URL not set in .env' };
+  const url = (process.env.POSTGRES_URL || '').trim();
+  if (!url) return { ok: false, error: 'POSTGRES_URL not set in .env' };
   try {
-    const client = getClient();
-    if (!client) return { ok: false, error: 'DB client not initialised (check FRIEND_TURSO_TOKEN)' };
+    const pool = getPool();
+    if (!pool) return { ok: false, error: 'DB pool not initialised (check POSTGRES_URL)' };
     const [kwRes, infRes] = await Promise.all([
-      client.execute('SELECT COUNT(*) as n FROM keywords WHERE enabled = 1'),
-      client.execute('SELECT COUNT(*) as n FROM influencers WHERE enabled = 1'),
+      pool.query('SELECT COUNT(*) as n FROM keywords WHERE enabled = 1'),
+      pool.query('SELECT COUNT(*) as n FROM influencers WHERE enabled = 1'),
     ]);
     return { ok: true, keywordCount: Number(kwRes.rows[0].n), influencerCount: Number(infRes.rows[0].n) };
   } catch (err) { return { ok: false, error: err.message }; }

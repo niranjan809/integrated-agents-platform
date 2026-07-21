@@ -60,7 +60,7 @@ router.delete('/:id', async (req, res) => {
 
 // GET /api/keywords/friend — all keywords from friend's DB (read-only, uses singleton)
 router.get('/friend', async (req, res) => {
-  const url = process.env.FRIEND_TURSO_URL?.trim();
+  const url = process.env.POSTGRES_URL?.trim();
   if (!url) return res.json({ configured: false, classes: [], keywords: [], influencers: [], totals: { keywords: 0, active: 0, influencers: 0 } });
   try {
     const data = await getFriendKeywordsForUI();

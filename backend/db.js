@@ -98,6 +98,7 @@ CREATE TABLE IF NOT EXISTS task_accounts (
   FOREIGN KEY (task_id) REFERENCES tasks(id)
 );
 
+
 -- Per-agent editable metadata (info panels). One row per agent id,
 -- rows are created lazily on the first PATCH /x/about (no seed). Static fields
 -- (name, description, integrations, version) live in agentRegistry.js — this
@@ -111,6 +112,7 @@ CREATE TABLE IF NOT EXISTS agent_meta (
   updated_at           TEXT DEFAULT (datetime('now')),
   updated_by           INTEGER
 );
+
 
 -- Audit log: actor_id/actor_email are DENORMALIZED historical values. No FK on
 -- actor_id so we can delete users while preserving their audit trail. Standard

@@ -1,7 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../../../context/AuthContext';
-import InfoPanel from '../../../components/brand-visibility/InfoPanel';
-import { manualRunPurpose } from '../../../constants/agentInfo';
 
 // Editable subset of x_schedule — same fields the Scheduler edits and the Python
 // RunNowRequest accepts as per-run overrides. Kept identical to Scheduler.jsx.
@@ -247,12 +245,6 @@ export default function ManualRun() {
         <h1>Manual Run</h1>
         <p className="page-sub">Trigger a sweep with custom config (this run only, doesn't save to Scheduler)</p>
       </div>
-
-      {/* About Manual Runs — static context, collapsible */}
-      <InfoPanel title="About Manual Runs" collapsible>
-        <p className="info-panel-text"><strong>Why use it.</strong> {manualRunPurpose.why}</p>
-        <p className="info-panel-text"><strong>Per-run overrides.</strong> {manualRunPurpose.overrides}</p>
-      </InfoPanel>
 
       {trigger && (
         <div className={trigger.type === 'success' ? 'page-success' : 'page-error'}>

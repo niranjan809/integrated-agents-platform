@@ -1,7 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../../../context/AuthContext';
-import InfoPanel from '../../../components/brand-visibility/InfoPanel';
-import { promptPurposeText } from '../../../constants/agentInfo';
 
 // Suggest the next version from the current one: v1 -> v2, else append -next.
 function suggestNextVersion(ver) {
@@ -11,9 +9,7 @@ function suggestNextVersion(ver) {
 }
 
 export default function Prompts() {
-  const { apiFetch, user } = useAuth();
-  const isAdmin = user?.role === 'admin';
-  const [meta, setMeta] = useState(null);           // { prompt_version, classification_model, prompt_purpose }
+  const { apiFetch } = useAuth();
   const [prompt, setPrompt] = useState(null);       // { version, content, updated_at }
   const [content, setContent] = useState('');        // working copy
   const [version, setVersion] = useState('');        // version to save as
@@ -37,17 +33,6 @@ export default function Prompts() {
   }
 
   useEffect(() => { load(); }, []);
-
-  // Prompt Context panel is admin-only — only admins can read /x/prompts-meta.
-  useEffect(() => {
-    if (!isAdmin) return undefined;
-    let alive = true;
-    apiFetch('/api/brand-visibility/config/x/prompts-meta')
-      .then(r => r.ok ? r.json() : Promise.reject(new Error(`prompts-meta ${r.status}`)))
-      .then(d => { if (alive) setMeta(d); })
-      .catch(() => { if (alive) setMeta({ prompt_purpose: promptPurposeText }); });
-    return () => { alive = false; };
-  }, [isAdmin]);
 
   const dirty = useMemo(() => prompt != null && content !== (prompt.content || ''), [content, prompt]);
 
@@ -99,21 +84,6 @@ export default function Prompts() {
         </div>
         <span className="prompt-version-badge">{prompt?.version || '—'} · Active</span>
       </div>
-
-      {/* Prompt Context — admin-only. Renders nothing for non-admins. */}
-      <InfoPanel title="Prompt Context" adminOnly>
-        <p className="info-panel-text">{meta?.prompt_purpose || promptPurposeText}</p>
-        <div className="info-kv-grid">
-          <div className="info-kv">
-            <span className="info-kv-label">Current version</span>
-            <span className="info-kv-value">{meta?.prompt_version || prompt?.version || '—'}</span>
-          </div>
-          <div className="info-kv">
-            <span className="info-kv-label">Classification model</span>
-            <span className="info-kv-value">{meta?.classification_model || '—'}</span>
-          </div>
-        </div>
-      </InfoPanel>
 
       {status && (
         <div className={status.type === 'success' ? 'page-success' : 'page-error'}>{status.message}</div>

@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import { getClassLabel } from '../../../utils/classLabels';
-import { tweetsSourceNote } from '../../../constants/agentInfo';
 
 const PAGE_SIZE = 50;
 
@@ -175,9 +174,6 @@ export default function Tweets() {
         <h1>Tweets</h1>
         <p className="page-sub">X · Voice AI signal feed</p>
       </div>
-
-      {/* Data provenance note */}
-      <p className="info-source-note">{tweetsSourceNote}</p>
 
       {/* Class filter chips */}
       <div className="filters-row">

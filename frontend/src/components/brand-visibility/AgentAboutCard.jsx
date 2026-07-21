@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 
 // Format an ISO/Postgres timestamp for display; '—' when absent/unparseable.
@@ -12,8 +12,9 @@ function fmt(ts) {
 //
 // Props:
 //   about        — GET /x/about payload (name, status, creator, version, section,
-//                  last_run_at, total_runs, description, description_override,
-//                  admin_notes)
+//                  last_run_at, total_runs, description, description_override).
+//                  admin_notes is NOT here — it moved to the admin-only
+//                  /x/integrations endpoint (see adminNotes below).
 //   integrations — array of integration names (admin-only; null/undefined hides
 //                  the chips row for non-admins)
 //   onUpdated    — called with the PATCH /x/about response after a successful save
@@ -22,7 +23,10 @@ export default function AgentAboutCard({ about, integrations, onUpdated }) {
   const isAdmin = user?.role === 'admin';
 
   const [editing, setEditing] = useState(false);
-  const [notes, setNotes] = useState(about.admin_notes || '');
+  // admin_notes now comes from GET /x/integrations (admin-only on both endpoint
+  // and client). Non-admins never fetch it, so they never see internal notes.
+  const [adminNotes, setAdminNotes] = useState(null);
+  const [notes, setNotes] = useState('');
   const [override, setOverride] = useState(about.description_override || '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
@@ -30,8 +34,20 @@ export default function AgentAboutCard({ about, integrations, onUpdated }) {
   const description = about.description_override || about.description;
   const status = about.status || 'soon';
 
+  // Read admin_notes from the admin-only integrations endpoint. Gated on isAdmin
+  // so a non-admin never issues the request (and the endpoint would 403 anyway).
+  useEffect(() => {
+    if (!isAdmin) return undefined;
+    let alive = true;
+    apiFetch('/api/brand-visibility/config/x/integrations')
+      .then(r => r.ok ? r.json() : Promise.reject(new Error(`integrations ${r.status}`)))
+      .then(d => { if (alive) setAdminNotes(d.admin_notes ?? null); })
+      .catch(() => { if (alive) setAdminNotes(null); });
+    return () => { alive = false; };
+  }, [isAdmin]);
+
   function openEdit() {
-    setNotes(about.admin_notes || '');
+    setNotes(adminNotes || '');
     setOverride(about.description_override || '');
     setError(null);
     setEditing(true);
@@ -50,6 +66,9 @@ export default function AgentAboutCard({ about, integrations, onUpdated }) {
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || d.detail || `save failed (${r.status})`);
+      // PATCH returns the merged row; adopt its admin_notes locally (the read
+      // path is /x/integrations, but the write response is authoritative here).
+      setAdminNotes(d.admin_notes ?? null);
       setEditing(false);
       onUpdated?.(d);
     } catch (e) {
@@ -112,18 +131,20 @@ export default function AgentAboutCard({ about, integrations, onUpdated }) {
         </div>
       )}
 
-      {/* Admin notes + edit affordance */}
-      <div className="admin-notes-block">
-        <div className="admin-notes-head">
-          <span className="agent-meta-label">Admin notes</span>
-          {isAdmin && (
+      {/* Admin notes + edit affordance — admin only. Non-admins never fetch the
+          notes (they come from the admin-gated /x/integrations), so the whole
+          block is hidden for them. */}
+      {isAdmin && (
+        <div className="admin-notes-block">
+          <div className="admin-notes-head">
+            <span className="agent-meta-label">Admin notes</span>
             <button className="btn-ghost sm" onClick={openEdit}>Edit</button>
-          )}
+          </div>
+          {adminNotes
+            ? <div className="admin-notes">{adminNotes}</div>
+            : <div className="admin-notes empty">No notes yet — click Edit to add context for the team.</div>}
         </div>
-        {about.admin_notes
-          ? <div className="admin-notes">{about.admin_notes}</div>
-          : <div className="admin-notes empty">{isAdmin ? 'No notes yet — click Edit to add context for the team.' : 'No notes.'}</div>}
-      </div>
+      )}
 
       {/* Edit modal — admin only */}
       {editing && isAdmin && (

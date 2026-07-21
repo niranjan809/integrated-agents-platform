@@ -98,11 +98,12 @@ CREATE TABLE IF NOT EXISTS task_accounts (
   FOREIGN KEY (task_id) REFERENCES tasks(id)
 );
 
--- Per-agent editable metadata (info panels). One row per agent id; rows are
--- created lazily on the first PATCH /x/about (no seed). Static fields (name,
--- description, integrations, version) live in agentRegistry.js — this table only
--- holds admin-authored overrides layered on top. updated_by is the users.id of
--- the last editor (no FK; the id is kept even if the user row is later removed).
+-- Per-agent editable metadata (info panels). One row per agent id,
+-- rows are created lazily on the first PATCH /x/about (no seed). Static fields
+-- (name, description, integrations, version) live in agentRegistry.js — this
+-- table only holds admin-authored overrides layered on top. updated_by is the
+-- users.id of the last editor (no FK, the id is kept even if the user row is
+-- later removed).
 CREATE TABLE IF NOT EXISTS agent_meta (
   agent_id             TEXT PRIMARY KEY,
   admin_notes          TEXT,

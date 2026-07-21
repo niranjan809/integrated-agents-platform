@@ -1,11 +1,15 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import { getClassLabel } from '../../../utils/classLabels';
+import AgentAboutCard from '../../../components/brand-visibility/AgentAboutCard';
 
 export default function BvOverview() {
-  const { apiFetch } = useAuth();
+  const { apiFetch, user } = useAuth();
+  const isAdmin = user?.role === 'admin';
   const [stats, setStats] = useState(null);
   const [costs, setCosts] = useState(null);
+  const [about, setAbout] = useState(null);
+  const [integrations, setIntegrations] = useState(null); // admin-only chips
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -14,11 +18,24 @@ export default function BvOverview() {
     Promise.all([
       apiFetch('/api/brand-visibility/config/x/stats').then(r => r.ok ? r.json() : Promise.reject(new Error(`stats ${r.status}`))),
       apiFetch('/api/brand-visibility/config/x/cost-summary').then(r => r.ok ? r.json() : Promise.reject(new Error(`costs ${r.status}`))),
+      apiFetch('/api/brand-visibility/config/x/about').then(r => r.ok ? r.json() : Promise.reject(new Error(`about ${r.status}`))),
     ])
-      .then(([s, c]) => { if (alive) { setStats(s); setCosts(c); setLoading(false); } })
+      .then(([s, c, a]) => { if (alive) { setStats(s); setCosts(c); setAbout(a); setLoading(false); } })
       .catch(e => { if (alive) { setError(e.message); setLoading(false); } });
     return () => { alive = false; };
   }, []);
+
+  // Integrations panel is admin-only — never fetched for non-admins (RBAC: the
+  // endpoint itself is requireRole('admin'), this just avoids a guaranteed 403).
+  useEffect(() => {
+    if (!isAdmin) return undefined;
+    let alive = true;
+    apiFetch('/api/brand-visibility/config/x/integrations')
+      .then(r => r.ok ? r.json() : Promise.reject(new Error(`integrations ${r.status}`)))
+      .then(d => { if (alive) setIntegrations(d.integrations || []); })
+      .catch(() => { if (alive) setIntegrations([]); });
+    return () => { alive = false; };
+  }, [isAdmin]);
 
   if (loading) return <div className="page-loader"><div className="spinner" /></div>;
   if (error) return <div className="page-error">Failed to load: {error}</div>;
@@ -37,6 +54,15 @@ export default function BvOverview() {
         <h1>Overview</h1>
         <p className="page-sub">X · Voice AI signal intelligence</p>
       </div>
+
+      {/* Agent about card — description/status/meta, admin integrations + notes */}
+      {about && (
+        <AgentAboutCard
+          about={about}
+          integrations={integrations}
+          onUpdated={d => setAbout(prev => ({ ...prev, ...d }))}
+        />
+      )}
 
       {/* 4 KPI cards */}
       <div className="stat-grid" style={{ marginBottom: 32 }}>

@@ -1,5 +1,19 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../../../context/AuthContext';
+import { schedulerHelp } from '../../../constants/agentInfo';
+
+// Small "?" hint next to a field label. Shows a hover/focus bubble; the native
+// title attribute is the fallback when CSS isn't applied. Renders nothing when
+// there's no help text for the field.
+function FieldHelp({ text }) {
+  if (!text) return null;
+  return (
+    <span className="info-tooltip" tabIndex={0} title={text} aria-label={text}>
+      ?
+      <span className="info-tooltip-bubble" role="tooltip">{text}</span>
+    </span>
+  );
+}
 
 // Editable subset of x_schedule (matches UpdateScheduleRequest).
 const EDITABLE = ['mode', 'sweep_type', 'max_pages', 'max_keywords', 'class_filter', 'since_hours', 'max_api_calls'];
@@ -16,6 +30,7 @@ export default function Scheduler() {
   const { apiFetch } = useAuth();
   const [loaded, setLoaded] = useState(null);   // full GET row (incl. read-only fields)
   const [form, setForm] = useState({});          // editable working copy (strings)
+  const [help, setHelp] = useState(schedulerHelp); // field -> description (endpoint, falls back to constant)
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -36,6 +51,20 @@ export default function Scheduler() {
   }
 
   useEffect(() => { load(); }, []);
+
+  // Field help text (question-mark tooltips). Endpoint is section-level; if it
+  // fails we keep the bundled constant so tooltips still render.
+  useEffect(() => {
+    let alive = true;
+    apiFetch('/api/brand-visibility/config/x/scheduler-help')
+      .then(r => r.ok ? r.json() : Promise.reject(new Error(`scheduler-help ${r.status}`)))
+      .then(d => {
+        if (!alive || !d?.fields) return;
+        setHelp(Object.fromEntries(Object.entries(d.fields).map(([k, v]) => [k, v.description])));
+      })
+      .catch(() => { /* keep constant fallback */ });
+    return () => { alive = false; };
+  }, []);
 
   const dirty = useMemo(
     () => loaded != null && EDITABLE.some(f => form[f] !== asStr(loaded[f])),
@@ -110,7 +139,7 @@ export default function Scheduler() {
       <div className="config-section">
         <h3>Sweep behavior</h3>
         <div className="config-field">
-          <label>Mode</label>
+          <label>Mode <FieldHelp text={help.mode} /></label>
           <select className="filter-select" value={form.mode} onChange={e => setField('mode', e.target.value)}>
             {MODE_OPTIONS.map(m => <option key={m} value={m}>{m}</option>)}
           </select>
@@ -122,12 +151,12 @@ export default function Scheduler() {
           </select>
         </div>
         <div className="config-field">
-          <label>Class filter <span className="config-hint">blank = all · comma-separated codes (A–K, NOISE)</span></label>
+          <label>Class filter <FieldHelp text={help.class_filter} /> <span className="config-hint">blank = all · comma-separated codes (A–K, NOISE)</span></label>
           <input className="search-input" value={form.class_filter}
             onChange={e => setField('class_filter', e.target.value)} placeholder="e.g. C,A,K" />
         </div>
         <div className="config-field">
-          <label>Since hours <span className="config-hint">blank = no limit · 1–720</span></label>
+          <label>Since hours <FieldHelp text={help.since_hours} /> <span className="config-hint">blank = no limit · 1–720</span></label>
           <input className="search-input" type="number" min="1" max="720" value={form.since_hours}
             onChange={e => setField('since_hours', e.target.value)} placeholder="(none)" />
         </div>
@@ -137,17 +166,17 @@ export default function Scheduler() {
       <div className="config-section">
         <h3>Budget caps</h3>
         <div className="config-field">
-          <label>Max pages / query <span className="config-hint">1–10</span></label>
+          <label>Max pages / query <FieldHelp text={help.max_pages} /> <span className="config-hint">1–10</span></label>
           <input className="search-input" type="number" min="1" max="10" value={form.max_pages}
             onChange={e => setField('max_pages', e.target.value)} />
         </div>
         <div className="config-field">
-          <label>Max keywords <span className="config-hint">queries per sweep · 1–1000</span></label>
+          <label>Max keywords <FieldHelp text={help.max_keywords} /> <span className="config-hint">queries per sweep · 1–1000</span></label>
           <input className="search-input" type="number" min="1" max="1000" value={form.max_keywords}
             onChange={e => setField('max_keywords', e.target.value)} />
         </div>
         <div className="config-field">
-          <label>Max API calls <span className="config-hint">per-sweep RapidAPI budget · 1–1000</span></label>
+          <label>Max API calls <FieldHelp text={help.max_api_calls} /> <span className="config-hint">per-sweep RapidAPI budget · 1–1000</span></label>
           <input className="search-input" type="number" min="1" max="1000" value={form.max_api_calls}
             onChange={e => setField('max_api_calls', e.target.value)} />
         </div>

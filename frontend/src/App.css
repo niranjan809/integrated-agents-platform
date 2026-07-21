@@ -1530,3 +1530,66 @@ code, .mono, pre { font-family: var(--mono); }
   opacity: 0; visibility: hidden; transition: opacity .15s; z-index: 50; pointer-events: none;
 }
 .info-tooltip:hover .info-tooltip-bubble, .info-tooltip:focus .info-tooltip-bubble { opacity: 1; visibility: visible; }
+
+/* ── History page (run history table) ────────────────────────────────────── */
+.history-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.history-toolbar .search-input { flex: 1; min-width: 180px; max-width: 280px; }
+.history-date { display: flex; flex-direction: column; gap: 4px; }
+.history-date > span { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: .05em; }
+.history-date .search-input { max-width: 160px; }
+
+.history-error { display: flex; flex-direction: column; align-items: flex-start; }
+
+.history-table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 10px; }
+.history-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 720px; }
+.history-table th {
+  text-align: left; padding: 12px 14px; color: var(--text-dim);
+  font-size: 11px; text-transform: uppercase; letter-spacing: .05em; font-weight: 600;
+  background: var(--bg2); border-bottom: 1px solid var(--border); white-space: nowrap;
+}
+.history-table td { padding: 12px 14px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); color: var(--text); white-space: nowrap; }
+.history-table td.mono { font-family: var(--mono); color: var(--text2); }
+.history-row { cursor: pointer; transition: background .12s; }
+.history-row:hover { background: var(--bg3); }
+.history-table tbody tr:last-child td { border-bottom: none; }
+
+/* Status badge — variants keyed by status (underscores → dashes in the class) */
+.status-badge {
+  display: inline-block; padding: 3px 10px; border-radius: var(--r-pill);
+  font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: capitalize;
+  border: 1px solid var(--border); color: var(--text2); white-space: nowrap;
+}
+.status-badge.status-running           { color: var(--gold);  border-color: rgba(245, 158, 11, 0.4); background: rgba(245, 158, 11, 0.1); }
+.status-badge.status-completed         { color: var(--green); border-color: rgba(16, 185, 129, 0.4); background: rgba(16, 185, 129, 0.1); }
+.status-badge.status-completed-partial { color: var(--blue);  border-color: rgba(0, 245, 212, 0.4);  background: rgba(0, 245, 212, 0.1); }
+.status-badge.status-failed            { color: var(--red);   border-color: rgba(239, 68, 68, 0.4);  background: rgba(239, 68, 68, 0.1); }
+
+/* Pagination row (reuses .page-btn / .page-info from the tweets pager) */
+.pagination-controls { display: flex; gap: 14px; align-items: center; justify-content: center; margin-top: 18px; }
+
+/* Run detail modal — reuses .modal-overlay / .modal-card / .modal-actions */
+.run-detail-modal { max-width: 640px; }
+.run-detail-head { display: flex; align-items: center; gap: 12px; margin-bottom: 4px; }
+.run-detail-head h2 { margin: 0; }
+.run-detail-sub { font-size: 12px; color: var(--text2); margin: 0 0 18px; }
+
+.run-phase-section { margin-bottom: 16px; }
+.run-phase-section h4 {
+  font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-dim);
+  margin: 0 0 8px; padding-bottom: 6px; border-bottom: 1px solid var(--border);
+}
+.run-phase-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px 16px; }
+.run-phase-item { display: flex; flex-direction: column; gap: 2px; }
+.run-phase-label { font-size: 11px; color: var(--text-dim); font-family: var(--mono); }
+.run-phase-value { font-size: 13px; color: var(--text); }
+.run-raw-json {
+  margin-top: 10px; padding: 12px; max-height: 320px; overflow: auto;
+  background: var(--bg3); border: 1px solid var(--border); border-radius: 8px;
+  font-family: var(--mono); font-size: 12px; color: var(--text2); white-space: pre;
+}

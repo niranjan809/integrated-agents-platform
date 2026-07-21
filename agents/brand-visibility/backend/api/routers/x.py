@@ -13,7 +13,7 @@ import logging
 import os
 from typing import Optional
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Query, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Query, Request, Response
 from pydantic import BaseModel, Field
 
 from agents.brand_visibility.x.db import Database
@@ -150,8 +150,19 @@ def posts(
 
 
 @router.get("/runs", dependencies=[Depends(verify_cron_secret)])
-def runs(db: Database = Depends(get_x_db), limit: int = Query(20, ge=1, le=100)) -> list[dict]:
-    return db.get_recent_runs(limit=limit)
+def runs(
+    response: Response,
+    db: Database = Depends(get_x_db),
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+) -> list[dict]:
+    """Paginated run history (newest first). Returns full rows incl. the raw
+    summary_json (the History detail modal parses it client-side) and sets the
+    X-Total-Count header to the total run count so the UI can page past the
+    100-row limit. Auth: verify_cron_secret (P0.5 lockdown), same as the other
+    reads — the Node gateway injects the secret server-side."""
+    response.headers["X-Total-Count"] = str(db.count_runs())
+    return db.list_runs(limit=limit, offset=offset)
 
 
 @router.get("/cost-summary", dependencies=[Depends(verify_cron_secret)])

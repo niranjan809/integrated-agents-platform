@@ -832,6 +832,26 @@ class Database:
             })
         return out
 
+    def list_runs(self, limit: int = 20, offset: int = 0) -> list[dict]:
+        """Paginated agent_runs for the History page. Unlike get_recent_runs
+        (which maps to the trimmed dashboard contract and drops summary_json),
+        this returns the full row incl. the raw summary_json string — the History
+        detail modal parses it client-side. Newest first."""
+        return self.query(
+            "SELECT id, started_at, ended_at, status, triggered_by, calls_used, "
+            "records_new, records_updated, error_message, summary_json "
+            "FROM agent_runs WHERE agent_id = 'KA017' "
+            "ORDER BY started_at DESC LIMIT %s OFFSET %s",
+            (limit, offset),
+        )
+
+    def count_runs(self) -> int:
+        """Total agent_runs for KA017 — drives the History page's X-Total-Count
+        header so the UI can paginate past the per-page cap."""
+        return int(self.query(
+            "SELECT COUNT(*) AS c FROM agent_runs WHERE agent_id = 'KA017'"
+        )[0]["c"])
+
     def cost_summary(self) -> dict:
         """LLM spend from llm_costs (cost column = estimated_cost_usd).
 

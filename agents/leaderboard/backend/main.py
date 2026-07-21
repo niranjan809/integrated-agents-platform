@@ -39,6 +39,18 @@ _PUBLIC_PATHS = {"/", "/health", "/docs", "/openapi.json", "/redoc", "/scan-stat
 _PUBLIC_PREFIXES = ("/auth/",)
 
 
+def _auth_error(request: Request, detail: str) -> JSONResponse:
+    # Attach CORS headers to auth failures. This middleware runs OUTSIDE the CORS
+    # middleware, so a bare 401 would reach the browser without Access-Control-Allow-
+    # Origin and surface as a confusing "CORS policy" error instead of a clean 401.
+    resp = JSONResponse(status_code=401, content={"detail": detail})
+    origin = request.headers.get("origin")
+    if origin:
+        resp.headers["Access-Control-Allow-Origin"] = origin
+        resp.headers["Vary"] = "Origin"
+    return resp
+
+
 @app.middleware("http")
 async def auth_middleware(request: Request, call_next):
     # Let CORS preflight pass through so the CORS middleware can respond correctly
@@ -54,15 +66,15 @@ async def auth_middleware(request: Request, call_next):
         return await call_next(request)
     auth = request.headers.get("Authorization", "")
     if not auth.startswith("Bearer "):
-        return JSONResponse(status_code=401, content={"detail": "Not authenticated"})
+        return _auth_error(request, "Not authenticated")
     token = auth[7:]
     try:
         payload = jwt.decode(token, _JWT_SECRET, algorithms=[_JWT_ALGORITHM])
         request.state.user = payload
     except jwt.ExpiredSignatureError:
-        return JSONResponse(status_code=401, content={"detail": "Token expired"})
+        return _auth_error(request, "Token expired")
     except jwt.InvalidTokenError:
-        return JSONResponse(status_code=401, content={"detail": "Invalid token"})
+        return _auth_error(request, "Invalid token")
     return await call_next(request)
 
 

@@ -243,11 +243,15 @@ def _upsert_entries(db: Session, lb_id: int, rows: list[dict]) -> int:
         deduped.append(row)
     rows = deduped
 
-    # Clear existing rows before re-inserting. synchronize_session=False emits a
-    # direct DELETE (no session-state evaluation) which is more reliable on the
-    # Turso/libSQL adapter; commit it so the delete is durable before we re-insert.
+    # Clear existing rows, then re-insert — in ONE transaction (flush, not commit).
+    # Committing the delete separately would expose a brief EMPTY state to other
+    # connections; a /rankings view landing in that window would see 0 rows, trigger
+    # its own live-scrape, and race this one — duplicating every row. Keeping delete
+    # + insert atomic means readers only ever see the old full set or the new full
+    # set, never empty. synchronize_session=False = a direct DELETE (reliable on the
+    # Turso/libSQL adapter).
     db.query(RankingEntry).filter(RankingEntry.leaderboard_id == lb_id).delete(synchronize_session=False)
-    db.commit()
+    db.flush()
 
     for row in rows:
         company_name = row.get("company_name") or ""
@@ -1578,9 +1582,88 @@ def _try_playwright(url: str) -> tuple[list, int, str, str]:
     return [], status, screenshot, rendered_html
 
 
-def _parse_generic(url: str, lb_name: str = "") -> tuple[list, int]:
+def _reorder_to_live_order(url: str, httpx_rows: list[dict]) -> "list[dict] | None":
+    """Best-effort freshness pass. Fetch the LIVE (JS-rendered) order via Playwright
+    and reorder the CLEAN httpx rows to match it. Returns the reordered rows, or None
+    to keep the httpx order unchanged.
+
+    Safety contract — this can only ever REORDER the rows httpx already returned; it
+    never adds, drops, or replaces them, and returns None on any uncertainty. So the
+    caller keeps a valid result no matter what, and scraping can't regress or fail:
+      • Playwright unavailable/failed (e.g. Railway) → None → httpx order kept;
+      • model sets between httpx and the render don't align closely → None;
+      • the render agrees with httpx (already fresh) → None.
+    """
+    try:
+        pw_rows, *_ = _try_playwright(url)
+    except Exception as e:
+        print(f"  [freshness] render failed for {url}: {e}")
+        return None
+    if not pw_rows or len(pw_rows) < 2:
+        return None
+
+    # Live order of normalized model names (first occurrence wins).
+    live_order: list[str] = []
+    live_seen: set[str] = set()
+    for r in pw_rows:
+        k = _norm_name(r.get("model_name"))
+        if k and k not in live_seen:
+            live_seen.add(k)
+            live_order.append(k)
+
+    httpx_keys = [_norm_name(r.get("model_name")) for r in httpx_rows]
+
+    def _live_pos(hk: str):
+        if not hk:
+            return None
+        if hk in live_seen:
+            return live_order.index(hk)
+        # vendor-appended live names ("gpt-5.5 openai") — accept a UNIQUE prefix match
+        cands = [i for i, lk in enumerate(live_order) if lk.startswith(hk) or hk.startswith(lk)]
+        return cands[0] if len(cands) == 1 else None
+
+    positions = [_live_pos(hk) for hk in httpx_keys]
+    matched = sum(1 for p in positions if p is not None)
+
+    # Require near-total, unambiguous coverage: almost every httpx model must be found
+    # in the live render. That alone proves the two scrapes describe the SAME
+    # leaderboard, so we can trust the render's order. (We deliberately do NOT compare
+    # set sizes — the render often captures extra rows from other page sections; those
+    # simply go unmatched and are ignored. Reordering only ever uses the matched httpx
+    # rows' live positions.) Below the threshold → bail out and keep the httpx order.
+    if matched < 0.9 * len(httpx_rows):
+        return None
+
+    ordered = sorted(
+        [(0 if p is not None else 1, p if p is not None else 0, idx, row)
+         for idx, (row, p) in enumerate(zip(httpx_rows, positions))],
+        key=lambda t: (t[0], t[1], t[2]),
+    )
+    reordered = [t[3] for t in ordered]
+    if [_norm_name(r.get("model_name")) for r in reordered] == httpx_keys:
+        return None  # order already matches the live render — nothing to do
+
+    # Which scores columns are the visible rank/"#" column? Update them too, so the
+    # displayed number matches the new position — otherwise the row would sit in its
+    # new slot while still showing the stale source rank (a confusing mismatch).
+    rank_cols = [k for k in (reordered[0].get("scores") or {}) if _classify_header(k) == "rank"]
+    for i, row in enumerate(reordered, 1):
+        row["rank"] = i
+        scores = row.get("scores")
+        if scores:
+            for rc in rank_cols:
+                scores[rc] = str(i)
+    print(f"  [freshness] reordered {len(reordered)} rows to live render order for {url}")
+    return reordered
+
+
+def _parse_generic(url: str, lb_name: str = "", fresh: bool = False) -> tuple[list, int]:
     """
     Full extraction cascade — never returns placeholder rows.
+
+    `fresh=True` (set for rescans/scheduler) enables a live-render freshness pass on
+    the fast httpx path, so stale server-rendered snapshots get reordered to the live
+    order for accurate change-tracking. Fallback-safe — never fails or drops data.
 
     1. httpx  → table / __NEXT_DATA__ / inline scripts
     2. Playwright → DOM table (paginated + tabs) / API intercept /
@@ -1602,6 +1685,20 @@ def _parse_generic(url: str, lb_name: str = "") -> tuple[list, int]:
                 _last_body_text = BeautifulSoup(raw_html, "html.parser").get_text(" ", strip=True)
             except Exception:
                 pass
+        # Freshness pass (rescans/scheduler only): some leaderboards server-render a
+        # STALE snapshot that httpx reads, while the live order only appears after JS
+        # runs. On an explicit refresh — where change-tracking accuracy matters — do a
+        # live render and reorder the clean httpx rows to match it. First-view ("click")
+        # scrapes skip this and stay fast. Strictly fallback-safe: _reorder_to_live_order
+        # returns None on any doubt or if Playwright is unavailable, so we always keep
+        # the working httpx result and scraping can't regress or fail.
+        if fresh:
+            try:
+                refreshed = _reorder_to_live_order(url, rows)
+                if refreshed:
+                    return refreshed, http_status
+            except Exception as e:
+                print(f"  [{label}] freshness pass error (kept httpx order): {e}")
         return rows, http_status
     print(f"  [{label}] httpx: 0 rows (HTTP {http_status})")
 
@@ -1839,6 +1936,10 @@ def scrape_leaderboard(lb_id: int, db: Session, triggered_by: str = "click") -> 
 
     start = time.time()
     name_key = lb.name.lower().strip()
+    # On an explicit refresh (rescan / scheduled sweep) we want the live order for
+    # accurate change-tracking, so enable the generic scraper's freshness pass.
+    # First-view "click" scrapes stay on the fast path.
+    want_fresh = triggered_by in ("rescan", "scheduler", "admin", "manual-test")
 
     try:
         if name_key in PARSER_MAP:
@@ -1848,7 +1949,7 @@ def scrape_leaderboard(lb_id: int, db: Session, triggered_by: str = "click") -> 
         elif "hf.space" in lb.official_url or "huggingface.co/spaces" in lb.official_url:
             rows, http_status = _parse_hf_space(lb.official_url)
         else:
-            rows, http_status = _parse_generic(lb.official_url, lb.name)
+            rows, http_status = _parse_generic(lb.official_url, lb.name, fresh=want_fresh)
 
         duration_ms = int((time.time() - start) * 1000)
 

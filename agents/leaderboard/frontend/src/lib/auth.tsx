@@ -1,4 +1,4 @@
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 
 const BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
@@ -47,6 +47,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem("auth_token");
     localStorage.removeItem("auth_user");
   }
+
+  // Auto sign-in on load so protected actions (rescan, admin CRUD) always have a
+  // fresh token — the platform normally owns login, and locally there's no login
+  // screen. Uses VITE_ADMIN_USERNAME/PASSWORD (local .env); if unset (e.g. prod
+  // build) this is a no-op and behavior is unchanged. Runs once on mount and
+  // refreshes any stale/expired token.
+  useEffect(() => {
+    const u = import.meta.env.VITE_ADMIN_USERNAME;
+    const p = import.meta.env.VITE_ADMIN_PASSWORD;
+    if (u && p) login(u, p).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <AuthContext.Provider value={{ user, token, login, logout, isAdmin: !!user }}>

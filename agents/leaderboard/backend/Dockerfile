@@ -13,10 +13,12 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Re-install the Chromium build that matches whatever Playwright version pip
-# resolved. The base image ships v1.44.0's browser, but requirements.txt pins
-# Playwright unbounded, so pip may install a newer version whose Chromium build
-# differs — causing chromium.launch() to fail on JS-rendered leaderboards.
+# Install the Chromium build (+ system deps) that matches the pinned Playwright.
+# The base image ships v1.44.0's browser, but requirements.txt pins Playwright to a
+# newer, tested version (1.61.0), whose Chromium build differs — so we reinstall the
+# matching one here. Without this, chromium.launch() fails on JS-rendered
+# leaderboards (the "Executable doesn't exist" version mismatch). Pinning the package
+# keeps this reproducible: every build resolves the same Playwright + browser pair.
 RUN playwright install chromium --with-deps
 
 # App code

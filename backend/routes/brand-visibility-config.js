@@ -136,6 +136,40 @@ router.get('/x/stats', (req, res) => proxyRequest(req, res, '/api/x/stats'));
 router.get('/x/cost-summary', (req, res) => proxyRequest(req, res, '/api/x/cost-summary'));
 router.get('/x/posts', (req, res) => proxyRequest(req, res, '/api/x/posts'));
 
+// Paginated run history for the History page. Section-level (inherits the
+// router.use requireAuth + requireSection('brand-visibility') above) — an
+// all-users view, no admin gate. Python /api/x/runs supports only limit+offset,
+// so only those are forwarded; status/date/search filters are applied
+// client-side after fetching a page (per spec). Can't reuse proxyRequest: we
+// need to read Python's X-Total-Count header and fold the total into the JSON
+// body — the browser can't read a custom CORS header (server CORS exposes none),
+// so { runs, total, limit, offset } keeps it self-contained. The header is also
+// relayed for any same-origin/proxy consumer.
+router.get('/x/runs', async (req, res) => {
+  const cronSecret = process.env.X_CRON_SECRET_BV;
+  const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 20, 1), 100);
+  const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0);
+  const url = `${PYTHON_API_URL}/api/x/runs?limit=${limit}&offset=${offset}`;
+  const headers = { 'Content-Type': 'application/json' };
+  if (cronSecret) headers['X-Cron-Secret'] = cronSecret;
+  try {
+    const upstream = await fetch(url, { method: 'GET', headers });
+    const contentType = upstream.headers.get('content-type') || '';
+    const body = contentType.includes('application/json') ? await upstream.json() : await upstream.text();
+    if (!upstream.ok) {
+      return res.status(upstream.status).json(typeof body === 'object' ? body : { error: body });
+    }
+    const runs = Array.isArray(body) ? body : [];
+    const totalHeader = Number(upstream.headers.get('X-Total-Count'));
+    const total = Number.isFinite(totalHeader) ? totalHeader : runs.length;
+    res.set('X-Total-Count', String(total));
+    res.json({ runs, total, limit, offset });
+  } catch (err) {
+    console.error(`[brand-visibility-config] runs proxy error to ${url}:`, err.message);
+    res.status(502).json({ error: 'Upstream Python API unreachable', detail: err.message });
+  }
+});
+
 // Scheduler save (PUT) + Prompt save (POST). These hit Python WRITE endpoints,
 // which now require X-Cron-Secret (P0 lockdown) — proxyRequest injects it
 // server-side. JWT + brand-visibility section gating already applied by the

@@ -62,7 +62,7 @@ router.get('/', async (req, res) => {
     config['safe_rpm']             = 6;
     config['paid_key_set']         = !!(process.env.RAPIDAPI_KEY_PAID);
     config['max_requests_per_run'] = Number(process.env.MAX_REQUESTS_PER_RUN) || 5000;
-    config['friend_db_set']        = !!(process.env.FRIEND_TURSO_URL?.trim());
+    config['friend_db_set']        = !!(process.env.POSTGRES_URL?.trim());
     res.json({ config });
   } catch (err) {
     res.status(500).json({ error: 'Failed to load settings' });

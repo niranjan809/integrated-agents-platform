@@ -37,9 +37,7 @@ services:
         sync: false
       - key: OPENROUTER_API_KEY
         sync: false
-      - key: FRIEND_TURSO_URL
-        sync: false
-      - key: FRIEND_TURSO_TOKEN
+      - key: POSTGRES_URL
         sync: false
       - key: ALLOWED_ORIGINS
         sync: false

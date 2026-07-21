@@ -281,17 +281,27 @@ router.get('/x/about', async (req, res) => {
     // total_runs is derived from the recent-runs list (capped at 100 upstream); a
     // full count isn't exposed by Python, so this is a floor, not an exact total.
     total_runs: Array.isArray(runs) ? runs.length : null,
-    admin_notes: meta.admin_notes ?? null,
+    // NOTE: admin_notes deliberately NOT returned here — internal notes moved to
+    // the admin-only GET /x/integrations so non-admin section users can't read
+    // them. description_override stays: it's the publicly-shown description
+    // override (rendered to every user), not internal context.
     description_override: meta.description_override ?? null,
     meta_updated_at: meta.updated_at ?? null,
   });
 });
 
-// GET /x/integrations — admin-only. Static list from the registry.
-router.get('/x/integrations', requireRole('admin'), (req, res) => {
+// GET /x/integrations — admin-only. Static integration list from the registry,
+// plus the internal admin_notes (moved here from /x/about so they're admin-gated
+// on both endpoint and client). Editing still happens via PATCH /x/about.
+router.get('/x/integrations', requireRole('admin'), async (req, res) => {
   const agent = getAgent(AGENT_ID);
   if (!agent) return res.status(404).json({ error: 'Agent not found in registry' });
-  res.json({ integrations: agent.integrations || [] });
+  const meta = await getAgentMeta().catch(() => ({}));
+  res.json({
+    integrations: agent.integrations || [],
+    admin_notes: meta.admin_notes ?? null,
+    meta_updated_at: meta.updated_at ?? null,
+  });
 });
 
 // GET /x/prompts-meta — admin-only. Proxies Python active-prompt for the live

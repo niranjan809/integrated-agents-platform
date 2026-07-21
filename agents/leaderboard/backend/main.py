@@ -21,7 +21,7 @@ load_dotenv()
 from database import engine, SessionLocal
 from models import Base
 from seed_data import run_seed, seed_domain_categories, fix_domain_corruption, fix_category_configs, seed_prompts
-from routers import leaderboards, search, compare, admin, domain_categories, auth as auth_router
+from routers import leaderboards, search, compare, admin, domain_categories, analytics, auth as auth_router
 
 app = FastAPI(title="Voice AI Leaderboard Agent", version="1.0.0")
 
@@ -72,6 +72,7 @@ app.include_router(search.router)
 app.include_router(compare.router)
 app.include_router(admin.router)
 app.include_router(domain_categories.router)
+app.include_router(analytics.router)
 
 
 def _create_missing_tables():
@@ -82,6 +83,10 @@ def _create_missing_tables():
         from models import SeedExclusion
         SeedExclusion.__table__.create(bind=engine)
         print("Migration: created 'seed_exclusions' table.")
+    if "ranking_changes" not in existing:
+        from models import RankingChange
+        RankingChange.__table__.create(bind=engine)
+        print("Migration: created 'ranking_changes' table.")
 
 
 def _auto_migrate():
@@ -91,6 +96,16 @@ def _auto_migrate():
         existing_cols = {c["name"] for c in insp.get_columns("leaderboards")}
     except Exception:
         return
+    # ranking_changes.prev_scanned_at — added after the table's first release.
+    try:
+        rc_cols = {c["name"] for c in insp.get_columns("ranking_changes")}
+        if "prev_scanned_at" not in rc_cols:
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE ranking_changes ADD COLUMN prev_scanned_at DATETIME"))
+            print("Migration: added 'prev_scanned_at' column to ranking_changes.")
+    except Exception:
+        pass  # table may not exist yet — create_all/_create_missing_tables handles that
+
     with engine.begin() as conn:
         if "source" not in existing_cols:
             conn.execute(text("ALTER TABLE leaderboards ADD COLUMN source VARCHAR NOT NULL DEFAULT 'seed'"))

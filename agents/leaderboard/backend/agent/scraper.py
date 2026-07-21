@@ -10,7 +10,7 @@ import base64
 from bs4 import BeautifulSoup
 from datetime import datetime, timezone
 from sqlalchemy.orm import Session
-from models import Leaderboard, RankingEntry, ScanLog, Company, Model
+from models import Leaderboard, RankingEntry, ScanLog, Company, Model, RankingChange
 
 HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; VoiceAIBot/1.0)"}
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "").strip()
@@ -46,6 +46,22 @@ def _classify_header(h: str) -> str:
     return "score"
 
 
+def _is_header_row(cells: list[str]) -> bool:
+    """True if a table row is a HEADER rather than data. Used to (a) detect grouped /
+    multi-row headers so the real column-name row is used instead of a grouping row,
+    and (b) skip any stray header row mixed into the body.
+
+    A header row is almost entirely non-numeric AND carries a recognizable rank/model/
+    company header label (e.g. "Model", "Rank", "System") — real model names and score
+    values never match those exact header words, so genuine data rows aren't caught."""
+    cells = [c for c in cells if c]
+    if len(cells) < 2:
+        return False
+    non_numeric = sum(1 for c in cells if not re.search(r"\d", c))
+    has_header_token = any(_classify_header(c) in ("rank", "model", "company") for c in cells)
+    return has_header_token and non_numeric >= len(cells) - 1
+
+
 def _log_scan(db: Session, lb_id: int, status: str, records: int,
               duration_ms: int, http_status: int, error: str, triggered_by: str):
     log = ScanLog(
@@ -67,9 +83,171 @@ def _log_scan(db: Session, lb_id: int, status: str, records: int,
     db.commit()
 
 
+# Volatile "last updated" timestamps some leaderboards render inside the model/
+# provider cell (e.g. VoiceBenchmark.ai → "Dasha 52m ago"). These change on every
+# scan, so they must be stripped from the matching key — otherwise every provider
+# looks like a different model each scan and the change-log never lines up.
+_REL_TIME_RE = re.compile(
+    r"\s*\b\d+\s*(?:s|sec|secs|second|seconds|m|min|mins|minute|minutes|h|hr|hrs|hour|hours|"
+    r"d|day|days|w|wk|wks|week|weeks|mo|month|months|y|yr|yrs|year|years)\s+ago\b.*$",
+    re.I,
+)
+_JUST_NOW_RE = re.compile(r"\s*\b(?:just now|moments? ago|updated.*)\b.*$", re.I)
+
+
+def _norm_name(s: str) -> str:
+    """Normalize a model name for matching between scans — strip volatile "X ago"
+    timestamps, trim + collapse internal whitespace + lowercase. Prevents pure
+    formatting differences or live update-timestamps from being mistaken for a model
+    dropping out and a new one appearing."""
+    s = (s or "").strip()
+    s = _REL_TIME_RE.sub("", s)
+    s = _JUST_NOW_RE.sub("", s)
+    return re.sub(r"\s+", " ", s).strip().lower()
+
+
+# Minimum share of models that must appear in BOTH the previous and the new snapshot
+# for the diff to be trusted. Below this, the two scrapes disagree so much that the
+# difference is almost certainly a partial/failed scrape or a page-format change —
+# not real ranking movement — so no change rows are recorded.
+_MIN_SNAPSHOT_OVERLAP = 0.5
+
+
+def _positions_from_db(db: Session, lb_id: int) -> tuple[dict[str, tuple[str, int]], "datetime | None"]:
+    """Snapshot the CURRENT stored rankings as {norm_name: (display_name, position)}
+    BEFORE a scan overwrites them, plus the timestamp those rows were recorded (the
+    previous scan's time — the "from" side of the change).
+
+    Position is the 1-based VISIBLE ordinal in the same order the rankings page shows
+    (rank ascending, then insertion order) — NOT the raw stored rank value, which some
+    sources miscount by one (e.g. a header row absorbed as rank 1 → data starts at 2).
+    Using the ordinal keeps the change log aligned with what the user actually sees."""
+    old = (
+        db.query(RankingEntry)
+        .filter(RankingEntry.leaderboard_id == lb_id)
+        .order_by(RankingEntry.rank.asc(), RankingEntry.id.asc())
+        .all()
+    )
+    positions: dict[str, tuple[str, int]] = {}
+    prev_time = None
+    ordinal = 0
+    for e in old:
+        key = _norm_name(e.model_name)
+        if not key:
+            continue
+        ordinal += 1
+        positions.setdefault(key, (e.model_name, ordinal))  # first occurrence wins
+        if e.recorded_at and (prev_time is None or e.recorded_at > prev_time):
+            prev_time = e.recorded_at
+    return positions, prev_time
+
+
+def _positions_from_rows(rows: list[dict]) -> dict[str, tuple[str, int]]:
+    """Same {norm_name: (display_name, position)} map for freshly-scraped rows, using
+    the 1-based VISIBLE ordinal after ordering by rank ascending (missing ranks last,
+    scrape order as tiebreak) — matching the rankings page and _positions_from_db, and
+    immune to an off-by-one in the source's own rank column."""
+    def _key(t):
+        i, row = t
+        r = row.get("rank")
+        return (0, r, i) if isinstance(r, int) and r > 0 else (1, 0, i)
+
+    ordered = sorted(enumerate(rows), key=_key)
+    positions: dict[str, tuple[str, int]] = {}
+    ordinal = 0
+    for _, row in ordered:
+        name = row.get("model_name")
+        key = _norm_name(name)
+        if not key:
+            continue
+        ordinal += 1
+        positions.setdefault(key, (name, ordinal))
+    return positions
+
+
+def _record_ranking_changes(db: Session, lb_id: int, old_pos: dict[str, tuple[str, int]],
+                            rows: list[dict], triggered_by: str,
+                            prev_time=None) -> int:
+    """Diff previous vs new positions and persist one RankingChange per model that
+    moved, was added, or dropped. Each row stores prev_scanned_at (the "from" scan
+    time) and recorded_at (this scan's time). Returns the number of change rows written.
+
+    Guards against scan/fill artifacts so only genuine leaderboard updates are logged:
+      • no-op on the first (baseline) scan — nothing to compare against;
+      • names are normalized so formatting-only differences aren't false new/dropped;
+      • if the two snapshots barely overlap (a partial/failed scrape or a page-format
+        change rather than real movement), the whole diff is discarded.
+    """
+    if not old_pos:
+        print(f"  [changelog] lb {lb_id}: BASELINE — no prior snapshot in DB, nothing to diff")
+        return 0
+    new_pos = _positions_from_rows(rows)
+    if not new_pos:
+        print(f"  [changelog] lb {lb_id}: new scrape produced 0 usable rows")
+        return 0
+
+    old_keys, new_keys = set(old_pos), set(new_pos)
+    inter = old_keys & new_keys
+    denom = max(len(old_keys), len(new_keys))
+    overlap = len(inter) / denom if denom else 0.0
+    # Diagnostic: show whether the two snapshots' ORDER actually differs.
+    moved = [k for k in inter if old_pos[k][1] != new_pos[k][1]]
+    print(f"  [changelog] lb {lb_id}: old={len(old_keys)} new={len(new_keys)} "
+          f"overlap={len(inter)}/{denom} ({overlap:.0%}) moved={len(moved)} "
+          f"added={len(new_keys-old_keys)} dropped={len(old_keys-new_keys)}")
+    if overlap < _MIN_SNAPSHOT_OVERLAP:
+        print(f"  Change-log SKIPPED for lb {lb_id}: snapshots only {len(inter)}/{denom} "
+              f"models in common ({overlap:.0%}) — likely partial/failed scrape, not a real update")
+        return 0
+
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    changes: list[RankingChange] = []
+
+    def _mk(change_type, display_name, old_rank, new_rank):
+        return RankingChange(
+            leaderboard_id=lb_id, change_type=change_type, model_name=display_name,
+            old_rank=old_rank, new_rank=new_rank, triggered_by=triggered_by,
+            prev_scanned_at=prev_time, recorded_at=now,
+        )
+
+    for key, (display, npos) in new_pos.items():
+        old = old_pos.get(key)
+        if old is None:
+            changes.append(_mk("new", display, None, npos))
+        elif npos != old[1]:
+            # lower position number = better rank, so a smaller new_rank is a move UP
+            changes.append(_mk("up" if npos < old[1] else "down", display, old[1], npos))
+
+    for key, (display, opos) in old_pos.items():
+        if key not in new_pos:
+            changes.append(_mk("dropped", display, opos, None))
+
+    if changes:
+        db.add_all(changes)
+        db.commit()
+    return len(changes)
+
+
 def _upsert_entries(db: Session, lb_id: int, rows: list[dict]) -> int:
-    db.query(RankingEntry).filter(RankingEntry.leaderboard_id == lb_id).delete()
-    db.flush()
+    # Deduplicate by model name (keep first / best-ranked occurrence). Some sources
+    # list a model more than once (pinned first column, SSR duplication), and an
+    # overlapping re-scrape could otherwise store every row twice — either way the
+    # UI must never show the same model on two rows.
+    seen: set[str] = set()
+    deduped: list[dict] = []
+    for row in rows:
+        key = _norm_name(row.get("model_name") or "")
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        deduped.append(row)
+    rows = deduped
+
+    # Clear existing rows before re-inserting. synchronize_session=False emits a
+    # direct DELETE (no session-state evaluation) which is more reliable on the
+    # Turso/libSQL adapter; commit it so the delete is durable before we re-insert.
+    db.query(RankingEntry).filter(RankingEntry.leaderboard_id == lb_id).delete(synchronize_session=False)
+    db.commit()
 
     for row in rows:
         company_name = row.get("company_name") or ""
@@ -189,20 +367,32 @@ def _parse_html_table(html: str) -> list[dict]:
     table = max(tables, key=_score)
     if _score(table) == 0:
         return []  # all tables are explanation/junk — caller should try other strategies
-    headers: list[str] = []
-    col_types: list[str] = []
-    rows_out: list[dict] = []
 
-    for i, row in enumerate(table.find_all("tr")):
+    # Collect every row's cells first so we can reason about multi-row headers.
+    parsed_rows: list[list[str]] = []
+    for row in table.find_all("tr"):
         cells = [td.get_text(separator=" ", strip=True) for td in row.find_all(["th", "td"])]
-        if not cells:
-            continue
-        if not headers:
-            headers = cells
-            col_types = [_classify_header(h) for h in headers]
-            continue
+        if cells:
+            parsed_rows.append(cells)
+    if not parsed_rows:
+        return []
+
+    # Header detection: the first row is a header; consume any further CONSECUTIVE
+    # header-like rows (grouped / multi-row headers, e.g. a category row above the
+    # real column names) and use the LAST one — the bottom header row carries the
+    # actual column labels. This stops the real header from being read as data.
+    h = 0
+    while h + 1 < len(parsed_rows) and _is_header_row(parsed_rows[h + 1]):
+        h += 1
+    headers = parsed_rows[h]
+    col_types = [_classify_header(x) for x in headers]
+
+    rows_out: list[dict] = []
+    for i, cells in enumerate(parsed_rows[h + 1:]):
         if len(cells) < 2:
             continue
+        if _is_header_row(cells):
+            continue  # stray/repeated header row inside the body — never a real model
 
         entry: dict = {"scores": {}}
         rank_set = model_set = company_set = False
@@ -1663,10 +1853,19 @@ def scrape_leaderboard(lb_id: int, db: Session, triggered_by: str = "click") -> 
         duration_ms = int((time.time() - start) * 1000)
 
         if rows and len(rows) >= 2:
+            # Capture existing positions BEFORE _upsert_entries deletes them, so we
+            # can diff old vs new and record the ranking change-log for Analytics.
+            old_pos, prev_time = _positions_from_db(db, lb_id)
             count = _upsert_entries(db, lb_id, rows)
             status = "success"
             error = None
             print(f"  Scraped {lb.name}: {count} rows")
+            try:
+                n_changes = _record_ranking_changes(db, lb_id, old_pos, rows, triggered_by, prev_time)
+                if n_changes:
+                    print(f"  Recorded {n_changes} ranking change(s) for {lb.name}")
+            except Exception as e:
+                print(f"  Change-log recording failed for {lb.name}: {e}")
         elif rows:
             count = 0
             status = "partial"

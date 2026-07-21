@@ -12,6 +12,9 @@ export default function Layout() {
           AI Leaderboard Agent
         </Link>
         <div className="ml-auto flex items-center gap-3">
+          <Link to="/analytics" className="text-sm font-medium text-emerald-400 hover:text-emerald-300 border border-emerald-800 px-3 py-1 rounded-lg transition-colors">
+            Analytics
+          </Link>
           <Link to="/compare" className="text-sm font-medium text-cyan-400 hover:text-cyan-300 border border-cyan-800 px-3 py-1 rounded-lg transition-colors">
             Compare
           </Link>

@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { api, Leaderboard, RankingEntry, ScanLog, getCached, invalidateCache } from "@/lib/api";
 import { statusDot, statusColor } from "@/lib/utils";
 
@@ -10,7 +10,12 @@ const BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
 export default function LeaderboardPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const lbId = parseInt(id!);
+  // Optional ?highlight=<model name> — set when arriving from the Analytics tab.
+  // The matching ranking row is highlighted and scrolled into view.
+  const highlight = (searchParams.get("highlight") || "").trim();
+  const highlightRef = useRef<HTMLTableRowElement | null>(null);
 
   const [lb, setLb] = useState<Leaderboard | null>(
     () => getCached<Leaderboard>(`/leaderboards/${lbId}`) ?? null
@@ -156,6 +161,13 @@ export default function LeaderboardPage() {
 
   const hasAbout = lb && (lb.description || lb.methodology || lb.benchmark_datasets?.length || lb.update_frequency || lb.notes);
 
+  // Scroll the highlighted row into view once rankings are loaded.
+  useEffect(() => {
+    if (highlight && highlightRef.current) {
+      highlightRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [highlight, entries]);
+
   if (error && !lb) {
     return <div className="p-12 text-center text-red-400">{error}</div>;
   }
@@ -271,8 +283,14 @@ export default function LeaderboardPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-800">
-                  {displayEntries.map((entry, idx) => (
-                    <tr key={idx} className={`hover:bg-gray-800 ${entry.rank === 1 ? "bg-amber-900/20" : ""}`}>
+                  {displayEntries.map((entry, idx) => {
+                    const isHi = !!highlight && (entry.model_name || "").trim() === highlight;
+                    return (
+                    <tr
+                      key={idx}
+                      ref={isHi ? highlightRef : undefined}
+                      className={`hover:bg-gray-800 ${isHi ? "bg-indigo-900/40 ring-2 ring-inset ring-indigo-500" : entry.rank === 1 ? "bg-amber-900/20" : ""}`}
+                    >
                       {colOrder.length > 0 ? (
                         colOrder.map((col) => (
                           <td key={col} className="px-3 py-2.5 text-gray-300 tabular-nums whitespace-nowrap">
@@ -285,7 +303,8 @@ export default function LeaderboardPage() {
                         <td className="px-3 py-2.5 text-gray-500">—</td>
                       )}
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

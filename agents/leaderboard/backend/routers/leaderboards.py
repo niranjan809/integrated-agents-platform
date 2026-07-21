@@ -140,6 +140,21 @@ def get_rankings(lb_id: int, background_tasks: BackgroundTasks, force: bool = Fa
         )
         is_stale = False
 
+    # Defensive read-time dedup: never return the same model on two rows, even if
+    # duplicate RankingEntry rows accumulated in the DB (the scrape-time dedup and
+    # delete-before-insert should prevent this, but Turso replica/delete timing can
+    # leave stragglers). Keep the best-ranked occurrence of each model.
+    entries = sorted(entries, key=lambda e: (e.rank if e.rank is not None else 10**9, e.id))
+    _seen: set[str] = set()
+    _unique = []
+    for e in entries:
+        k = (e.model_name or "").strip().lower()
+        if not k or k in _seen:
+            continue
+        _seen.add(k)
+        _unique.append(e)
+    entries = _unique
+
     return {
         "leaderboard_id": lb_id,
         "cached": has_data and not force,

@@ -5,6 +5,7 @@ import DomainPage from "./pages/DomainPage";
 import LeaderboardPage from "./pages/LeaderboardPage";
 import ComparePage from "./pages/ComparePage";
 import SearchPage from "./pages/SearchPage";
+import AnalyticsPage from "./pages/AnalyticsPage";
 import AdminPage from "./pages/AdminPage";
 import AdminDomainPage from "./pages/AdminDomainPage";
 
@@ -21,6 +22,7 @@ export default function App() {
           <Route path="/leaderboard/:id" element={<LeaderboardPage />} />
           <Route path="/compare" element={<ComparePage />} />
           <Route path="/search" element={<SearchPage />} />
+          <Route path="/analytics" element={<AnalyticsPage />} />
         </Route>
         {/* No Layout wrapper — embedded standalone in the platform admin panel's
             Manage section, so no app nav / Compare button should show through. */}

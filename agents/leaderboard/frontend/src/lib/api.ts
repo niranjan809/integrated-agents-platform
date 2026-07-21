@@ -157,6 +157,21 @@ export type ScanLog = {
   triggered_by: string;
 };
 
+export type RankingChange = {
+  id: number;
+  leaderboard_id: number;
+  leaderboard_name: string;
+  domain: string;      // raw type, e.g. "TTS"
+  category: string;    // category-grid domain, e.g. "Voice AI Leaderboards"
+  change_type: "new" | "dropped" | "up" | "down";
+  model_name: string;
+  old_rank: number | null;
+  new_rank: number | null;
+  triggered_by: string | null;
+  prev_scanned_at: string | null;   // scan time this was compared against ("from")
+  recorded_at: string | null;       // scan time that produced this change ("to")
+};
+
 export type PromptConfig = {
   key: string;
   label: string;
@@ -174,6 +189,14 @@ const TTL = {
 };
 
 export const api = {
+  // Analytics — ranking change log (short TTL: it grows on every rescan)
+  getChanges: (leaderboardId?: number, limit = 1000) => {
+    const qs = new URLSearchParams();
+    if (leaderboardId != null) qs.set("leaderboard_id", String(leaderboardId));
+    qs.set("limit", String(limit));
+    return req<RankingChange[]>(`/analytics/changes?${qs.toString()}`, {}, 60 * 1000);
+  },
+
   // Domain categories
   listDomainCategories: () =>
     req<DomainCategory[]>("/domain-categories", {}, TTL.leaderboardList),

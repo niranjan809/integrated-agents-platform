@@ -39,6 +39,7 @@ class Leaderboard(Base):
 
     ranking_entries = relationship("RankingEntry", back_populates="leaderboard", cascade="all, delete-orphan")
     scan_logs = relationship("ScanLog", back_populates="leaderboard", cascade="all, delete-orphan")
+    ranking_changes = relationship("RankingChange", back_populates="leaderboard", cascade="all, delete-orphan")
     models_rel = relationship("Model", back_populates="leaderboard", cascade="all, delete-orphan")
     metrics_rel = relationship("Metric", back_populates="leaderboard", cascade="all, delete-orphan")
 
@@ -111,6 +112,26 @@ class ScanLog(Base):
     triggered_by = Column(String, default="click")  # click | rescan | admin
 
     leaderboard = relationship("Leaderboard", back_populates="scan_logs")
+
+
+class RankingChange(Base):
+    """One row per model whose position changed between two consecutive scans of a
+    leaderboard. Populated at scan time by diffing the previous rankings against the
+    freshly scraped ones — the first (baseline) scan records nothing. Never deleted,
+    so it accumulates a change history over time for the Analytics tab."""
+    __tablename__ = "ranking_changes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    leaderboard_id = Column(Integer, ForeignKey("leaderboards.id"), nullable=False, index=True)
+    change_type = Column(String, nullable=False)  # new | dropped | up | down
+    model_name = Column(String, nullable=False)
+    old_rank = Column(Integer, nullable=True)     # None for new entrants
+    new_rank = Column(Integer, nullable=True)     # None for dropped models
+    triggered_by = Column(String, nullable=True)  # click | rescan | scheduler | admin
+    prev_scanned_at = Column(DateTime, nullable=True)  # time of the scan this was compared against ("from")
+    recorded_at = Column(DateTime, default=utcnow, index=True)  # time of the scan that produced this change ("to")
+
+    leaderboard = relationship("Leaderboard", back_populates="ranking_changes")
 
 
 class DomainCategory(Base):

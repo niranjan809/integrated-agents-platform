@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import { getClassLabel } from '../../../utils/classLabels';
+import InfoPanel from '../../../components/brand-visibility/InfoPanel';
+import { keywordClasses } from '../../../constants/agentInfo';
 
 // All keyword CRUD flows through the JWT-guarded Node proxy (Phase 1c),
 // which forwards to the Python config API (/api/config/*).
@@ -26,6 +28,7 @@ export default function Keywords() {
 
   const [classes, setClasses] = useState([]);
   const [keywords, setKeywords] = useState([]);
+  const [classHelp, setClassHelp] = useState(keywordClasses); // [{id,name,description}] — endpoint w/ constant fallback
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -59,6 +62,17 @@ export default function Keywords() {
   }
 
   useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Keyword-class descriptions for the info panel. Section-level endpoint; falls
+  // back to the bundled constant if it fails.
+  useEffect(() => {
+    let alive = true;
+    apiFetch(`${BASE}/x/keywords-help`)
+      .then(r => r.ok ? r.json() : Promise.reject(new Error(`keywords-help ${r.status}`)))
+      .then(d => { if (alive && Array.isArray(d?.classes)) setClassHelp(d.classes); })
+      .catch(() => { /* keep constant fallback */ });
+    return () => { alive = false; };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Apply toolbar filters, then group by class_key.
   const grouped = useMemo(() => {
@@ -171,6 +185,29 @@ export default function Keywords() {
       </div>
 
       {error && <div className="page-error">{error}</div>}
+
+      {/* Keyword Classes reference — what each lexicon class means */}
+      <InfoPanel title="Keyword Classes" collapsible>
+        <table className="info-table">
+          <thead>
+            <tr><th>Class</th><th>Name</th><th>Description</th></tr>
+          </thead>
+          <tbody>
+            {classHelp.map(c => {
+              const label = getClassLabel(c.id);
+              return (
+                <tr key={c.id}>
+                  <td>
+                    <span className="kw-class-dot" style={{ background: label.color }} /> {c.id}
+                  </td>
+                  <td>{c.name}</td>
+                  <td className="info-table-desc">{c.description}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </InfoPanel>
 
       {/* Toolbar */}
       <div className="kw-toolbar">

@@ -1,0 +1,1263 @@
+{
+  "version": "v2",
+  "generated_at": "2026-07-15T05:24:02Z",
+  "source": "IG - Keywords.xlsx",
+  "removed_from_rotation": {
+    "removed_at": "2026-07-15T06:03:23Z",
+    "reason": "P-1 discovery data: 0 kept of ~9 candidates across these 3 tags. Substring collision noise (rag = fashion brand + names, mcp = 3-letter usernames, aiops = generic devops accounts). Dropped from active rotation.",
+    "hashtags": [
+      "rag",
+      "mcp",
+      "aiops"
+    ]
+  },
+  "tiers": {
+    "T1": [
+      {
+        "hashtag": "promptengineering",
+        "sub_cluster": "Technical practitioner",
+        "notes": "Highest-signal practitioner tag; consistent Educator/Reviewer archetypes"
+      },
+      {
+        "hashtag": "promptengineer",
+        "sub_cluster": "Technical practitioner",
+        "notes": "Self-identifies as practitioner"
+      },
+      {
+        "hashtag": "promptengineeringtips",
+        "sub_cluster": "Technical practitioner",
+        "notes": "Educator content"
+      },
+      {
+        "hashtag": "promptdesign",
+        "sub_cluster": "Technical practitioner",
+        "notes": ""
+      },
+      {
+        "hashtag": "promptcrafting",
+        "sub_cluster": "Technical practitioner",
+        "notes": ""
+      },
+      {
+        "hashtag": "aiengineering",
+        "sub_cluster": "Technical practitioner",
+        "notes": "Engineer/developer community"
+      },
+      {
+        "hashtag": "aiengineer",
+        "sub_cluster": "Technical practitioner",
+        "notes": ""
+      },
+      {
+        "hashtag": "llmops",
+        "sub_cluster": "Technical practitioner",
+        "notes": "Ops-focused practitioners"
+      },
+      {
+        "hashtag": "mlops",
+        "sub_cluster": "Technical practitioner",
+        "notes": "ML operations community"
+      },
+      {
+        "hashtag": "ragpipeline",
+        "sub_cluster": "Technical practitioner",
+        "notes": ""
+      },
+      {
+        "hashtag": "ragagents",
+        "sub_cluster": "Technical practitioner",
+        "notes": ""
+      },
+      {
+        "hashtag": "agenticrag",
+        "sub_cluster": "Technical practitioner",
+        "notes": ""
+      },
+      {
+        "hashtag": "vectordb",
+        "sub_cluster": "Technical practitioner",
+        "notes": ""
+      },
+      {
+        "hashtag": "vectorsearch",
+        "sub_cluster": "Technical practitioner",
+        "notes": ""
+      },
+      {
+        "hashtag": "finetuning",
+        "sub_cluster": "Technical practitioner",
+        "notes": ""
+      },
+      {
+        "hashtag": "finetuningllm",
+        "sub_cluster": "Technical practitioner",
+        "notes": ""
+      },
+      {
+        "hashtag": "embeddings",
+        "sub_cluster": "Technical practitioner",
+        "notes": ""
+      },
+      {
+        "hashtag": "semanticsearch",
+        "sub_cluster": "Technical practitioner",
+        "notes": ""
+      },
+      {
+        "hashtag": "contextengineering",
+        "sub_cluster": "Technical practitioner",
+        "notes": "Newer term"
+      },
+      {
+        "hashtag": "modelcontextprotocol",
+        "sub_cluster": "Technical practitioner",
+        "notes": "MCP standard"
+      },
+      {
+        "hashtag": "mcpserver",
+        "sub_cluster": "Technical practitioner",
+        "notes": ""
+      },
+      {
+        "hashtag": "mcpservers",
+        "sub_cluster": "Technical practitioner",
+        "notes": ""
+      },
+      {
+        "hashtag": "aiagents",
+        "sub_cluster": "AI agents",
+        "notes": "Core Agentic AI signal"
+      },
+      {
+        "hashtag": "agenticai",
+        "sub_cluster": "AI agents",
+        "notes": "High-signal, newer term"
+      },
+      {
+        "hashtag": "aiagent",
+        "sub_cluster": "AI agents",
+        "notes": ""
+      },
+      {
+        "hashtag": "multiagent",
+        "sub_cluster": "AI agents",
+        "notes": ""
+      },
+      {
+        "hashtag": "multiagentai",
+        "sub_cluster": "AI agents",
+        "notes": ""
+      },
+      {
+        "hashtag": "autonomousagent",
+        "sub_cluster": "AI agents",
+        "notes": ""
+      },
+      {
+        "hashtag": "autonomousagents",
+        "sub_cluster": "AI agents",
+        "notes": ""
+      },
+      {
+        "hashtag": "aiagentbuilder",
+        "sub_cluster": "AI agents",
+        "notes": ""
+      },
+      {
+        "hashtag": "aiagentplatform",
+        "sub_cluster": "AI agents",
+        "notes": ""
+      },
+      {
+        "hashtag": "aiagentframework",
+        "sub_cluster": "AI agents",
+        "notes": ""
+      },
+      {
+        "hashtag": "langgraph",
+        "sub_cluster": "AI agents",
+        "notes": "Framework"
+      },
+      {
+        "hashtag": "crewai",
+        "sub_cluster": "AI agents",
+        "notes": "Framework"
+      },
+      {
+        "hashtag": "autogen",
+        "sub_cluster": "AI agents",
+        "notes": "Framework"
+      },
+      {
+        "hashtag": "langchain",
+        "sub_cluster": "AI agents",
+        "notes": "Framework"
+      },
+      {
+        "hashtag": "llamaindex",
+        "sub_cluster": "AI agents",
+        "notes": "Framework"
+      },
+      {
+        "hashtag": "buildinginpublic",
+        "sub_cluster": "Builder community",
+        "notes": "Cross-domain but AI-heavy on Instagram"
+      },
+      {
+        "hashtag": "buildwithai",
+        "sub_cluster": "Builder community",
+        "notes": ""
+      },
+      {
+        "hashtag": "vibecoding",
+        "sub_cluster": "Builder community",
+        "notes": "AI-native builder community"
+      },
+      {
+        "hashtag": "aicoding",
+        "sub_cluster": "Builder community",
+        "notes": "Coding + AI"
+      },
+      {
+        "hashtag": "aicoder",
+        "sub_cluster": "Builder community",
+        "notes": ""
+      },
+      {
+        "hashtag": "aiprogramming",
+        "sub_cluster": "Builder community",
+        "notes": ""
+      },
+      {
+        "hashtag": "aideveloper",
+        "sub_cluster": "Builder community",
+        "notes": ""
+      },
+      {
+        "hashtag": "aidevs",
+        "sub_cluster": "Builder community",
+        "notes": ""
+      },
+      {
+        "hashtag": "buildingwithai",
+        "sub_cluster": "Builder community",
+        "notes": ""
+      },
+      {
+        "hashtag": "buildingwithclaude",
+        "sub_cluster": "Builder community",
+        "notes": "Anthropic-adjacent"
+      },
+      {
+        "hashtag": "claudecode",
+        "sub_cluster": "Builder community",
+        "notes": "Claude Code CLI users"
+      },
+      {
+        "hashtag": "codingwithai",
+        "sub_cluster": "Builder community",
+        "notes": ""
+      },
+      {
+        "hashtag": "pairprogramming",
+        "sub_cluster": "Builder community",
+        "notes": "AI pair-programming context"
+      },
+      {
+        "hashtag": "aihackathon",
+        "sub_cluster": "Builder community",
+        "notes": ""
+      },
+      {
+        "hashtag": "shipwithai",
+        "sub_cluster": "Builder community",
+        "notes": ""
+      },
+      {
+        "hashtag": "chatgpttutorial",
+        "sub_cluster": "Tool-specific",
+        "notes": "Tool + educator combined signal"
+      },
+      {
+        "hashtag": "chatgpttips",
+        "sub_cluster": "Tool-specific",
+        "notes": ""
+      },
+      {
+        "hashtag": "chatgpttricks",
+        "sub_cluster": "Tool-specific",
+        "notes": ""
+      },
+      {
+        "hashtag": "chatgptprompts",
+        "sub_cluster": "Tool-specific",
+        "notes": ""
+      },
+      {
+        "hashtag": "cursorai",
+        "sub_cluster": "Tool-specific",
+        "notes": "Coding tool users"
+      },
+      {
+        "hashtag": "cursortips",
+        "sub_cluster": "Tool-specific",
+        "notes": ""
+      },
+      {
+        "hashtag": "claudeai",
+        "sub_cluster": "Tool-specific",
+        "notes": "Anthropic-adjacent creators"
+      },
+      {
+        "hashtag": "claudetutorial",
+        "sub_cluster": "Tool-specific",
+        "notes": ""
+      },
+      {
+        "hashtag": "geminiadvanced",
+        "sub_cluster": "Tool-specific",
+        "notes": ""
+      },
+      {
+        "hashtag": "gemini2",
+        "sub_cluster": "Tool-specific",
+        "notes": ""
+      },
+      {
+        "hashtag": "perplexityai",
+        "sub_cluster": "Tool-specific",
+        "notes": "Research-oriented users"
+      },
+      {
+        "hashtag": "huggingface",
+        "sub_cluster": "Tool-specific",
+        "notes": "Practitioner community"
+      },
+      {
+        "hashtag": "gpt4",
+        "sub_cluster": "Tool-specific",
+        "notes": ""
+      },
+      {
+        "hashtag": "gpt5",
+        "sub_cluster": "Tool-specific",
+        "notes": ""
+      },
+      {
+        "hashtag": "midjourneyai",
+        "sub_cluster": "Tool-specific",
+        "notes": "Image gen specific"
+      },
+      {
+        "hashtag": "suno",
+        "sub_cluster": "Tool-specific",
+        "notes": "Music AI"
+      },
+      {
+        "hashtag": "runwayml",
+        "sub_cluster": "Tool-specific",
+        "notes": ""
+      },
+      {
+        "hashtag": "elevenlabs",
+        "sub_cluster": "Tool-specific",
+        "notes": "Voice AI creators overlap — also in T_voice"
+      },
+      {
+        "hashtag": "v0dev",
+        "sub_cluster": "Tool-specific",
+        "notes": "Vercel v0 users"
+      },
+      {
+        "hashtag": "boltnew",
+        "sub_cluster": "Tool-specific",
+        "notes": "AI web builder"
+      },
+      {
+        "hashtag": "windsurfai",
+        "sub_cluster": "Tool-specific",
+        "notes": "Coding IDE"
+      },
+      {
+        "hashtag": "devin",
+        "sub_cluster": "Tool-specific",
+        "notes": "Coding agent"
+      },
+      {
+        "hashtag": "replitai",
+        "sub_cluster": "Tool-specific",
+        "notes": ""
+      },
+      {
+        "hashtag": "openaiapi",
+        "sub_cluster": "Tool-specific",
+        "notes": "Developer community"
+      },
+      {
+        "hashtag": "anthropicapi",
+        "sub_cluster": "Tool-specific",
+        "notes": "Developer community"
+      },
+      {
+        "hashtag": "aitutorial",
+        "sub_cluster": "Educator",
+        "notes": "Directly identifies Educator archetype"
+      },
+      {
+        "hashtag": "aicourse",
+        "sub_cluster": "Educator",
+        "notes": ""
+      },
+      {
+        "hashtag": "aicourses",
+        "sub_cluster": "Educator",
+        "notes": ""
+      },
+      {
+        "hashtag": "aitraining",
+        "sub_cluster": "Educator",
+        "notes": ""
+      },
+      {
+        "hashtag": "aiworkshop",
+        "sub_cluster": "Educator",
+        "notes": ""
+      },
+      {
+        "hashtag": "learnai",
+        "sub_cluster": "Educator",
+        "notes": ""
+      },
+      {
+        "hashtag": "aibootcamp",
+        "sub_cluster": "Educator",
+        "notes": ""
+      },
+      {
+        "hashtag": "aiskills",
+        "sub_cluster": "Educator",
+        "notes": ""
+      },
+      {
+        "hashtag": "aiforbeginners",
+        "sub_cluster": "Educator",
+        "notes": ""
+      },
+      {
+        "hashtag": "aimastermind",
+        "sub_cluster": "Educator",
+        "notes": ""
+      },
+      {
+        "hashtag": "voiceai",
+        "sub_cluster": "Voice AI",
+        "notes": "Direct KiteAI category"
+      },
+      {
+        "hashtag": "voiceagent",
+        "sub_cluster": "Voice AI",
+        "notes": ""
+      },
+      {
+        "hashtag": "voicebot",
+        "sub_cluster": "Voice AI",
+        "notes": "also in T_voice"
+      },
+      {
+        "hashtag": "aivoiceagent",
+        "sub_cluster": "Voice AI",
+        "notes": ""
+      },
+      {
+        "hashtag": "aiphoneagent",
+        "sub_cluster": "Voice AI",
+        "notes": ""
+      },
+      {
+        "hashtag": "conversationalai",
+        "sub_cluster": "Voice AI",
+        "notes": "also in T_voice"
+      },
+      {
+        "hashtag": "aisdr",
+        "sub_cluster": "Voice AI",
+        "notes": "Sales development rep automation"
+      },
+      {
+        "hashtag": "aicoldcaller",
+        "sub_cluster": "Voice AI",
+        "notes": ""
+      },
+      {
+        "hashtag": "contactcenterai",
+        "sub_cluster": "Voice AI",
+        "notes": ""
+      },
+      {
+        "hashtag": "callcenterai",
+        "sub_cluster": "Voice AI",
+        "notes": ""
+      },
+      {
+        "hashtag": "aiautomation",
+        "sub_cluster": "Automation",
+        "notes": "High-signal builder/automator"
+      },
+      {
+        "hashtag": "nocodeai",
+        "sub_cluster": "Automation",
+        "notes": "Common creator archetype"
+      },
+      {
+        "hashtag": "aiworkflow",
+        "sub_cluster": "Automation",
+        "notes": ""
+      },
+      {
+        "hashtag": "aiworkflows",
+        "sub_cluster": "Automation",
+        "notes": ""
+      },
+      {
+        "hashtag": "automatewithai",
+        "sub_cluster": "Automation",
+        "notes": ""
+      },
+      {
+        "hashtag": "n8n",
+        "sub_cluster": "Automation",
+        "notes": "Automation platform, AI-heavy community"
+      },
+      {
+        "hashtag": "n8nautomation",
+        "sub_cluster": "Automation",
+        "notes": ""
+      },
+      {
+        "hashtag": "zapierautomation",
+        "sub_cluster": "Automation",
+        "notes": ""
+      },
+      {
+        "hashtag": "makeautomation",
+        "sub_cluster": "Automation",
+        "notes": ""
+      },
+      {
+        "hashtag": "autogpt",
+        "sub_cluster": "Automation",
+        "notes": ""
+      }
+    ],
+    "T2": [
+      {
+        "hashtag": "chatgpt",
+        "sub_cluster": "Tool (broad)",
+        "notes": "Massive volume, mixed quality — filter by AI context"
+      },
+      {
+        "hashtag": "claude",
+        "sub_cluster": "Tool (broad)",
+        "notes": "Growing signal, some ambiguity"
+      },
+      {
+        "hashtag": "gemini",
+        "sub_cluster": "Tool (broad)",
+        "notes": "Ambiguous — also zodiac sign"
+      },
+      {
+        "hashtag": "openai",
+        "sub_cluster": "Tool (broad)",
+        "notes": ""
+      },
+      {
+        "hashtag": "anthropic",
+        "sub_cluster": "Tool (broad)",
+        "notes": ""
+      },
+      {
+        "hashtag": "midjourney",
+        "sub_cluster": "Tool (broad)",
+        "notes": "Image gen — different archetype from text/code AI"
+      },
+      {
+        "hashtag": "perplexity",
+        "sub_cluster": "Tool (broad)",
+        "notes": ""
+      },
+      {
+        "hashtag": "copilot",
+        "sub_cluster": "Tool (broad)",
+        "notes": "Ambiguous — also MS Office Copilot"
+      },
+      {
+        "hashtag": "githubcopilot",
+        "sub_cluster": "Tool (broad)",
+        "notes": "Developer specific"
+      },
+      {
+        "hashtag": "dalle",
+        "sub_cluster": "Tool (broad)",
+        "notes": ""
+      },
+      {
+        "hashtag": "stablediffusion",
+        "sub_cluster": "Tool (broad)",
+        "notes": "Image gen"
+      },
+      {
+        "hashtag": "grok",
+        "sub_cluster": "Tool (broad)",
+        "notes": ""
+      },
+      {
+        "hashtag": "llama",
+        "sub_cluster": "Tool (broad)",
+        "notes": "Ambiguous — also the animal"
+      },
+      {
+        "hashtag": "mistral",
+        "sub_cluster": "Tool (broad)",
+        "notes": "Open-source LLM"
+      },
+      {
+        "hashtag": "deepseek",
+        "sub_cluster": "Tool (broad)",
+        "notes": ""
+      },
+      {
+        "hashtag": "aicoach",
+        "sub_cluster": "Persona (broad)",
+        "notes": "Educator + Promoter overlap"
+      },
+      {
+        "hashtag": "aicontentcreator",
+        "sub_cluster": "Persona (broad)",
+        "notes": ""
+      },
+      {
+        "hashtag": "aiinfluencer",
+        "sub_cluster": "Persona (broad)",
+        "notes": ""
+      },
+      {
+        "hashtag": "aifounder",
+        "sub_cluster": "Persona (broad)",
+        "notes": "Startup founder signal"
+      },
+      {
+        "hashtag": "aientrepreneur",
+        "sub_cluster": "Persona (broad)",
+        "notes": ""
+      },
+      {
+        "hashtag": "aiconsultant",
+        "sub_cluster": "Persona (broad)",
+        "notes": "Promoter/Hybrid signal"
+      },
+      {
+        "hashtag": "aicreator",
+        "sub_cluster": "Persona (broad)",
+        "notes": ""
+      },
+      {
+        "hashtag": "aiexpert",
+        "sub_cluster": "Persona (broad)",
+        "notes": "Common self-label"
+      },
+      {
+        "hashtag": "aiguy",
+        "sub_cluster": "Persona (broad)",
+        "notes": ""
+      },
+      {
+        "hashtag": "aigirl",
+        "sub_cluster": "Persona (broad)",
+        "notes": ""
+      },
+      {
+        "hashtag": "aigeek",
+        "sub_cluster": "Persona (broad)",
+        "notes": ""
+      },
+      {
+        "hashtag": "aienthusiast",
+        "sub_cluster": "Persona (broad)",
+        "notes": ""
+      },
+      {
+        "hashtag": "aiforbusiness",
+        "sub_cluster": "Use case (broad)",
+        "notes": "Business/B2B creators"
+      },
+      {
+        "hashtag": "aiforsales",
+        "sub_cluster": "Use case (broad)",
+        "notes": ""
+      },
+      {
+        "hashtag": "aiformarketing",
+        "sub_cluster": "Use case (broad)",
+        "notes": ""
+      },
+      {
+        "hashtag": "aiforsmallbusiness",
+        "sub_cluster": "Use case (broad)",
+        "notes": ""
+      },
+      {
+        "hashtag": "aiforstartups",
+        "sub_cluster": "Use case (broad)",
+        "notes": ""
+      },
+      {
+        "hashtag": "aiforcreators",
+        "sub_cluster": "Use case (broad)",
+        "notes": ""
+      },
+      {
+        "hashtag": "aiformarketers",
+        "sub_cluster": "Use case (broad)",
+        "notes": ""
+      },
+      {
+        "hashtag": "aiforentrepreneurs",
+        "sub_cluster": "Use case (broad)",
+        "notes": ""
+      },
+      {
+        "hashtag": "aiforprofessionals",
+        "sub_cluster": "Use case (broad)",
+        "notes": ""
+      },
+      {
+        "hashtag": "aiproductivity",
+        "sub_cluster": "Use case (broad)",
+        "notes": "Productivity assistant creators"
+      },
+      {
+        "hashtag": "aiwriting",
+        "sub_cluster": "Use case (broad)",
+        "notes": "Some noise (fiction writers)"
+      },
+      {
+        "hashtag": "aicontent",
+        "sub_cluster": "Use case (broad)",
+        "notes": ""
+      },
+      {
+        "hashtag": "aiforagencies",
+        "sub_cluster": "Use case (broad)",
+        "notes": ""
+      },
+      {
+        "hashtag": "llm",
+        "sub_cluster": "Concept (broad)",
+        "notes": "Technical but broad, some off-topic"
+      },
+      {
+        "hashtag": "aitools",
+        "sub_cluster": "Concept (broad)",
+        "notes": "Tool review/curator archetype"
+      },
+      {
+        "hashtag": "aisoftware",
+        "sub_cluster": "Concept (broad)",
+        "notes": ""
+      },
+      {
+        "hashtag": "aisolutions",
+        "sub_cluster": "Concept (broad)",
+        "notes": ""
+      },
+      {
+        "hashtag": "aiplatform",
+        "sub_cluster": "Concept (broad)",
+        "notes": ""
+      },
+      {
+        "hashtag": "aiapp",
+        "sub_cluster": "Concept (broad)",
+        "notes": ""
+      },
+      {
+        "hashtag": "aistartup",
+        "sub_cluster": "Concept (broad)",
+        "notes": ""
+      },
+      {
+        "hashtag": "aiproduct",
+        "sub_cluster": "Concept (broad)",
+        "notes": ""
+      },
+      {
+        "hashtag": "aiservices",
+        "sub_cluster": "Concept (broad)",
+        "notes": ""
+      },
+      {
+        "hashtag": "aisaas",
+        "sub_cluster": "Concept (broad)",
+        "notes": ""
+      },
+      {
+        "hashtag": "aicommunity",
+        "sub_cluster": "Community (broad)",
+        "notes": "Broad, filler-heavy"
+      },
+      {
+        "hashtag": "aidaily",
+        "sub_cluster": "Community (broad)",
+        "notes": "News/aggregator signal + volume noise"
+      },
+      {
+        "hashtag": "aiweekly",
+        "sub_cluster": "Community (broad)",
+        "notes": ""
+      },
+      {
+        "hashtag": "ainews",
+        "sub_cluster": "Community (broad)",
+        "notes": "News/aggregator"
+      },
+      {
+        "hashtag": "ailatest",
+        "sub_cluster": "Community (broad)",
+        "notes": ""
+      },
+      {
+        "hashtag": "aitrends",
+        "sub_cluster": "Community (broad)",
+        "notes": ""
+      },
+      {
+        "hashtag": "aiupdates",
+        "sub_cluster": "Community (broad)",
+        "notes": ""
+      },
+      {
+        "hashtag": "futureofai",
+        "sub_cluster": "Community (broad)",
+        "notes": "Speculative content"
+      },
+      {
+        "hashtag": "aiindustry",
+        "sub_cluster": "Community (broad)",
+        "notes": ""
+      },
+      {
+        "hashtag": "airevolution",
+        "sub_cluster": "Community (broad)",
+        "notes": "Hype-heavy"
+      }
+    ],
+    "T3": [
+      {
+        "hashtag": "ai",
+        "sub_cluster": "Umbrella",
+        "notes": "MASSIVE noise on Instagram — 80%+ rejection expected"
+      },
+      {
+        "hashtag": "artificialintelligence",
+        "sub_cluster": "Umbrella",
+        "notes": "Broad, slightly cleaner than #ai"
+      },
+      {
+        "hashtag": "machinelearning",
+        "sub_cluster": "Umbrella",
+        "notes": "Mostly academic/off-topic on IG"
+      },
+      {
+        "hashtag": "deeplearning",
+        "sub_cluster": "Umbrella",
+        "notes": "Academic"
+      },
+      {
+        "hashtag": "neuralnetwork",
+        "sub_cluster": "Umbrella",
+        "notes": ""
+      },
+      {
+        "hashtag": "neuralnetworks",
+        "sub_cluster": "Umbrella",
+        "notes": ""
+      },
+      {
+        "hashtag": "datascience",
+        "sub_cluster": "Umbrella",
+        "notes": "Adjacent field, some AI content"
+      },
+      {
+        "hashtag": "bigdata",
+        "sub_cluster": "Umbrella",
+        "notes": ""
+      },
+      {
+        "hashtag": "algorithm",
+        "sub_cluster": "Umbrella",
+        "notes": ""
+      },
+      {
+        "hashtag": "algorithms",
+        "sub_cluster": "Umbrella",
+        "notes": ""
+      },
+      {
+        "hashtag": "computerscience",
+        "sub_cluster": "Umbrella",
+        "notes": ""
+      },
+      {
+        "hashtag": "chatgpt4",
+        "sub_cluster": "Umbrella",
+        "notes": "Volume noise, growth-hack overlap"
+      },
+      {
+        "hashtag": "gpt",
+        "sub_cluster": "Umbrella",
+        "notes": "High noise, generic"
+      },
+      {
+        "hashtag": "aitechnology",
+        "sub_cluster": "Umbrella",
+        "notes": ""
+      },
+      {
+        "hashtag": "aitech",
+        "sub_cluster": "Umbrella",
+        "notes": ""
+      },
+      {
+        "hashtag": "technology",
+        "sub_cluster": "Tech (broad)",
+        "notes": "Non-AI heavy"
+      },
+      {
+        "hashtag": "tech",
+        "sub_cluster": "Tech (broad)",
+        "notes": ""
+      },
+      {
+        "hashtag": "innovation",
+        "sub_cluster": "Tech (broad)",
+        "notes": "Corporate filler"
+      },
+      {
+        "hashtag": "digital",
+        "sub_cluster": "Tech (broad)",
+        "notes": "Filler-heavy"
+      },
+      {
+        "hashtag": "digitaltransformation",
+        "sub_cluster": "Tech (broad)",
+        "notes": "Enterprise angle"
+      },
+      {
+        "hashtag": "futuretech",
+        "sub_cluster": "Tech (broad)",
+        "notes": ""
+      },
+      {
+        "hashtag": "techies",
+        "sub_cluster": "Tech (broad)",
+        "notes": ""
+      },
+      {
+        "hashtag": "techcommunity",
+        "sub_cluster": "Tech (broad)",
+        "notes": ""
+      },
+      {
+        "hashtag": "software",
+        "sub_cluster": "Tech (broad)",
+        "notes": ""
+      },
+      {
+        "hashtag": "programming",
+        "sub_cluster": "Tech (broad)",
+        "notes": "AI-coding overlap but broad"
+      },
+      {
+        "hashtag": "saas",
+        "sub_cluster": "Adjacent",
+        "notes": "SaaS founders often mention AI"
+      },
+      {
+        "hashtag": "startup",
+        "sub_cluster": "Adjacent",
+        "notes": "Not AI-specific"
+      },
+      {
+        "hashtag": "entrepreneur",
+        "sub_cluster": "Adjacent",
+        "notes": "Too broad"
+      },
+      {
+        "hashtag": "business",
+        "sub_cluster": "Adjacent",
+        "notes": "Too broad"
+      },
+      {
+        "hashtag": "coder",
+        "sub_cluster": "Adjacent",
+        "notes": ""
+      },
+      {
+        "hashtag": "developer",
+        "sub_cluster": "Adjacent",
+        "notes": ""
+      },
+      {
+        "hashtag": "programmer",
+        "sub_cluster": "Adjacent",
+        "notes": ""
+      },
+      {
+        "hashtag": "coding",
+        "sub_cluster": "Adjacent",
+        "notes": ""
+      },
+      {
+        "hashtag": "cloudcomputing",
+        "sub_cluster": "Adjacent",
+        "notes": ""
+      },
+      {
+        "hashtag": "cybersecurity",
+        "sub_cluster": "Adjacent",
+        "notes": ""
+      },
+      {
+        "hashtag": "aiart",
+        "sub_cluster": "AI adjacent output",
+        "notes": "Image outputs, not text-AI creators"
+      },
+      {
+        "hashtag": "aiartist",
+        "sub_cluster": "AI adjacent output",
+        "notes": ""
+      },
+      {
+        "hashtag": "aiartwork",
+        "sub_cluster": "AI adjacent output",
+        "notes": ""
+      },
+      {
+        "hashtag": "aiimages",
+        "sub_cluster": "AI adjacent output",
+        "notes": ""
+      },
+      {
+        "hashtag": "aivideo",
+        "sub_cluster": "AI adjacent output",
+        "notes": ""
+      },
+      {
+        "hashtag": "aigenerated",
+        "sub_cluster": "AI adjacent output",
+        "notes": ""
+      },
+      {
+        "hashtag": "aidesign",
+        "sub_cluster": "AI adjacent output",
+        "notes": ""
+      },
+      {
+        "hashtag": "aiphotography",
+        "sub_cluster": "AI adjacent output",
+        "notes": ""
+      },
+      {
+        "hashtag": "midjourneyart",
+        "sub_cluster": "AI adjacent output",
+        "notes": ""
+      },
+      {
+        "hashtag": "stablediffusionart",
+        "sub_cluster": "AI adjacent output",
+        "notes": ""
+      }
+    ]
+  },
+  "T2_discovered": [
+    {
+      "hashtag": "generativeai",
+      "sub_cluster": "second-degree",
+      "notes": "Sourced from caption analysis of 67 gate-passing accounts on 2026-07-15, 6 distinct accounts, 21 occurrences"
+    },
+    {
+      "hashtag": "aihacks",
+      "sub_cluster": "second-degree",
+      "notes": "5 distinct accounts, 24 occurrences"
+    },
+    {
+      "hashtag": "airesearch",
+      "sub_cluster": "second-degree",
+      "notes": "4 distinct accounts, 4 occurrences"
+    },
+    {
+      "hashtag": "creativeai",
+      "sub_cluster": "second-degree",
+      "notes": "4 distinct accounts, 4 occurrences"
+    },
+    {
+      "hashtag": "aiexplained",
+      "sub_cluster": "second-degree",
+      "notes": "3 distinct accounts, 3 occurrences"
+    },
+    {
+      "hashtag": "aiprompts",
+      "sub_cluster": "second-degree",
+      "notes": "2 distinct accounts, 11 occurrences"
+    }
+  ],
+  "T_voice": {
+    "added_at": "2026-07-15",
+    "source": "MD-requested focus on voice AI market segment (KiteAI's product space)",
+    "notes": "Curator-picked product names + concept terms. Avoids generic #voiceai which collides with 'The Voice' TV franchise (learned in Phase 3 Instagram discovery, May 2026). Product-name hashtags chosen for low collision risk.",
+    "hashtags": [
+      {
+        "hashtag": "elevenlabs",
+        "sub_cluster": "product_name",
+        "notes": "Market leader in voice AI. High creator adoption expected."
+      },
+      {
+        "hashtag": "murfai",
+        "sub_cluster": "product_name",
+        "notes": "Established voice generation platform."
+      },
+      {
+        "hashtag": "playht",
+        "sub_cluster": "product_name",
+        "notes": "Established voice generation product."
+      },
+      {
+        "hashtag": "resembleai",
+        "sub_cluster": "product_name",
+        "notes": "Voice cloning specialist."
+      },
+      {
+        "hashtag": "vapi",
+        "sub_cluster": "product_name",
+        "notes": "KiteAI direct competitor. Strategically relevant."
+      },
+      {
+        "hashtag": "retell",
+        "sub_cluster": "product_name",
+        "notes": "KiteAI direct competitor. Strategically relevant."
+      },
+      {
+        "hashtag": "voiceflow",
+        "sub_cluster": "product_name",
+        "notes": "Conversational AI builder."
+      },
+      {
+        "hashtag": "humeai",
+        "sub_cluster": "product_name",
+        "notes": "Voice + emotion AI. Full 'humeai' to avoid collision with the name 'Hume'."
+      },
+      {
+        "hashtag": "conversationalai",
+        "sub_cluster": "concept",
+        "notes": "AI-prefixed compound (per P-2 finding: cleaner than ai-embedded)."
+      },
+      {
+        "hashtag": "voicebot",
+        "sub_cluster": "concept",
+        "notes": "Specific enough to avoid The Voice collision."
+      },
+      {
+        "hashtag": "voicecloning",
+        "sub_cluster": "concept",
+        "notes": "Domain-specific term, low collision risk."
+      },
+      {
+        "hashtag": "voicetech",
+        "sub_cluster": "concept",
+        "notes": "Broader term, moderate collision risk. Watching for signal quality."
+      }
+    ]
+  },
+  "skip_list": [
+    {
+      "hashtag": "motivation",
+      "reason": "Filler; no AI signal"
+    },
+    {
+      "hashtag": "inspiration",
+      "reason": "Filler"
+    },
+    {
+      "hashtag": "success",
+      "reason": "Filler"
+    },
+    {
+      "hashtag": "mindset",
+      "reason": "Filler"
+    },
+    {
+      "hashtag": "hustle",
+      "reason": "Filler"
+    },
+    {
+      "hashtag": "grind",
+      "reason": "Filler"
+    },
+    {
+      "hashtag": "quotes",
+      "reason": "Filler / motivational"
+    },
+    {
+      "hashtag": "future",
+      "reason": "Filler when isolated"
+    },
+    {
+      "hashtag": "growth",
+      "reason": "Filler"
+    },
+    {
+      "hashtag": "leadership",
+      "reason": "Off-topic"
+    },
+    {
+      "hashtag": "viral",
+      "reason": "Growth-hack tag; no AI signal"
+    },
+    {
+      "hashtag": "trending",
+      "reason": "Growth-hack"
+    },
+    {
+      "hashtag": "foryou",
+      "reason": "TikTok-style growth-hack, useless for topic filtering"
+    },
+    {
+      "hashtag": "fyp",
+      "reason": "Same"
+    },
+    {
+      "hashtag": "explore",
+      "reason": "Growth-hack"
+    },
+    {
+      "hashtag": "instagram",
+      "reason": "Meta-noise"
+    },
+    {
+      "hashtag": "instagood",
+      "reason": "Meta-noise"
+    },
+    {
+      "hashtag": "follow",
+      "reason": "Growth-hack"
+    },
+    {
+      "hashtag": "followback",
+      "reason": "Growth-hack"
+    },
+    {
+      "hashtag": "like4like",
+      "reason": "Engagement farm"
+    }
+  ]
+}

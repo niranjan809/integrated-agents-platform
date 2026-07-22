@@ -1,0 +1,43 @@
+{
+  "name": "creator-radar",
+  "version": "0.1.0",
+  "description": "Standalone agent that catalogs Instagram accounts posting AI content. Hybrid classifier: deterministic heuristics + LLM fallback.",
+  "type": "module",
+  "private": true,
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "init": "node scripts/init_turso.js",
+    "seed": "node scripts/seed.js",
+    "seed:tiktok": "node scripts/seed_tiktok.js",
+    "fetch": "node scripts/fetch.js",
+    "fetch:tiktok": "node scripts/fetch_tiktok.js",
+    "classify": "node scripts/classify.js",
+    "relevance": "node scripts/relevance.js",
+    "report": "node scripts/report.js",
+    "budget": "node -e \"import('./src/budget.js').then(m => m.printStatus())\"",
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "discover": "node scripts/discover_hashtag.js",
+    "discover:captions": "node scripts/discover_from_captions.js",
+    "discover:mentions": "node scripts/discover_from_mentions.js",
+    "fetch:candidates": "node scripts/fetch_candidates.js",
+    "fetch:mentions": "node scripts/fetch_mentions.js",
+    "report:candidates": "node scripts/report_candidates.js",
+    "search:adhoc": "node scripts/search_adhoc.js",
+    "keyword:add": "node scripts/keyword_add.js",
+    "keyword:remove": "node scripts/keyword_remove.js",
+    "account:add": "node scripts/account_add.js",
+    "account:remove": "node scripts/account_remove.js"
+  },
+  "dependencies": {
+    "@fastify/cookie": "^11.0.2",
+    "@fastify/cors": "^11.2.0",
+    "@libsql/client": "^0.17.4",
+    "bcrypt": "^6.0.0",
+    "dotenv": "^16.6.1",
+    "fastify": "^5.9.0",
+    "pg": "^8.22.0"
+  }
+}

@@ -383,7 +383,7 @@ export default function AdminDomainPage() {
                 {leaderboards.map((lb) => (
                   <tr key={lb.id} className={`hover:bg-gray-800 ${editId === lb.id ? "bg-indigo-950/30" : ""}`}>
                     <td className="px-3 py-3">
-                      <Link to={`/leaderboard/${lb.id}`} className="font-medium text-indigo-400 hover:underline">{lb.name}</Link>
+                      <span className="font-medium text-gray-100">{lb.name}</span>
                     </td>
                     <td className="px-3 py-3 text-gray-400">{lb.publisher}</td>
                     <td className="px-3 py-3">

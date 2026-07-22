@@ -15,7 +15,9 @@ def canonical_tokens(name: str) -> frozenset:
     Reduce a model name to an order-independent frozenset of tokens.
 
     Steps:
-      1. Lowercase + collapse separators (-, _, ., /) to spaces
+      1. Lowercase + collapse separators (-, _, /) to spaces. The dot is kept so
+         version numbers stay intact ("2.5", "5.5"); emojis/other punctuation are
+         dropped. Stray edge dots are trimmed ("5." → "5").
       2. Strip any leading known company-name tokens
       3. Return frozenset (order-independent matching)
 
@@ -27,9 +29,18 @@ def canonical_tokens(name: str) -> frozenset:
       "GPT-4o"                    → {gpt, 4o}             (different — preserved)
     """
     s = name.lower().strip()
-    s = re.sub(r"[-_./]", " ", s)
+    # Collapse separators to spaces — but NOT the dot, so version numbers stay
+    # intact. Splitting on "." turned "gpt-5.5" into {gpt,5,5} → {gpt,5}, making
+    # it identical to "gpt-5" and wrongly merging distinct versions.
+    s = re.sub(r"[-_/]", " ", s)
+    # Drop emojis, punctuation and other symbols so decoration-only variants
+    # collapse to the same key ("🔥 deepseek r1" == "deepseek r1"). \w keeps
+    # letters/digits (Unicode-aware); keep "." so "2.5"/"5.5" survive.
+    s = re.sub(r"[^\w\s.]", " ", s)
     s = re.sub(r"\s+", " ", s).strip()
-    tokens = s.split()
+    # Strip stray edge dots ("5." → "5") while keeping internal ones ("5.5").
+    tokens = [t.strip(".") for t in s.split()]
+    tokens = [t for t in tokens if t]
     while tokens and tokens[0] in _COMPANY_PREFIXES:
         tokens = tokens[1:]
     return frozenset(tokens) if tokens else frozenset({s})

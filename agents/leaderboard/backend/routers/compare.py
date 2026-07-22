@@ -1,9 +1,8 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
-from typing import List
 from database import get_db
 from models import Leaderboard, RankingEntry
-from model_normalize import model_matches, canonical_tokens
+from model_normalize import model_matches
 
 router = APIRouter(prefix="/compare", tags=["compare"])
 
@@ -87,11 +86,14 @@ def compare_companies(company: str = Query(...), db: Session = Depends(get_db)):
 
 @router.get("/models")
 def compare_models(model: str = Query(...), db: Session = Depends(get_db)):
-    # Collect all distinct model names and filter with canonical normalization.
-    # This handles word-order variation, company-prefix stripping, and
-    # preserves version distinctions (gpt-4 ≠ gpt-4o).
-    all_names = db.query(RankingEntry.model_name).distinct().all()
-    matching_names = {r.model_name for r in all_names if model_matches(model, r.model_name)}
+    # The clicked chip is one unique (canonical) model, so show exactly the
+    # leaderboards that carry THAT model. Matching is by canonical identity, which
+    # normalises formatting only — vendor prefix, hyphens/dashes/dots, emojis,
+    # casing, word order — while keeping different versions/sizes/variants apart
+    # (GPT-5 ≠ GPT-5.5 ≠ GPT-5 High). Ranking pages keep the exact scanned name.
+    all_names = [r.model_name for r in db.query(RankingEntry.model_name).distinct().all() if r.model_name]
+
+    matching_names = {nm for nm in all_names if model_matches(model, nm)}
 
     if not matching_names:
         return {"model": model, "appearances": []}
@@ -99,16 +101,35 @@ def compare_models(model: str = Query(...), db: Session = Depends(get_db)):
     entries = (
         db.query(RankingEntry)
         .filter(RankingEntry.model_name.in_(matching_names))
-        .order_by(RankingEntry.leaderboard_id, RankingEntry.rank)
         .all()
     )
 
+    # One row per leaderboard: a model should appear once per board. Some boards
+    # carry stale duplicate rows (a scrape that didn't fully replace older entries),
+    # which would otherwise show the same model 3–6× with conflicting ranks. Keep
+    # the most recent scrape (recorded_at), tie-breaking to the better rank.
+    from datetime import datetime
+    _floor = datetime.min
+
+    def _better(cand, cur):
+        c_ts, u_ts = cand.recorded_at or _floor, cur.recorded_at or _floor
+        if c_ts != u_ts:
+            return c_ts > u_ts
+        cr = cand.rank if cand.rank is not None else 10**9
+        ur = cur.rank if cur.rank is not None else 10**9
+        return cr < ur
+
+    by_lb: dict = {}
+    for e in entries:
+        cur = by_lb.get(e.leaderboard_id)
+        if cur is None or _better(e, cur):
+            by_lb[e.leaderboard_id] = e
+
     # Preload leaderboards to avoid N+1
-    lb_ids = {e.leaderboard_id for e in entries}
-    lbs = {lb.id: lb for lb in db.query(Leaderboard).filter(Leaderboard.id.in_(lb_ids)).all()}
+    lbs = {lb.id: lb for lb in db.query(Leaderboard).filter(Leaderboard.id.in_(by_lb.keys())).all()}
 
     results = []
-    for e in entries:
+    for e in by_lb.values():
         lb = lbs.get(e.leaderboard_id)
         results.append({
             "leaderboard_id": e.leaderboard_id,
@@ -120,4 +141,6 @@ def compare_models(model: str = Query(...), db: Session = Depends(get_db)):
             "scores": e.scores or {},
         })
 
+    # Best rank first (Nones last), then leaderboard name.
+    results.sort(key=lambda r: (r["rank"] if r["rank"] is not None else 10**9, r["leaderboard_name"]))
     return {"model": model, "appearances": results}

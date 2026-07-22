@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
-import { api, DomainCategory, Leaderboard, PromptConfig, getCached, invalidateCache } from "@/lib/api";
+import { useNavigate } from "react-router-dom";
+import { api, DomainCategory, Leaderboard, PromptConfig, RankingChange, getCached, invalidateCache } from "@/lib/api";
 import { timeAgo, matchesDomain } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
 
@@ -112,6 +112,16 @@ function ScanStatusWidget() {
   );
 }
 
+type AdminView = "dashboard" | "analytics" | "pipeline" | "prompts";
+
+// Where each editable prompt's google/gemini-2.5-flash call lives, so the Prompts
+// tab documents every call site (editable + code-defined) in one place.
+const PROMPT_LOCATION: Record<string, string> = {
+  normalization: "agent/normalizer.py → _call_gemini()",
+  scope_classification: "agent/normalizer.py → classify_scope()",
+  scraper_note: "agent/scraper.py → _generate_scraper_note()",
+};
+
 export default function AdminPage() {
   const navigate = useNavigate();
   const { isAdmin, login } = useAuth();
@@ -141,17 +151,24 @@ export default function AdminPage() {
   const [showPendingPanel, setShowPendingPanel] = useState(false);
   const [pendingLbs, setPendingLbs] = useState<Leaderboard[]>([]);
   const [loadingPending, setLoadingPending] = useState(false);
+  const [rescanningId, setRescanningId] = useState<number | null>(null);
 
   const [uncategorized, setUncategorized] = useState<Leaderboard[]>([]);
   const [showUncategorized, setShowUncategorized] = useState(false);
   const [assigningLb, setAssigningLb] = useState<number | null>(null);
 
-  const [showWorkflow, setShowWorkflow] = useState(false);
-  const [showPrompts, setShowPrompts] = useState(false);
+  const [activeView, setActiveView] = useState<AdminView>("dashboard");
   const [prompts, setPrompts] = useState<PromptConfig[]>([]);
   const [editedPrompts, setEditedPrompts] = useState<Record<string, string>>({});
   const [savingPrompt, setSavingPrompt] = useState<string | null>(null);
   const [promptMsg, setPromptMsg] = useState<{ key: string; ok: boolean; text: string } | null>(null);
+  const [codePrompts, setCodePrompts] = useState<{ label: string; location: string; purpose: string; prompt_text: string }[]>([]);
+
+  // Analytics change-log management
+  const [changeRows, setChangeRows] = useState<RankingChange[]>([]);
+  const [loadingChanges, setLoadingChanges] = useState(false);
+  const [changeBusy, setChangeBusy] = useState(false);
+  const [changeMsg, setChangeMsg] = useState<string | null>(null);
 
   useEffect(() => {
     if (isAdmin) { loadAll(); return; }
@@ -162,14 +179,54 @@ export default function AdminPage() {
   }, [isAdmin]);
 
   useEffect(() => {
-    if (!showPrompts || prompts.length > 0) return;
+    if (activeView !== "prompts" || prompts.length > 0) return;
     api.listPrompts().then((list) => {
       setPrompts(list);
       const init: Record<string, string> = {};
       list.forEach((p) => { init[p.key] = p.prompt_text; });
       setEditedPrompts(init);
     }).catch(() => {});
-  }, [showPrompts]);
+    api.listGeminiCodePrompts().then(setCodePrompts).catch(() => {});
+  }, [activeView]);
+
+  function loadChanges() {
+    setLoadingChanges(true);
+    setChangeMsg(null);
+    api.getChanges()
+      .then(setChangeRows)
+      .catch(() => setChangeMsg("Failed to load change log"))
+      .finally(() => setLoadingChanges(false));
+  }
+
+  useEffect(() => { if (activeView === "analytics" && changeRows.length === 0) loadChanges(); }, [activeView]);
+
+  // Delete one "update" (all changes a leaderboard recorded in one scan event).
+  async function deleteChangeEvent(lbId: number, recordedAt: string) {
+    if (!confirm("Delete this update from the change log? This can't be undone.")) return;
+    setChangeBusy(true);
+    setChangeMsg(null);
+    try {
+      const res = await api.adminDeleteChangeEvent(lbId, recordedAt);
+      setChangeRows((prev) => prev.filter((c) => !(c.leaderboard_id === lbId && c.recorded_at === recordedAt)));
+      setChangeMsg(`Deleted ${res.deleted} change${res.deleted !== 1 ? "s" : ""}.`);
+    } catch (e: unknown) {
+      setChangeMsg((e as Error).message || "Delete failed");
+    } finally { setChangeBusy(false); }
+  }
+
+  // Clear a leaderboard's entire change-log history.
+  async function clearChangesForBoard(lbId: number, name: string) {
+    if (!confirm(`Clear the ENTIRE change log for "${name}"? This can't be undone.`)) return;
+    setChangeBusy(true);
+    setChangeMsg(null);
+    try {
+      const res = await api.adminClearChanges(lbId);
+      setChangeRows((prev) => prev.filter((c) => c.leaderboard_id !== lbId));
+      setChangeMsg(`Cleared ${res.deleted} change${res.deleted !== 1 ? "s" : ""} for "${name}".`);
+    } catch (e: unknown) {
+      setChangeMsg((e as Error).message || "Clear failed");
+    } finally { setChangeBusy(false); }
+  }
 
   async function loadAll() {
     setLoading(true);
@@ -253,6 +310,30 @@ export default function AdminPage() {
       const lbs = await api.listLeaderboards();
       setErrorLbs(lbs.filter((lb) => lb.last_scan_status === "error"));
     } catch {} finally { setLoadingErrors(false); }
+  }
+
+  // Retry a failed scan straight from the error panel. Rescan runs as a background
+  // task, so we wait for the scan to clear, then refresh the error list (a fixed
+  // board drops off automatically).
+  async function handleErrorRescan(lb: Leaderboard) {
+    setRescanningId(lb.id);
+    try {
+      await api.rescan(lb.id);
+      const start = Date.now();
+      await new Promise<void>((resolve) => {
+        const timer = setInterval(async () => {
+          let done = false;
+          try {
+            const r = await fetch(`${BASE}/scan-status`);
+            if (r.ok) done = !(await r.json()).active;
+          } catch { /* transient — keep polling */ }
+          if (done || Date.now() - start > 5 * 60 * 1000) { clearInterval(timer); resolve(); }
+        }, 3000);
+      });
+      const lbs = await api.listLeaderboards();
+      setErrorLbs(lbs.filter((x) => x.last_scan_status === "error"));
+    } catch { /* ignore — leave row as-is */ }
+    finally { setRescanningId(null); }
   }
 
   async function togglePendingPanel() {
@@ -362,43 +443,63 @@ export default function AdminPage() {
     );
   }
 
+  // Group the change log by leaderboard → update (scan event) for the manage panel.
+  const changeGroups = (() => {
+    const boards = new Map<number, { id: number; name: string; domain: string; events: { recordedAt: string; triggeredBy: string | null; count: number }[] }>();
+    for (const c of changeRows) {
+      if (!boards.has(c.leaderboard_id))
+        boards.set(c.leaderboard_id, { id: c.leaderboard_id, name: c.leaderboard_name, domain: c.domain, events: [] });
+      const b = boards.get(c.leaderboard_id)!;
+      const key = c.recorded_at ?? "unknown";
+      let ev = b.events.find((e) => e.recordedAt === key);
+      if (!ev) { ev = { recordedAt: key, triggeredBy: c.triggered_by, count: 0 }; b.events.push(ev); }
+      ev.count++;
+    }
+    return Array.from(boards.values());
+  })();
+
+  const NAV: { key: AdminView; label: string }[] = [
+    { key: "dashboard", label: "◫  Dashboard" },
+    { key: "analytics", label: "📈  Analytics" },
+    { key: "pipeline", label: "⚙  Pipeline" },
+    { key: "prompts", label: "📝  Prompts" },
+  ];
+
   return (
     <div className="max-w-5xl mx-auto space-y-6">
-      <ScanStatusWidget />
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-100">Admin Dashboard</h1>
-          <p className="text-gray-500 mt-1">Manage domains and leaderboards.</p>
-        </div>
-        <div className="flex gap-2">
+      {/* Section tabs — horizontal so it doesn't clash with the platform's own
+          left sidebar when this admin is embedded inside the platform panel */}
+      <div className="flex flex-wrap gap-2 border-b border-gray-800 pb-3 sticky top-0 bg-[#0c0c14] z-10">
+        {NAV.map((item) => (
           <button
-            onClick={() => { setShowWorkflow((v) => !v); setShowPrompts(false); }}
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${showWorkflow ? "bg-indigo-950 border-indigo-700 text-indigo-300" : "border-gray-700 text-gray-400 hover:border-gray-500 hover:text-gray-200"}`}
+            key={item.key}
+            onClick={() => setActiveView(item.key)}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              activeView === item.key
+                ? "bg-indigo-950 border border-indigo-700 text-indigo-300"
+                : "border border-transparent text-gray-400 hover:bg-gray-800 hover:text-gray-200"
+            }`}
           >
-            ⚙ Pipeline
+            {item.label}
           </button>
-          <button
-            onClick={() => { setShowPrompts((v) => !v); setShowWorkflow(false); }}
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${showPrompts ? "bg-violet-950 border-violet-700 text-violet-300" : "border-gray-700 text-gray-400 hover:border-gray-500 hover:text-gray-200"}`}
-          >
-            📝 Prompts
-          </button>
-        </div>
+        ))}
       </div>
 
-      {showWorkflow && (
+      {activeView === "pipeline" && (
         <div className="bg-gray-900 rounded-xl border border-indigo-900/50 overflow-hidden">
           <div className="px-5 py-3 border-b border-indigo-900/30 flex items-center justify-between">
             <h2 className="font-semibold text-indigo-300 text-sm">⚙ System Pipeline</h2>
-            <button onClick={() => setShowWorkflow(false)} className="text-gray-600 hover:text-gray-400 text-sm">✕</button>
+            <button onClick={() => setActiveView("dashboard")} className="text-gray-600 hover:text-gray-400 text-sm">✕</button>
           </div>
           <div className="px-5 py-4 space-y-4">
             {[
               { step: "1", color: "bg-indigo-900/40 border-indigo-800/60", title: "Add Leaderboard", desc: "Admin fills in name, URL, domain, and primary metrics. Backend inserts a row with status=pending and triggers normalisation.", detail: "POST /admin/leaderboards → Leaderboard row created" },
               { step: "2", color: "bg-violet-900/40 border-violet-800/60", title: "Normalizer (Gemini)", desc: "Fetches the official URL, extracts visible text, sends it to Gemini 2.5 Flash via OpenRouter. Gemini maps the text to structured fields: description, methodology, benchmark datasets, metrics, scope, domain, type, and a scraper note.", detail: "agent/normalizer.py → _call_gemini() → response_format: json_object" },
-              { step: "3", color: "bg-emerald-900/40 border-emerald-800/60", title: "Scraper (on demand)", desc: "On user visit, data older than 14 days triggers a live scrape; otherwise the cached DB rows are returned instantly. Re-scan always forces a fresh fetch. Parsers used: Open ASR → HuggingFace dataset JSON API; SpeechColab → GitHub Pages HTML; GitHub-hosted leaderboards → README markdown table (regex); HuggingFace Spaces → Playwright render; all others → Playwright + BeautifulSoup generic table extractor.", detail: "agent/scraper.py → PARSER_MAP / _parse_github_readme / _parse_hf_space / _parse_generic" },
-              { step: "4", color: "bg-amber-900/40 border-amber-800/60", title: "Post-Scan Enrichment (background)", desc: "After every successful scrape the HTTP response is sent immediately, then background tasks run: (a) Scraper note generated by Gemini if not yet set. (b) Scope classified by Gemini if not yet set — uses stored description text, no re-fetch. The detail page re-fetches metadata ~25 s after rescan to pick up enrichment results.", detail: "FastAPI BackgroundTasks → _enrich_leaderboard() → scraper_note + classify_scope()" },
-              { step: "5", color: "bg-rose-900/40 border-rose-800/60", title: "Browser Cache", desc: "Frontend caches API responses in memory + localStorage (30-min TTL for leaderboard metadata, 60-min for rankings). Rescan invalidates the relevant keys so the next fetch is always fresh. Domain grid also refreshes after any rescan.", detail: "api.ts → req() with ttlMs → invalidateCache() on rescan/edit" },
+              { step: "3", color: "bg-emerald-900/40 border-emerald-800/60", title: "Scraper (on demand)", desc: "On a user visit, data older than 14 days triggers a live scrape; otherwise cached DB rows return instantly. Re-scan and the scheduled 14-day sweep always force a fresh fetch. Dispatch by source: Open ASR → HuggingFace dataset JSON API; SpeechColab → GitHub Pages HTML; github.com URLs → README markdown table; HuggingFace Spaces → Playwright render; everything else → generic parser (httpx + BeautifulSoup first, Playwright fallback when the table needs JS). Multi-row / grouped header rows are detected and skipped, and rows are de-duplicated by normalised model name.", detail: "agent/scraper.py → PARSER_MAP / _parse_github_readme / _parse_hf_space / _parse_generic" },
+              { step: "4", color: "bg-teal-900/40 border-teal-800/60", title: "Freshness Reorder (forced refresh only)", desc: "On a rescan/scheduled sweep, the generic parser runs a Playwright live-render pass and re-orders the httpx rows to match the live ranking — fixing JS boards that server-render a STALE snapshot the fast httpx read would otherwise capture. It is fallback-safe: needs ≥90% row coverage or it keeps the original order untouched.", detail: "agent/scraper.py → _parse_generic(fresh=True) → _reorder_to_live_order()" },
+              { step: "5", color: "bg-sky-900/40 border-sky-800/60", title: "Ranking Change-Log", desc: "After a successful scrape (≥2 rows), the previous stored positions are diffed against the freshly scraped order. Every model that moved up/down, entered, or dropped out is written as a change row with the from→to scan times. The first scan of a board is a baseline and records nothing. These rows power the Analytics tab.", detail: "agent/scraper.py → _positions_from_db() → _record_ranking_changes() → RankingChange" },
+              { step: "6", color: "bg-amber-900/40 border-amber-800/60", title: "Post-Scan Enrichment (background)", desc: "After every successful scrape the HTTP response is sent immediately, then background tasks run: (a) Scraper note generated by Gemini if not yet set. (b) Scope classified by Gemini if not yet set — uses stored description text, no re-fetch. The detail page re-fetches metadata ~25 s after rescan to pick up enrichment results.", detail: "FastAPI BackgroundTasks → _enrich_leaderboard() → scraper_note + classify_scope()" },
+              { step: "7", color: "bg-rose-900/40 border-rose-800/60", title: "Browser Cache", desc: "Frontend caches API responses in memory + localStorage (30-min TTL for leaderboard metadata, 60-min for rankings). Rescan invalidates the relevant keys so the next fetch is always fresh; the domain grid and Analytics also refresh after any rescan.", detail: "api.ts → req() with ttlMs → invalidateCache() on rescan/edit" },
             ].map(({ step, color, title, desc, detail }) => (
               <div key={step} className={`rounded-lg border ${color} p-4`}>
                 <div className="flex items-start gap-3">
@@ -415,22 +516,27 @@ export default function AdminPage() {
         </div>
       )}
 
-      {showPrompts && (
+      {activeView === "prompts" && (
         <div className="bg-gray-900 rounded-xl border border-violet-900/50 overflow-hidden">
           <div className="px-5 py-3 border-b border-violet-900/30 flex items-center justify-between">
-            <h2 className="font-semibold text-violet-300 text-sm">📝 Gemini Prompt Templates</h2>
-            <button onClick={() => setShowPrompts(false)} className="text-gray-600 hover:text-gray-400 text-sm">✕</button>
+            <div>
+              <h2 className="font-semibold text-violet-300 text-sm">📝 Gemini Prompts — every Gemini-2.5-Flash call</h2>
+              <p className="text-[11px] text-gray-600 mt-0.5">Editable templates are stored in the database; the rest live in the backend code and are shown read-only.</p>
+            </div>
+            <button onClick={() => setActiveView("dashboard")} className="text-gray-600 hover:text-gray-400 text-sm">✕</button>
           </div>
           {prompts.length === 0 ? (
             <div className="p-6 text-center text-gray-500 text-sm">Loading prompts…</div>
           ) : (
             <div className="divide-y divide-gray-800">
+              <p className="px-5 pt-3 font-mono text-xs font-semibold uppercase tracking-wide text-gray-500">Editable (stored in DB)</p>
               {prompts.map((p) => (
                 <div key={p.key} className="px-5 py-4 space-y-2">
                   <div className="flex items-start justify-between gap-4">
                     <div>
                       <p className="font-semibold text-gray-100 text-sm">{p.label}</p>
                       {p.description && <p className="text-xs text-gray-500 mt-0.5">{p.description}</p>}
+                      {PROMPT_LOCATION[p.key] && <p className="text-[11px] font-mono text-gray-600 mt-0.5">📍 {PROMPT_LOCATION[p.key]}</p>}
                       {p.updated_at && <p className="text-[11px] text-gray-700 mt-0.5">Last saved: {new Date(p.updated_at + "Z").toLocaleString()}</p>}
                     </div>
                     <div className="flex gap-2 shrink-0">
@@ -455,11 +561,93 @@ export default function AdminPage() {
                   )}
                 </div>
               ))}
+
+              {codePrompts.length > 0 && (
+                <>
+                  <p className="px-5 pt-4 font-mono text-xs font-semibold uppercase tracking-wide text-gray-500">
+                    Defined in code (read-only)
+                  </p>
+                  {codePrompts.map((c) => (
+                    <div key={c.label} className="px-5 py-4 space-y-2">
+                      <div>
+                        <p className="font-semibold text-gray-100 text-sm">
+                          {c.label}
+                          <span className="ml-2 font-mono text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-gray-800 text-gray-500">read-only</span>
+                        </p>
+                        <p className="text-xs text-gray-500 mt-0.5">{c.purpose}</p>
+                        <p className="text-[11px] font-mono text-gray-600 mt-0.5">📍 {c.location}</p>
+                      </div>
+                      <pre className="w-full bg-gray-950 border border-gray-800 text-gray-400 text-xs font-mono rounded-lg px-3 py-2.5 whitespace-pre-wrap leading-relaxed max-h-64 overflow-y-auto">{c.prompt_text}</pre>
+                    </div>
+                  ))}
+                </>
+              )}
             </div>
           )}
         </div>
       )}
 
+      {activeView === "analytics" && (
+        <div className="bg-gray-900 rounded-xl border border-emerald-900/50 overflow-hidden">
+          <div className="px-5 py-3 border-b border-emerald-900/30 flex items-center justify-between">
+            <h2 className="font-semibold text-emerald-300 text-sm">📈 Change-Log Management</h2>
+            <div className="flex items-center gap-3">
+              <button onClick={loadChanges} disabled={loadingChanges}
+                className="text-xs text-gray-400 hover:text-gray-200 disabled:opacity-50">↻ Refresh</button>
+              <button onClick={() => setActiveView("dashboard")} className="text-gray-600 hover:text-gray-400 text-sm">✕</button>
+            </div>
+          </div>
+          <p className="px-5 py-2 text-xs text-gray-500 border-b border-gray-800">
+            Delete individual updates (all changes from one scan) or clear a leaderboard's entire change log.
+            These edits are permanent and also remove the entries from the public Analytics page.
+          </p>
+          {changeMsg && <p className="px-5 py-2 text-xs text-emerald-400 border-b border-gray-800">{changeMsg}</p>}
+          {loadingChanges ? (
+            <div className="p-6 text-center text-gray-500 text-sm">Loading change log…</div>
+          ) : changeGroups.length === 0 ? (
+            <div className="p-6 text-center text-gray-500 text-sm">No change-log entries recorded yet.</div>
+          ) : (
+            <div className="divide-y divide-gray-800">
+              {changeGroups.map((b) => (
+                <div key={b.id} className="px-5 py-3">
+                  <div className="flex items-center justify-between gap-3 mb-2">
+                    <span className="font-medium text-gray-100 truncate">
+                      {b.name} <span className="text-xs text-gray-500">· {b.domain}</span>
+                    </span>
+                    <button onClick={() => clearChangesForBoard(b.id, b.name)} disabled={changeBusy}
+                      className="shrink-0 text-xs text-red-400 border border-red-900/60 rounded px-2 py-1 hover:bg-red-900/30 disabled:opacity-50 transition-colors">
+                      Clear all
+                    </button>
+                  </div>
+                  <div className="space-y-1">
+                    {b.events.map((ev) => (
+                      <div key={ev.recordedAt} className="flex items-center justify-between gap-3 text-xs bg-gray-950/40 rounded px-2 py-1.5">
+                        <span className="text-gray-400 truncate">
+                          {ev.recordedAt !== "unknown" ? new Date(ev.recordedAt + "Z").toLocaleString() : "—"}
+                          {" · "}{ev.count} change{ev.count !== 1 ? "s" : ""}
+                          {ev.triggeredBy && <span className="ml-1 text-gray-600">({ev.triggeredBy})</span>}
+                        </span>
+                        <button onClick={() => deleteChangeEvent(b.id, ev.recordedAt)} disabled={changeBusy}
+                          className="shrink-0 text-red-400 hover:text-red-300 disabled:opacity-50 transition-colors">
+                          Delete
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeView === "dashboard" && (
+        <>
+      <ScanStatusWidget />
+      <div>
+        <h1 className="text-2xl font-bold text-gray-100">Admin Dashboard</h1>
+        <p className="text-gray-500 mt-1">Manage domains and leaderboards.</p>
+      </div>
       {status && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
@@ -499,15 +687,23 @@ export default function AdminPage() {
           ) : (
             <div className="divide-y divide-gray-800">
               {errorLbs.map((lb) => (
-                <div key={lb.id} onClick={() => navigate(`/leaderboard/${lb.id}`)}
-                  className="flex items-center justify-between px-4 py-3 hover:bg-gray-800 transition-colors cursor-pointer group">
+                <div key={lb.id} className="flex items-center justify-between px-4 py-3 gap-4">
                   <div className="min-w-0">
-                    <p className="font-medium text-gray-100 group-hover:text-indigo-400 truncate">{lb.name}</p>
+                    <p className="font-medium text-gray-100 truncate">{lb.name}</p>
                     <p className="text-xs text-gray-500 mt-0.5">{lb.publisher} · {lb.domain}</p>
                   </div>
-                  <div className="text-right shrink-0 ml-4">
-                    <p className="text-xs text-red-400">scan failed</p>
-                    <p className="text-xs text-gray-600 mt-0.5">{timeAgo(lb.last_scanned_at)}</p>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <div className="text-right">
+                      <p className="text-xs text-red-400">scan failed</p>
+                      <p className="text-xs text-gray-600 mt-0.5">{timeAgo(lb.last_scanned_at)}</p>
+                    </div>
+                    <button
+                      onClick={() => handleErrorRescan(lb)}
+                      disabled={rescanningId !== null}
+                      className="px-3 py-1.5 text-xs font-medium bg-indigo-600 text-white rounded-lg hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {rescanningId === lb.id ? "Scanning…" : "↻ Re-scan"}
+                    </button>
                   </div>
                 </div>
               ))}
@@ -532,10 +728,10 @@ export default function AdminPage() {
           ) : (
             <div className="divide-y divide-gray-800">
               {pendingLbs.map((lb) => (
-                <div key={lb.id} onClick={() => navigate(`/leaderboard/${lb.id}`)}
-                  className="flex items-center justify-between px-4 py-3 hover:bg-gray-800 transition-colors cursor-pointer group">
+                <div key={lb.id}
+                  className="flex items-center justify-between px-4 py-3">
                   <div className="min-w-0">
-                    <p className="font-medium text-gray-100 group-hover:text-indigo-400 truncate">{lb.name}</p>
+                    <p className="font-medium text-gray-100 truncate">{lb.name}</p>
                     <p className="text-xs text-gray-500 mt-0.5">{lb.publisher} · {lb.domain}</p>
                   </div>
                   <div className="text-right shrink-0 ml-4">
@@ -565,7 +761,7 @@ export default function AdminPage() {
               {uncategorized.map((lb) => (
                 <div key={lb.id} className="flex items-center justify-between px-4 py-3 gap-4">
                   <div className="min-w-0 flex-1">
-                    <Link to={`/leaderboard/${lb.id}`} className="font-medium text-gray-100 hover:text-indigo-400 transition-colors truncate block">{lb.name}</Link>
+                    <span className="font-medium text-gray-100 truncate block">{lb.name}</span>
                     <p className="text-xs text-gray-500 mt-0.5">{lb.publisher} · <span className="text-amber-400">{lb.domain}</span></p>
                   </div>
                   <div className="shrink-0">
@@ -733,6 +929,8 @@ export default function AdminPage() {
               </form>
             </div>
           )}
+        </>
+      )}
         </>
       )}
     </div>

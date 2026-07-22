@@ -325,31 +325,31 @@ export default function LeaderboardPage() {
           <div className="px-4 pb-4 space-y-3 text-sm text-gray-300 border-t border-gray-800">
             {lb.description && (
               <div className="pt-3">
-                <p className="text-gray-500 uppercase text-xs font-semibold mb-1">Description</p>
+                <p className="font-mono text-gray-500 uppercase text-xs font-semibold mb-1">Description</p>
                 <p className="leading-relaxed">{lb.description}</p>
               </div>
             )}
             {lb.methodology && (
               <div>
-                <p className="text-gray-500 uppercase text-xs font-semibold mb-1">Methodology</p>
+                <p className="font-mono text-gray-500 uppercase text-xs font-semibold mb-1">Methodology</p>
                 <p className="leading-relaxed">{lb.methodology}</p>
               </div>
             )}
             {lb.benchmark_datasets && lb.benchmark_datasets.length > 0 && (
               <div>
-                <p className="text-gray-500 uppercase text-xs font-semibold mb-1">Benchmark Datasets</p>
+                <p className="font-mono text-gray-500 uppercase text-xs font-semibold mb-1">Benchmark Datasets</p>
                 <p>{lb.benchmark_datasets.join(", ")}</p>
               </div>
             )}
             {lb.update_frequency && (
               <div>
-                <p className="text-gray-500 uppercase text-xs font-semibold mb-1">Update Frequency</p>
+                <p className="font-mono text-gray-500 uppercase text-xs font-semibold mb-1">Update Frequency</p>
                 <p>{lb.update_frequency}</p>
               </div>
             )}
             {lb.notes && (
               <div>
-                <p className="text-gray-500 uppercase text-xs font-semibold mb-1">Notes</p>
+                <p className="font-mono text-gray-500 uppercase text-xs font-semibold mb-1">Notes</p>
                 <p className="leading-relaxed">{lb.notes}</p>
               </div>
             )}
@@ -380,34 +380,34 @@ export default function LeaderboardPage() {
               return (
                 <div className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-3">
                   <div>
-                    <p className="text-gray-500 text-xs uppercase font-semibold mb-0.5">Date / Time</p>
+                    <p className="font-mono text-gray-500 text-xs uppercase font-semibold mb-0.5">Date / Time</p>
                     <p className="text-gray-300">{new Date(log.timestamp + "Z").toLocaleString()}</p>
                   </div>
                   <div>
-                    <p className="text-gray-500 text-xs uppercase font-semibold mb-0.5">Status</p>
+                    <p className="font-mono text-gray-500 text-xs uppercase font-semibold mb-0.5">Status</p>
                     <p className={`font-medium ${statusColor(log.status)}`}>
                       {statusDot(log.status)} {log.status}
                     </p>
                   </div>
                   <div>
-                    <p className="text-gray-500 text-xs uppercase font-semibold mb-0.5">Records Updated</p>
+                    <p className="font-mono text-gray-500 text-xs uppercase font-semibold mb-0.5">Records Updated</p>
                     <p className="text-gray-300">{log.records_updated ?? "—"}</p>
                   </div>
                   <div>
-                    <p className="text-gray-500 text-xs uppercase font-semibold mb-0.5">Duration</p>
+                    <p className="font-mono text-gray-500 text-xs uppercase font-semibold mb-0.5">Duration</p>
                     <p className="text-gray-300">{log.duration_ms != null ? `${log.duration_ms}ms` : "—"}</p>
                   </div>
                   <div>
-                    <p className="text-gray-500 text-xs uppercase font-semibold mb-0.5">HTTP Status</p>
+                    <p className="font-mono text-gray-500 text-xs uppercase font-semibold mb-0.5">HTTP Status</p>
                     <p className="text-gray-300">{log.http_status ?? "—"}</p>
                   </div>
                   <div>
-                    <p className="text-gray-500 text-xs uppercase font-semibold mb-0.5">Triggered By</p>
+                    <p className="font-mono text-gray-500 text-xs uppercase font-semibold mb-0.5">Triggered By</p>
                     <p className="text-gray-300 capitalize">{log.triggered_by}</p>
                   </div>
                   {log.error_message && (
                     <div className="col-span-full">
-                      <p className="text-gray-500 text-xs uppercase font-semibold mb-0.5">Error</p>
+                      <p className="font-mono text-gray-500 text-xs uppercase font-semibold mb-0.5">Error</p>
                       <p className="text-red-400 text-xs break-all">{log.error_message}</p>
                     </div>
                   )}

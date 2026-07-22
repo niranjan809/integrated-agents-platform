@@ -95,7 +95,7 @@ export default function SearchPage() {
               <div className="absolute top-full left-0 right-0 mt-1 bg-gray-900 border border-gray-700 rounded-xl shadow-lg z-50 overflow-hidden">
                 {suggestions!.leaderboards.length > 0 && (
                   <div>
-                    <p className="px-3 pt-2 pb-1 text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Leaderboards</p>
+                    <p className="px-3 pt-2 pb-1 font-mono text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Leaderboards</p>
                     {suggestions!.leaderboards.map((lb) => (
                       <button key={lb.id} type="button" onMouseDown={() => pickLeaderboard(lb.id)}
                         className="w-full text-left px-4 py-2 flex items-center gap-3 hover:bg-gray-800 transition-colors">
@@ -107,7 +107,7 @@ export default function SearchPage() {
                 )}
                 {suggestions!.models.length > 0 && (
                   <div>
-                    <p className="px-3 pt-2 pb-1 text-[10px] font-semibold text-gray-500 uppercase tracking-wider border-t border-gray-800">Models</p>
+                    <p className="px-3 pt-2 pb-1 font-mono text-[10px] font-semibold text-gray-500 uppercase tracking-wider border-t border-gray-800">Models</p>
                     {suggestions!.models.map((m) => (
                       <button key={m} type="button" onMouseDown={() => pickSuggestion(m)}
                         className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-800 transition-colors flex items-center gap-2">
@@ -118,7 +118,7 @@ export default function SearchPage() {
                 )}
                 {suggestions!.companies.length > 0 && (
                   <div>
-                    <p className="px-3 pt-2 pb-1 text-[10px] font-semibold text-gray-500 uppercase tracking-wider border-t border-gray-800">Companies</p>
+                    <p className="px-3 pt-2 pb-1 font-mono text-[10px] font-semibold text-gray-500 uppercase tracking-wider border-t border-gray-800">Companies</p>
                     {suggestions!.companies.map((c) => (
                       <button key={c} type="button" onMouseDown={() => pickSuggestion(c)}
                         className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-800 transition-colors flex items-center gap-2">
@@ -144,7 +144,7 @@ export default function SearchPage() {
         <div className="space-y-6">
           {result.leaderboards.length > 0 && (
             <section>
-              <h2 className="text-sm font-semibold text-gray-500 uppercase mb-3">Leaderboards ({result.leaderboards.length})</h2>
+              <h2 className="font-mono text-sm font-semibold text-gray-500 uppercase mb-3">Leaderboards ({result.leaderboards.length})</h2>
               <div className="bg-gray-900 rounded-xl border border-gray-800 divide-y divide-gray-800">
                 {result.leaderboards.map((lb) => (
                   <div key={lb.id} onClick={() => navigate(`/leaderboard/${lb.id}`)}
@@ -159,7 +159,7 @@ export default function SearchPage() {
           )}
           {result.companies.length > 0 && (
             <section>
-              <h2 className="text-sm font-semibold text-gray-500 uppercase mb-3">Companies ({result.companies.length})</h2>
+              <h2 className="font-mono text-sm font-semibold text-gray-500 uppercase mb-3">Companies ({result.companies.length})</h2>
               <div className="bg-gray-900 rounded-xl border border-gray-800 divide-y divide-gray-800">
                 {result.companies.map((company) => (
                   <div key={company} className="px-4 py-3 flex items-center gap-3">
@@ -171,7 +171,7 @@ export default function SearchPage() {
           )}
           {result.models.length > 0 && (
             <section>
-              <h2 className="text-sm font-semibold text-gray-500 uppercase mb-3">Models ({result.models.length})</h2>
+              <h2 className="font-mono text-sm font-semibold text-gray-500 uppercase mb-3">Models ({result.models.length})</h2>
               <div className="bg-gray-900 rounded-xl border border-gray-800 divide-y divide-gray-800">
                 {result.models.map((model) => (
                   <div key={model} onClick={() => navigate(`/compare?tab=models&model=${encodeURIComponent(model)}`)}

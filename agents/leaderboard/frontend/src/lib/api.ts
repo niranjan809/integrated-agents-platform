@@ -3,7 +3,7 @@ const BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
 // that was wrong upstream and got corrected directly in the DB) — it orphans
 // every existing localStorage entry so the next load re-fetches instead of
 // serving a stale value for up to its TTL.
-const LS_PREFIX = "vac:v2:";
+const LS_PREFIX = "vac:v6:";
 
 // In-memory cache: key → { data, expiresAt }
 const _cache = new Map<string, { data: unknown; expiresAt: number }>();
@@ -247,6 +247,8 @@ export const api = {
     req<{ query: string; leaderboards: { id: number; name: string; publisher: string; domain: string }[]; models: string[]; companies: string[] }>(
       `/search?q=${encodeURIComponent(q)}`, {}, TTL.search,
     ),
+  listAllModels: () =>
+    req<{ models: string[] }>("/search/models", {}, TTL.leaderboardList),
   searchSuggestions: (q: string) =>
     req<{ leaderboards: { id: number; name: string; domain: string }[]; models: string[]; companies: string[] }>(
       `/search/suggestions?q=${encodeURIComponent(q)}`, {}, TTL.search,
@@ -261,6 +263,23 @@ export const api = {
     req<{ model: string; appearances: unknown[] }>(
       `/compare/models?model=${encodeURIComponent(model)}`, {}, TTL.leaderboard,
     ),
+
+  // Admin — analytics change-log management (invalidateCache() clears all so the
+  // public Analytics page reflects deletions on its next load)
+  adminDeleteChange: (id: number) => {
+    invalidateCache();
+    return req<{ deleted: number }>(`/admin/analytics/changes/${id}`, { method: "DELETE", headers: jsonHeaders() });
+  },
+  adminDeleteChangeEvent: (leaderboard_id: number, recorded_at: string) => {
+    invalidateCache();
+    return req<{ deleted: number }>("/admin/analytics/changes/delete-event", {
+      method: "POST", headers: jsonHeaders(), body: JSON.stringify({ leaderboard_id, recorded_at }),
+    });
+  },
+  adminClearChanges: (lb_id: number) => {
+    invalidateCache();
+    return req<{ deleted: number }>(`/admin/analytics/changes/leaderboard/${lb_id}`, { method: "DELETE", headers: jsonHeaders() });
+  },
 
   // Admin
   adminList: () => req<Leaderboard[]>("/admin/leaderboards", { headers: jsonHeaders() }),
@@ -291,6 +310,10 @@ export const api = {
       method: "POST", headers: jsonHeaders(),
     }),
   listPrompts: () => req<PromptConfig[]>("/admin/prompts", { headers: jsonHeaders() }),
+  listGeminiCodePrompts: () =>
+    req<{ label: string; location: string; purpose: string; prompt_text: string }[]>(
+      "/admin/gemini-prompts/code", { headers: jsonHeaders() }
+    ),
   updatePrompt: (key: string, prompt_text: string) =>
     req<{ key: string; updated: boolean }>(`/admin/prompts/${key}`, {
       method: "PUT", headers: jsonHeaders(), body: JSON.stringify({ prompt_text }),

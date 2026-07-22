@@ -1,12 +1,62 @@
 @import "tailwindcss";
 
+@theme {
+  /* KiteAI platform fonts */
+  --font-sans: "Inter", -apple-system, "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+
+  /* Consolidate the interactive accent to the KiteAI teal (#00F5D4) by remapping
+     the indigo + cyan palettes to a teal scale. This recolours every accent
+     app-wide — titles, links, primary buttons, active tabs, borders, focus rings —
+     WITHOUT editing any component. Grids use blue/purple/green/orange/violet/teal/
+     lime/…, and change-log up/down use emerald/rose/sky/amber; none of those are
+     touched, so content colours stay exactly as they were. */
+  --color-indigo-300: #5eead4;
+  --color-indigo-400: #00f5d4;
+  --color-indigo-500: #14b8a6;
+  --color-indigo-600: #0d9488;
+  --color-indigo-700: #0f766e;
+  --color-indigo-800: #115e59;
+  --color-indigo-900: #134e4a;
+  --color-indigo-950: #042f2c;
+
+  --color-cyan-300: #5eead4;
+  --color-cyan-400: #00f5d4;
+  --color-cyan-500: #14b8a6;
+  --color-cyan-600: #0d9488;
+  --color-cyan-700: #0f766e;
+  --color-cyan-800: #115e59;
+  --color-cyan-900: #134e4a;
+  --color-cyan-950: #042f2c;
+
+  /* Panels + borders → the platform's dark, teal-tinted surface. gray-900/800 are
+     only ever backgrounds/borders here (never text), so this reskins cards, the nav
+     and dividers app-wide to match the platform. Grid category colours (blue/purple/
+     green/…) are separate and stay unchanged. */
+  --color-gray-800: #1e2a35;   /* platform --border  */
+  --color-gray-900: #0c1b26;   /* platform --surface */
+
+  /* Sharper corners to match the platform (~5–7px) instead of the rounder 8–16px.
+     Pills (rounded-full) stay pill-shaped. */
+  --radius-md: 5px;
+  --radius-lg: 6px;
+  --radius-xl: 6px;
+  --radius-2xl: 8px;
+}
+
 :root {
-  --background: #0c0c14;
+  --background: #000000;   /* platform base — pure black */
   --foreground: #f1f5f9;
+}
+
+/* Match the platform's 14px base density. Tailwind sizes are rem-based, so scaling
+   the root font-size scales the whole UI — text, spacing, widths — proportionally. */
+html {
+  font-size: 87.5%;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: "Inter", -apple-system, "Segoe UI", system-ui, sans-serif;
 }

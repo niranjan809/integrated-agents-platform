@@ -71,6 +71,40 @@ def search(q: str = Query(..., min_length=1), db: Session = Depends(get_db)):
     }
 
 
+@router.get("/models")
+def all_models(db: Session = Depends(get_db)):
+    """Every distinct model name across all leaderboards, deduplicated by canonical
+    key (so word-order / company-prefix variants collapse to one) and sorted. Used
+    by the Compare › Models tab to show a browsable cloud instead of a blank box."""
+    import re as _re
+    rows = db.query(RankingEntry.model_name, RankingEntry.leaderboard_id).distinct().all()
+
+    def _noise(s: str) -> int:
+        # Count decoration chars (emojis/symbols/punctuation) — fewer = cleaner name.
+        return len(_re.findall(r"[^\w\s]", s))
+
+    best: dict = {}   # canonical key -> cleanest display name
+    lbs: dict = {}    # canonical key -> set of distinct leaderboard ids it appears on
+    for row in rows:
+        name = (row.model_name or "").strip()
+        if not name:
+            continue
+        key = canonical_tokens(name)
+        cur = best.get(key)
+        # Prefer the cleanest variant as the display name; tie-break shorter.
+        if cur is None or (_noise(name), len(name)) < (_noise(cur), len(cur)):
+            best[key] = name
+        lbs.setdefault(key, set()).add(row.leaderboard_id)
+
+    # Most-appearing first (by number of distinct leaderboards), then alphabetical.
+    items = sorted(
+        best.keys(),
+        key=lambda k: (-len(lbs[k]), best[k].lower()),
+    )
+    out = [best[k] for k in items]
+    return {"models": out}
+
+
 @router.get("/suggestions")
 def suggestions(q: str = Query(..., min_length=1), db: Session = Depends(get_db)):
     """Fast lightweight suggestions for the search bar dropdown."""

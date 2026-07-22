@@ -343,6 +343,17 @@ def seed_prompts(db):
                                 description=meta["description"],
                                 prompt_text=meta["prompt_text"]))
             added += 1
-    if added:
+    # Clear stale prompts — keys still in the DB that are no longer defined (e.g. a
+    # prompt template that was removed from code). Keeps the admin Prompts list in
+    # sync with what the pipeline actually uses.
+    stale = [k for k in existing if k not in DEFAULTS]
+    removed = 0
+    if stale:
+        removed = (
+            db.query(PromptConfig)
+            .filter(PromptConfig.key.in_(stale))
+            .delete(synchronize_session=False)
+        )
+    if added or removed:
         db.commit()
-        print(f"Seeded {added} prompt configuration(s).")
+        print(f"Prompts synced: +{added} added, -{removed} stale removed.")

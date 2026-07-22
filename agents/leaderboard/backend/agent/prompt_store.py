@@ -40,18 +40,6 @@ DEFAULTS: dict[str, dict] = {
             "Regional = focuses on a specific language, country, or geographic region."
         ),
     },
-    "popularity_estimate": {
-        "label": "Popularity Estimate",
-        "description": "Estimates industry prominence (0–100) for leaderboards not on GitHub or HuggingFace. Use {name} as a placeholder for the leaderboard name. Scraped text is appended automatically.",
-        "prompt_text": (
-            "Based ONLY on this text scraped from a leaderboard website, "
-            "estimate the industry prominence of '{name}' on a scale 1-10. "
-            "1=very niche/unknown, 10=extremely well-known benchmark. "
-            "Consider: publisher reputation, number of submissions/models listed, "
-            "academic citations mentioned, how many organizations are listed. "
-            'Return ONLY JSON: {"score": <number 1-10>}'
-        ),
-    },
     "scraper_note": {
         "label": "Scraper Note",
         "description": "Generates a one-sentence note about what the original site offers beyond a static table. Scraped text is appended automatically.",

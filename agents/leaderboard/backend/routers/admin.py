@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import Optional, List
 from database import get_db
-from models import Leaderboard, RankingEntry, ScanLog
+from models import Leaderboard, RankingEntry, ScanLog, RankingChange
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -222,4 +222,80 @@ def list_all_leaderboards(db: Session = Depends(get_db), _=Depends(verify_admin)
             "last_scan_status": lb.last_scan_status,
         }
         for lb in lbs
+    ]
+
+
+# ── Analytics change-log management (admin only) ─────────────────────────────
+# Admins can prune the ranking change-log: delete a single change, an entire
+# "update" (all changes recorded in one scan event), or a leaderboard's whole log.
+
+class DeleteChangeEvent(BaseModel):
+    leaderboard_id: int
+    recorded_at: str  # ISO timestamp identifying the scan event to remove
+
+
+@router.delete("/analytics/changes/{change_id}")
+def delete_change(change_id: int, db: Session = Depends(get_db), _=Depends(verify_admin)):
+    ch = db.query(RankingChange).filter(RankingChange.id == change_id).first()
+    if not ch:
+        raise HTTPException(status_code=404, detail="Change not found")
+    db.delete(ch)
+    db.commit()
+    return {"deleted": change_id}
+
+
+@router.post("/analytics/changes/delete-event")
+def delete_change_event(data: DeleteChangeEvent, db: Session = Depends(get_db), _=Depends(verify_admin)):
+    """Delete one 'update' — every change row a leaderboard recorded in a single scan
+    (matched by leaderboard_id + recorded_at)."""
+    from datetime import datetime
+    try:
+        ts = datetime.fromisoformat(data.recorded_at.replace("Z", ""))
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid recorded_at timestamp")
+    n = (
+        db.query(RankingChange)
+        .filter(RankingChange.leaderboard_id == data.leaderboard_id,
+                RankingChange.recorded_at == ts)
+        .delete(synchronize_session=False)
+    )
+    db.commit()
+    return {"leaderboard_id": data.leaderboard_id, "recorded_at": data.recorded_at, "deleted": n}
+
+
+@router.delete("/analytics/changes/leaderboard/{lb_id}")
+def clear_changes_for_leaderboard(lb_id: int, db: Session = Depends(get_db), _=Depends(verify_admin)):
+    """Clear a leaderboard's entire change-log history."""
+    n = (
+        db.query(RankingChange)
+        .filter(RankingChange.leaderboard_id == lb_id)
+        .delete(synchronize_session=False)
+    )
+    db.commit()
+    return {"leaderboard_id": lb_id, "deleted": n}
+
+
+# ── Gemini prompt visibility ─────────────────────────────────────────────────
+# The admin Prompts tab shows every place google/gemini-2.5-flash is called and
+# for what. Three prompts are editable (stored in prompt_configs); the rest live
+# in code as constants — surfaced here read-only (reading the actual constants so
+# what's shown can never drift from what runs).
+
+@router.get("/gemini-prompts/code")
+def gemini_code_prompts(_=Depends(verify_admin)):
+    """Read-only prompts that are defined in code (not editable in the DB)."""
+    from agent.scraper import _GEMINI_TEXT_PROMPT, _GEMINI_VISUAL_PROMPT
+    return [
+        {
+            "label": "Scraper — Text Extraction",
+            "location": "agent/scraper.py → _gemini_text_extract() / _gemini_text_extract_raw()",
+            "purpose": "Fallback when DOM / API / table parsing finds no rows: the page's visible text is sent to Gemini to extract the ranking rows.",
+            "prompt_text": _GEMINI_TEXT_PROMPT,
+        },
+        {
+            "label": "Scraper — Visual (Screenshot) Extraction",
+            "location": "agent/scraper.py → _gemini_visual_extract()",
+            "purpose": "Last resort for chart-only pages: a page screenshot is sent to Gemini vision to read model names and scores from tables / bar charts.",
+            "prompt_text": _GEMINI_VISUAL_PROMPT,
+        },
     ]

@@ -5,6 +5,31 @@ import { domainColor } from "@/lib/utils";
 
 type Tab = "leaderboards" | "models";
 
+// Tinted chip palette for the model cloud — each model gets a stable color so the
+// list reads as a colorful, scannable set rather than a wall of identical pills.
+const CHIP_COLORS = [
+  "bg-indigo-500/10 text-indigo-300 ring-indigo-500/30 hover:bg-indigo-500/20",
+  "bg-emerald-500/10 text-emerald-300 ring-emerald-500/30 hover:bg-emerald-500/20",
+  "bg-sky-500/10 text-sky-300 ring-sky-500/30 hover:bg-sky-500/20",
+  "bg-amber-500/10 text-amber-300 ring-amber-500/30 hover:bg-amber-500/20",
+  "bg-rose-500/10 text-rose-300 ring-rose-500/30 hover:bg-rose-500/20",
+  "bg-violet-500/10 text-violet-300 ring-violet-500/30 hover:bg-violet-500/20",
+  "bg-teal-500/10 text-teal-300 ring-teal-500/30 hover:bg-teal-500/20",
+  "bg-fuchsia-500/10 text-fuchsia-300 ring-fuchsia-500/30 hover:bg-fuchsia-500/20",
+  "bg-cyan-500/10 text-cyan-300 ring-cyan-500/30 hover:bg-cyan-500/20",
+  "bg-lime-500/10 text-lime-300 ring-lime-500/30 hover:bg-lime-500/20",
+];
+
+// Show only a handful of chips at a time (like the search-bar suggestions) —
+// typing filters down to the relevant ones rather than dumping the whole set.
+const SUGGESTION_LIMIT = 20;
+
+function colorFor(name: string): string {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  return CHIP_COLORS[h % CHIP_COLORS.length];
+}
+
 export default function ComparePage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -19,27 +44,25 @@ export default function ComparePage() {
   const [modelInput, setModelInput] = useState(searchParams.get("model") || "");
   const [modelResult, setModelResult] = useState<{ model: string; appearances: Record<string, unknown>[] } | null>(null);
   const [comparingModel, setComparingModel] = useState(false);
-  const [modelSuggestions, setModelSuggestions] = useState<string[]>([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [allModels, setAllModels] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => { api.listLeaderboards().then(setAllLbs); }, []);
+  useEffect(() => { api.listAllModels().then((d) => setAllModels(d.models)).catch(() => {}); }, []);
 
   useEffect(() => {
     if (modelInput && tab === "models") handleModelCompare();
   }, []);
 
-  useEffect(() => {
-    const q = modelInput.trim();
-    if (!q) { setModelSuggestions([]); return; }
-    const timer = setTimeout(() => {
-      api.searchSuggestions(q).then((data) => {
-        setModelSuggestions(data.models.slice(0, 10));
-        setShowSuggestions(true);
-      }).catch(() => {});
-    }, 150);
-    return () => clearTimeout(timer);
-  }, [modelInput]);
+  // Live-filter the model cloud by whatever's typed — loosely: ignore case,
+  // spaces, hyphens, dots and other punctuation so "qwen 3.5" also finds
+  // "qwen3.5" / "Qwen-3.5" / "Qwen 3.5".
+  const modelQuery = modelInput.trim().toLowerCase();
+  const loose = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const looseQuery = loose(modelInput);
+  const filteredModels = looseQuery
+    ? allModels.filter((m) => loose(m).includes(looseQuery))
+    : allModels;
 
   function toggleLbSelect(id: number) {
     setSelectedIds((prev) => prev.includes(id) ? prev.filter((i) => i !== id) : prev.length < 4 ? [...prev, id] : prev);
@@ -53,10 +76,11 @@ export default function ComparePage() {
     finally { setComparingLbs(false); }
   }
 
-  async function handleModelCompare() {
-    if (!modelInput.trim()) return;
+  async function handleModelCompare(name?: string) {
+    const q = (name ?? modelInput).trim();
+    if (!q) return;
     setComparingModel(true); setError(null);
-    try { setModelResult(await api.compareModels(modelInput.trim()) as typeof modelResult); }
+    try { setModelResult(await api.compareModels(q) as typeof modelResult); }
     catch (e: unknown) { setError((e as Error).message); }
     finally { setComparingModel(false); }
   }
@@ -64,13 +88,13 @@ export default function ComparePage() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-100">Compare</h1>
-        <p className="text-gray-500 mt-1">Compare leaderboards or models side by side.</p>
+        <h1 className="text-xl font-bold text-gray-100">Compare</h1>
+        <p className="text-zinc-400 mt-1">Compare any model rankings and different leaderboards side by side.</p>
       </div>
-      <div className="flex gap-1 mb-6 bg-gray-800 rounded-lg p-1 w-fit">
+      <div className="flex gap-1 mb-6 bg-gray-800 rounded-lg p-1 w-full">
         {(["models", "leaderboards"] as Tab[]).map((t) => (
           <button key={t} onClick={() => { setTab(t); setError(null); }}
-            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors capitalize ${tab === t ? "bg-gray-700 text-indigo-400" : "text-gray-400 hover:text-gray-200"}`}>
+            className={`flex-1 text-center px-4 py-2 text-sm font-medium rounded-md transition-colors capitalize ${tab === t ? "bg-gray-700 text-indigo-400" : "text-gray-400 hover:text-gray-200"}`}>
             {t}
           </button>
         ))}
@@ -147,37 +171,56 @@ export default function ComparePage() {
             <div className="flex gap-3">
               <div className="flex-1 relative">
                 <input type="text" value={modelInput}
-                  onChange={(e) => { setModelInput(e.target.value); setShowSuggestions(true); }}
-                  onKeyDown={(e) => { if (e.key === "Enter") { setShowSuggestions(false); handleModelCompare(); } if (e.key === "Escape") setShowSuggestions(false); }}
-                  onFocus={() => modelSuggestions.length > 0 && setShowSuggestions(true)}
-                  onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
-                  placeholder="e.g. Whisper, gpt-4o, Deepgram..."
+                  onChange={(e) => setModelInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") handleModelCompare(); }}
+                  placeholder="Type to filter models below, or pick one…"
                   className="w-full bg-gray-800 border border-gray-700 text-gray-100 placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
-                {showSuggestions && modelSuggestions.length > 0 && (
-                  <ul className="absolute z-20 left-0 right-0 top-full mt-1 bg-gray-800 border border-gray-700 rounded-lg shadow-lg overflow-hidden">
-                    {modelSuggestions.map((s) => (
-                      <li key={s}>
-                        <button type="button" onMouseDown={() => { setModelInput(s); setShowSuggestions(false); }}
-                          className="w-full text-left px-3 py-2 text-sm text-gray-200 hover:bg-indigo-900/50 hover:text-indigo-300 transition-colors">
-                          {s}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
               </div>
-              <button onClick={() => { setShowSuggestions(false); handleModelCompare(); }} disabled={!modelInput.trim() || comparingModel}
+              <button onClick={() => handleModelCompare()} disabled={!modelInput.trim() || comparingModel}
                 className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-500 disabled:opacity-50 transition-colors">
                 {comparingModel ? "Loading..." : "Compare"}
               </button>
             </div>
           </div>
+
+          <div className="bg-gray-900 rounded-xl border border-gray-800 p-4">
+              <p className="text-sm text-gray-400 mb-3">
+                {allModels.length === 0
+                  ? "Loading models…"
+                  : filteredModels.length === 0
+                    ? <>No models match “{modelInput.trim()}”.</>
+                    : modelQuery
+                      ? <>{Math.min(filteredModels.length, SUGGESTION_LIMIT)} of {filteredModels.length} match{filteredModels.length !== 1 ? "es" : ""} — pick one, or press Enter.</>
+                      : <>Most-compared models (across the most leaderboards) — type to search all {allModels.length}, or pick one.</>}
+              </p>
+              {filteredModels.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {filteredModels.slice(0, SUGGESTION_LIMIT).map((m) => (
+                    <button key={m} type="button"
+                      onClick={() => handleModelCompare(m)}
+                      className={`px-2.5 py-1 rounded-full text-xs font-medium ring-1 ring-inset transition-colors ${colorFor(m)} ${modelResult?.model === m ? "ring-2 font-semibold" : ""}`}
+                      title={`Compare ${m} across leaderboards`}>
+                      {m}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
           {modelResult && (
             <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
-              <div className="px-4 py-3 border-b border-gray-800">
-                <h3 className="font-semibold text-gray-100">{modelResult.model} — Across Leaderboards</h3>
-                <p className="text-sm text-gray-500">{modelResult.appearances.length} appearances</p>
+              <div className="px-4 py-3 border-b border-gray-800 flex items-start justify-between gap-3">
+                <div>
+                  <h3 className="font-semibold text-gray-100">{modelResult.model} — Across Leaderboards</h3>
+                  <p className="text-sm text-gray-500">{modelResult.appearances.length} appearances</p>
+                </div>
+                <button
+                  onClick={() => { setModelResult(null); setModelInput(""); }}
+                  className="shrink-0 text-xs font-medium text-indigo-300 hover:text-indigo-200 transition-colors"
+                >
+                  ← Pick another model
+                </button>
               </div>
               {modelResult.appearances.length === 0 ? (
                 <p className="px-4 py-6 text-center text-gray-500 text-sm">No appearances found.</p>

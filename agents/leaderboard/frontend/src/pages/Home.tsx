@@ -34,7 +34,7 @@ export default function Home() {
     <div className="max-w-4xl mx-auto">
       <div className="text-center mb-12 mt-8">
         <h1 className="text-4xl font-bold text-gray-100 mb-3">AI Leaderboard Agent</h1>
-        <p className="text-gray-500 text-lg">Discover and explore AI benchmarks across every domain.</p>
+        <p className="text-zinc-400 text-lg">Discover and explore AI benchmarks across every domain.</p>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
         {categories.map((cat) => {

@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
-import { useNavigate, useParams, Link } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { api, DomainCategory, Leaderboard, getCached } from "@/lib/api";
 import { timeAgo, statusDot, domainColor } from "@/lib/utils";
 
@@ -93,14 +93,11 @@ export default function DomainPage() {
   return (
     <div>
       <div className="mb-6">
-        <Link to="/" className="text-sm text-gray-500 hover:text-indigo-400 transition-colors">
-          ← All Domains
-        </Link>
-        <h1 className="text-2xl font-bold text-gray-100 mt-2">
+        <h1 className="text-xl font-bold text-gray-100">
           {cat?.icon} {cat?.name ?? "Loading..."}
         </h1>
         {cat?.description && (
-          <p className="text-gray-500 mt-1">{cat.description} Click any row to explore.</p>
+          <p className="text-zinc-400 mt-1">{cat.description} Click any row to explore.</p>
         )}
       </div>
 

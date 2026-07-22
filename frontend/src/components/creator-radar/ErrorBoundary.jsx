@@ -35,35 +35,35 @@ export default class ErrorBoundary extends Component {
     if (!error) return this.props.children;
 
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
-        <div className="w-full max-w-lg rounded-xl border border-slate-200 bg-white p-8 shadow-sm">
-          <h1 className="text-lg font-semibold text-slate-900">Something went wrong.</h1>
-          <p className="mt-2 text-sm text-slate-600">
+      <div className="u-flex u-min-h-screen u-items-center u-justify-center u-bg-slate-50 u-px-4">
+        <div className="u-w-full u-max-w-lg u-rounded-xl u-border u-border-slate-200 u-bg-white u-p-8 u-shadow-sm">
+          <h1 className="u-text-lg u-font-semibold u-text-slate-900">Something went wrong.</h1>
+          <p className="u-mt-2 u-text-sm u-text-slate-600">
             Please refresh the page. If this keeps happening, click <strong>Report</strong> to
             copy the error details and send them to Anthropic feedback.
           </p>
 
-          <div className="mt-4 flex items-center gap-3">
+          <div className="u-mt-4 u-flex u-items-center u-gap-3">
             <button
               onClick={() => window.location.reload()}
-              className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800"
+              className="u-rounded-md u-bg-slate-900 u-px-3 u-py-1_5 u-text-sm u-font-medium u-hover-bg-slate-800"
             >
               Refresh
             </button>
             <button
               onClick={this.handleReport}
-              className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-100"
+              className="u-rounded-md u-border u-border-slate-300 u-px-3 u-py-1_5 u-text-sm u-text-slate-700 u-hover-bg-slate-100"
             >
               {copied ? "Copied ✓" : "Report"}
             </button>
           </div>
 
           {/* Dev-friendly, collapsed by default so it doesn't alarm non-technical users. */}
-          <details className="mt-5">
-            <summary className="cursor-pointer text-xs font-medium uppercase tracking-wide text-slate-400">
+          <details className="u-mt-5">
+            <summary className="u-cursor-pointer u-text-xs u-font-medium u-uppercase u-tracking-wide u-text-slate-400">
               Error details
             </summary>
-            <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap rounded-md bg-slate-50 p-3 text-xs text-slate-600">
+            <pre className="u-mt-2 u-max-h-64 u-overflow-auto u-whitespace-pre-wrap u-rounded-md u-bg-slate-50 u-p-3 u-text-xs u-text-slate-600">
               {error.message}
               {"\n\n"}
               {error.stack}

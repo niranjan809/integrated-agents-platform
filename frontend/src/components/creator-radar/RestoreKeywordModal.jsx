@@ -26,38 +26,38 @@ export default function RestoreKeywordModal({ entry, onCancel, onRestored }) {
   }
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-900/40 p-4">
-      <div className="w-full max-w-md overflow-hidden rounded-xl bg-white shadow-2xl">
-        <div className="border-b border-slate-200 px-5 py-3">
-          <h3 className="font-semibold text-slate-900">Restore #{entry.hashtag}?</h3>
+    <div className="u-fixed u-inset-0 u-z-70 u-flex u-items-center u-justify-center u-bg-slate-900-40 u-p-4">
+      <div className="u-w-full u-max-w-md u-overflow-hidden u-rounded-xl u-bg-white u-shadow-2xl">
+        <div className="u-border-b u-border-slate-200 u-px-5 u-py-3">
+          <h3 className="u-font-semibold u-text-slate-900">Restore #{entry.hashtag}?</h3>
         </div>
-        <div className="space-y-4 px-5 py-4">
-          <p className="text-sm text-slate-700">
-            This will move <span className="font-medium">#{entry.hashtag}</span> back into an active tier
-            {entry.from_tier ? <> (originally <span className="font-medium">{entry.from_tier}</span>)</> : null}.
+        <div className="u-space-y-4 u-px-5 u-py-4">
+          <p className="u-text-sm u-text-slate-700">
+            This will move <span className="u-font-medium">#{entry.hashtag}</span> back into an active tier
+            {entry.from_tier ? <> (originally <span className="u-font-medium">{entry.from_tier}</span>)</> : null}.
           </p>
           {entry.reason && (
-            <div className="rounded-md bg-slate-50 px-3 py-2 text-xs text-slate-500">
-              Removed for: <span className="italic">&ldquo;{entry.reason}&rdquo;</span>
+            <div className="u-rounded-md u-bg-slate-50 u-px-3 u-py-2 u-text-xs u-text-slate-500">
+              Removed for: <span className="u-italic">&ldquo;{entry.reason}&rdquo;</span>
             </div>
           )}
           <div>
-            <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">Tier</label>
+            <label className="u-mb-1 u-block u-text-xs u-font-medium u-uppercase u-tracking-wide u-text-slate-500">Tier</label>
             <select value={tier} onChange={(e) => setTier(e.target.value)}
-              className="w-full rounded-md border border-slate-300 px-2 py-2 text-sm outline-none focus:border-slate-500">
+              className="u-w-full u-rounded-md u-border u-border-slate-300 u-px-2 u-py-2 u-text-sm u-outline-none u-focus-border-slate-500">
               {KNOWN_TIERS.map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">Notes <span className="text-slate-300">(optional)</span></label>
+            <label className="u-mb-1 u-block u-text-xs u-font-medium u-uppercase u-tracking-wide u-text-slate-500">Notes <span className="u-text-slate-300">(optional)</span></label>
             <textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Why are you restoring this hashtag?"
-              className="w-full resize-none rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-500" />
+              className="u-w-full u-resize-none u-rounded-md u-border u-border-slate-300 u-px-3 u-py-2 u-text-sm u-outline-none u-focus-border-slate-500" />
           </div>
-          {error && <div className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
+          {error && <div className="u-rounded-md u-bg-red-50 u-px-3 u-py-2 u-text-sm u-text-red-700">{error}</div>}
         </div>
-        <div className="flex justify-end gap-2 border-t border-slate-100 px-5 py-4">
-          <button onClick={onCancel} disabled={busy} className="rounded-md border border-slate-300 px-4 py-2 text-sm hover:bg-slate-50 disabled:opacity-50">Cancel</button>
-          <button onClick={submit} disabled={busy} className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-60">
+        <div className="u-flex u-justify-end u-gap-2 u-border-t u-border-slate-100 u-px-5 u-py-4">
+          <button onClick={onCancel} disabled={busy} className="u-rounded-md u-border u-border-slate-300 u-px-4 u-py-2 u-text-sm u-hover-bg-slate-50 u-disabled-opacity-50">Cancel</button>
+          <button onClick={submit} disabled={busy} className="u-rounded-md u-bg-slate-900 u-px-4 u-py-2 u-text-sm u-font-medium u-hover-bg-slate-700 u-disabled-opacity-60">
             {busy ? "Restoring…" : "Restore"}
           </button>
         </div>

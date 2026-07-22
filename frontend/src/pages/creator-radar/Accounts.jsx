@@ -26,12 +26,12 @@ function distinct(rows, key) {
 
 function Select({ label, value, onChange, options }) {
   return (
-    <label className="flex flex-col text-xs text-slate-500">
+    <label className="u-flex u-flex-col u-text-xs u-text-slate-500">
       {label}
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="mt-1 rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-800 focus:border-slate-500 focus:outline-none"
+        className="u-mt-1 u-rounded-md u-border u-border-slate-300 u-bg-white u-px-2 u-py-1_5 u-text-sm u-text-slate-800 u-focus-border-slate-500 u-focus-outline-none"
       >
         <option value="">All</option>
         {options.map((o) => (
@@ -108,14 +108,14 @@ export default function Accounts() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl p-8">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-slate-900">Accounts</h2>
-        <div className="flex items-center gap-4">
-          <span className="text-sm text-slate-400">{loading ? "…" : `${sorted.length} of ${rows.length}`}</span>
+    <div className="cr-page u-mx-auto u-max-w-6xl u-p-8">
+      <div className="u-flex u-items-center u-justify-between">
+        <h2 className="u-text-lg u-font-semibold u-text-slate-900">Accounts</h2>
+        <div className="u-flex u-items-center u-gap-4">
+          <span className="u-text-sm u-text-slate-400">{loading ? "…" : `${sorted.length} of ${rows.length}`}</span>
           <button
             onClick={() => setShowAdd(true)}
-            className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-700"
+            className="u-rounded-md u-bg-slate-900 u-px-3 u-py-1_5 u-text-sm u-font-medium u-hover-bg-slate-700"
           >
             + Add account
           </button>
@@ -123,7 +123,7 @@ export default function Accounts() {
       </div>
 
       {/* Filters */}
-      <div className="mt-4 flex flex-wrap gap-3">
+      <div className="u-mt-4 u-flex u-flex-wrap u-gap-3">
         <Select label="Category" value={filters.predicted_category} options={options.predicted_category}
           onChange={(v) => setFilters((f) => ({ ...f, predicted_category: v }))} />
         <Select label="Genuineness" value={filters.predicted_genuineness} options={options.predicted_genuineness}
@@ -134,19 +134,19 @@ export default function Accounts() {
           onChange={(v) => setFilters((f) => ({ ...f, discovered_via: v }))} />
       </div>
 
-      {error && <div className="mt-6 text-sm text-red-600">Failed to load: {error}</div>}
+      {error && <div className="u-mt-6 u-text-sm u-text-red-600">Failed to load: {error}</div>}
 
       {!error && (
-        <div className="mt-4 overflow-x-auto rounded-xl border border-slate-200 bg-white">
-          <table className="w-full text-sm">
+        <div className="u-mt-4 u-overflow-x-auto u-rounded-xl u-border u-border-slate-200 u-bg-white">
+          <table className="u-w-full u-text-sm">
             <thead>
-              <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-400">
+              <tr className="u-border-b u-border-slate-200 u-text-left u-text-xs u-uppercase u-tracking-wide u-text-slate-400">
                 {COLUMNS.map((col) => (
                   <th key={col.key}
                     onClick={() => toggleSort(col.key)}
-                    className={`cursor-pointer select-none px-4 py-3 font-medium hover:text-slate-600 ${col.align === "right" ? "text-right" : ""}`}>
+                    className={`u-cursor-pointer u-select-none u-px-4 u-py-3 u-font-medium u-hover-text-slate-600 ${col.align === "right" ? "u-text-right" : ""}`}>
                     {col.label}
-                    {sort.key === col.key && <span className="ml-1">{sort.dir === "asc" ? "▲" : "▼"}</span>}
+                    {sort.key === col.key && <span className="u-ml-1">{sort.dir === "asc" ? "▲" : "▼"}</span>}
                   </th>
                 ))}
               </tr>
@@ -154,31 +154,31 @@ export default function Accounts() {
             <tbody>
               {loading &&
                 Array.from({ length: 8 }).map((_, i) => (
-                  <tr key={`sk-${i}`} className="border-b border-slate-100 last:border-0">
-                    <td className="px-4 py-2.5"><Skeleton width="7rem" /></td>
-                    <td className="px-4 py-2.5"><Skeleton width="9rem" /></td>
-                    <td className="px-4 py-2.5 text-right"><Skeleton width="3rem" /></td>
-                    <td className="px-4 py-2.5 text-right"><Skeleton width="3rem" /></td>
-                    <td className="px-4 py-2.5"><Skeleton width="5rem" height="1.25rem" rounded="rounded-full" /></td>
-                    <td className="px-4 py-2.5"><Skeleton width="4rem" height="1.25rem" rounded="rounded-full" /></td>
-                    <td className="px-4 py-2.5"><Skeleton width="2.5rem" /></td>
+                  <tr key={`sk-${i}`} className="u-border-b u-border-slate-100 u-last-border-0">
+                    <td className="u-px-4 u-py-2_5"><Skeleton width="7rem" /></td>
+                    <td className="u-px-4 u-py-2_5"><Skeleton width="9rem" /></td>
+                    <td className="u-px-4 u-py-2_5 u-text-right"><Skeleton width="3rem" /></td>
+                    <td className="u-px-4 u-py-2_5 u-text-right"><Skeleton width="3rem" /></td>
+                    <td className="u-px-4 u-py-2_5"><Skeleton width="5rem" height="1.25rem" rounded="u-rounded-full" /></td>
+                    <td className="u-px-4 u-py-2_5"><Skeleton width="4rem" height="1.25rem" rounded="u-rounded-full" /></td>
+                    <td className="u-px-4 u-py-2_5"><Skeleton width="2.5rem" /></td>
                   </tr>
                 ))}
               {!loading && sorted.map((r) => (
                 <tr key={r.handle}
                   onClick={() => setSelected(r.handle)}
-                  className="cursor-pointer border-b border-slate-100 last:border-0 hover:bg-slate-50">
-                  <td className="px-4 py-2.5 font-medium text-slate-900">@{r.handle}</td>
-                  <td className="max-w-[12rem] truncate px-4 py-2.5 text-slate-600">{r.display_name || "—"}</td>
-                  <td className="px-4 py-2.5 text-right tabular-nums text-slate-700">{formatCount(r.follower_count)}</td>
-                  <td className="px-4 py-2.5 text-right tabular-nums text-slate-700">{formatPct(r.engagement_rate)}</td>
-                  <td className="px-4 py-2.5"><CategoryChip value={r.predicted_category} /></td>
-                  <td className="px-4 py-2.5"><GenuinenessChip value={r.predicted_genuineness} /></td>
-                  <td className="px-4 py-2.5 text-left font-mono text-[10px] uppercase tracking-wide text-gray-400">{r.category_method}</td>
+                  className="u-cursor-pointer u-border-b u-border-slate-100 u-last-border-0 u-hover-bg-slate-50">
+                  <td className="u-px-4 u-py-2_5 u-font-medium u-text-slate-900">@{r.handle}</td>
+                  <td className="u-max-w-12rem u-truncate u-px-4 u-py-2_5 u-text-slate-600">{r.display_name || "—"}</td>
+                  <td className="u-px-4 u-py-2_5 u-text-right u-tabular-nums u-text-slate-700">{formatCount(r.follower_count)}</td>
+                  <td className="u-px-4 u-py-2_5 u-text-right u-tabular-nums u-text-slate-700">{formatPct(r.engagement_rate)}</td>
+                  <td className="u-px-4 u-py-2_5"><CategoryChip value={r.predicted_category} /></td>
+                  <td className="u-px-4 u-py-2_5"><GenuinenessChip value={r.predicted_genuineness} /></td>
+                  <td className="u-px-4 u-py-2_5 u-text-left u-font-mono u-text-10px u-uppercase u-tracking-wide u-text-gray-400">{r.category_method}</td>
                 </tr>
               ))}
               {!loading && sorted.length === 0 && (
-                <tr><td colSpan={COLUMNS.length} className="px-4 py-8 text-center text-slate-400">No accounts match these filters.</td></tr>
+                <tr><td colSpan={COLUMNS.length} className="u-px-4 u-py-8 u-text-center u-text-slate-400">No accounts match these filters.</td></tr>
               )}
             </tbody>
           </table>
@@ -194,7 +194,7 @@ export default function Accounts() {
       {showAdd && <AddAccountModal onClose={() => setShowAdd(false)} onAdded={load} />}
 
       {toast && (
-        <div className="fixed bottom-6 left-1/2 z-[80] -translate-x-1/2 rounded-lg bg-slate-900 px-4 py-2 text-sm text-white shadow-lg">
+        <div className="u-fixed u-bottom-6 u-left-1-2 u-z-80 u-neg-translate-x-1-2 u-rounded-lg u-bg-slate-900 u-px-4 u-py-2 u-text-sm u-shadow-lg">
           {toast}
         </div>
       )}

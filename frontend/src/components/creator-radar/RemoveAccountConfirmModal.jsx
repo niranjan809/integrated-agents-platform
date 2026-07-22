@@ -33,45 +33,45 @@ export default function RemoveAccountConfirmModal({ detail, onCancel, onRemoved 
   }
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-900/40 p-4">
-      <div className="w-full max-w-md overflow-hidden rounded-xl bg-white shadow-2xl">
-        <div className="border-b border-slate-200 px-5 py-3">
-          <h3 className="font-semibold text-slate-900">Remove @{handle} from catalog?</h3>
+    <div className="u-fixed u-inset-0 u-z-70 u-flex u-items-center u-justify-center u-bg-slate-900-40 u-p-4">
+      <div className="u-w-full u-max-w-md u-overflow-hidden u-rounded-xl u-bg-white u-shadow-2xl">
+        <div className="u-border-b u-border-slate-200 u-px-5 u-py-3">
+          <h3 className="u-font-semibold u-text-slate-900">Remove @{handle} from catalog?</h3>
         </div>
 
-        <div className="space-y-4 px-5 py-4">
-          <div className="flex gap-3">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-red-100 text-red-600">⚠</span>
-            <div className="text-sm text-slate-700">
-              <div className="font-medium text-slate-900">This will delete:</div>
-              <ul className="mt-1 list-disc pl-5 text-slate-600">
+        <div className="u-space-y-4 u-px-5 u-py-4">
+          <div className="u-flex u-gap-3">
+            <span className="u-flex u-h-8 u-w-8 u-shrink-0 u-items-center u-justify-center u-rounded-full u-bg-red-100 u-text-red-600">⚠</span>
+            <div className="u-text-sm u-text-slate-700">
+              <div className="u-font-medium u-text-slate-900">This will delete:</div>
+              <ul className="u-mt-1 u-list-disc u-pl-5 u-text-slate-600">
                 <li>The account row</li>
                 <li>{posts} post{posts === 1 ? "" : "s"}</li>
                 <li>{classifications} classification{classifications === 1 ? "" : "s"}</li>
                 <li>{candidates} candidate table {candidates === 1 ? "entry" : "entries"}</li>
               </ul>
-              <p className="mt-2 text-xs text-slate-500">API call history will be preserved.</p>
+              <p className="u-mt-2 u-text-xs u-text-slate-500">API call history will be preserved.</p>
             </div>
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">
-              Reason <span className="text-red-500">*</span>
+            <label className="u-mb-1 u-block u-text-xs u-font-medium u-uppercase u-tracking-wide u-text-slate-500">
+              Reason <span className="u-text-red-500">*</span>
             </label>
             <textarea
               rows={3} value={reason} onChange={(e) => setReason(e.target.value)} disabled={busy}
               placeholder="Why are you removing this account?"
-              className="w-full resize-none rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-500 disabled:bg-slate-50"
+              className="u-w-full u-resize-none u-rounded-md u-border u-border-slate-300 u-px-3 u-py-2 u-text-sm u-outline-none u-focus-border-slate-500 u-disabled-bg-slate-50"
             />
           </div>
 
-          {validationErr && <div className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{validationErr}</div>}
-          {error && <div className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
+          {validationErr && <div className="u-rounded-md u-bg-red-50 u-px-3 u-py-2 u-text-sm u-text-red-700">{validationErr}</div>}
+          {error && <div className="u-rounded-md u-bg-red-50 u-px-3 u-py-2 u-text-sm u-text-red-700">{error}</div>}
         </div>
 
-        <div className="flex justify-end gap-2 border-t border-slate-100 px-5 py-4">
-          <button onClick={onCancel} disabled={busy} className="rounded-md border border-slate-300 px-4 py-2 text-sm hover:bg-slate-50 disabled:opacity-50">Cancel</button>
-          <button onClick={submit} disabled={busy} className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-60">
+        <div className="u-flex u-justify-end u-gap-2 u-border-t u-border-slate-100 u-px-5 u-py-4">
+          <button onClick={onCancel} disabled={busy} className="u-rounded-md u-border u-border-slate-300 u-px-4 u-py-2 u-text-sm u-hover-bg-slate-50 u-disabled-opacity-50">Cancel</button>
+          <button onClick={submit} disabled={busy} className="u-rounded-md u-bg-red-600 u-px-4 u-py-2 u-text-sm u-font-medium u-text-white u-hover-bg-red-700 u-disabled-opacity-60">
             {busy ? "Removing…" : "Remove account"}
           </button>
         </div>

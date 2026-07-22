@@ -35,36 +35,36 @@ const JOBS = [
 
 export default function Scheduler() {
   return (
-    <div className="mx-auto max-w-5xl p-8">
-      <h2 className="text-lg font-semibold text-slate-900">Scheduler</h2>
+    <div className="cr-page u-mx-auto u-max-w-5xl u-p-8">
+      <h2 className="u-text-lg u-font-semibold u-text-slate-900">Scheduler</h2>
 
-      <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-        <span className="font-medium">Automated scheduling coming soon.</span> Currently all jobs run
+      <div className="u-mt-4 u-rounded-lg u-border u-border-amber-200 u-bg-amber-50 u-px-4 u-py-3 u-text-sm u-text-amber-800">
+        <span className="u-font-medium">Automated scheduling coming soon.</span> Currently all jobs run
         manually via npm commands. This view shows the intended schedule structure.
       </div>
 
-      <div className="mt-4 overflow-x-auto rounded-xl border border-slate-200 bg-white">
-        <table className="w-full text-sm">
+      <div className="u-mt-4 u-overflow-x-auto u-rounded-xl u-border u-border-slate-200 u-bg-white">
+        <table className="u-w-full u-text-sm">
           <thead>
-            <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500">
-              <th className="px-4 py-3 font-medium">Job</th>
-              <th className="px-4 py-3 font-medium">Command</th>
-              <th className="px-4 py-3 font-medium">Frequency</th>
-              <th className="px-4 py-3 font-medium">Next Run</th>
-              <th className="px-4 py-3 font-medium">Status</th>
+            <tr className="u-border-b u-border-slate-200 u-text-left u-text-xs u-uppercase u-tracking-wide u-text-slate-500">
+              <th className="u-px-4 u-py-3 u-font-medium">Job</th>
+              <th className="u-px-4 u-py-3 u-font-medium">Command</th>
+              <th className="u-px-4 u-py-3 u-font-medium">Frequency</th>
+              <th className="u-px-4 u-py-3 u-font-medium">Next Run</th>
+              <th className="u-px-4 u-py-3 u-font-medium">Status</th>
             </tr>
           </thead>
           <tbody>
             {JOBS.map((j) => (
-              <tr key={j.job} className="border-b border-slate-100 align-top last:border-0">
-                <td className="px-4 py-3 font-medium text-slate-900">{j.job}</td>
-                <td className="px-4 py-3">
-                  <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs text-slate-600">{j.command}</span>
+              <tr key={j.job} className="u-border-b u-border-slate-100 u-align-top u-last-border-0">
+                <td className="u-px-4 u-py-3 u-font-medium u-text-slate-900">{j.job}</td>
+                <td className="u-px-4 u-py-3">
+                  <span className="u-rounded u-bg-slate-100 u-px-1_5 u-py-0_5 u-font-mono u-text-xs u-text-slate-600">{j.command}</span>
                 </td>
-                <td className="px-4 py-3 text-slate-600">{j.frequency}</td>
-                <td className="px-4 py-3 text-slate-600">{j.nextRun}</td>
-                <td className="px-4 py-3">
-                  <span className="whitespace-nowrap rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
+                <td className="u-px-4 u-py-3 u-text-slate-600">{j.frequency}</td>
+                <td className="u-px-4 u-py-3 u-text-slate-600">{j.nextRun}</td>
+                <td className="u-px-4 u-py-3">
+                  <span className="u-whitespace-nowrap u-rounded-full u-bg-amber-50 u-px-2 u-py-0_5 u-text-xs u-font-medium u-text-amber-700">
                     Not yet scheduled (manual only)
                   </span>
                 </td>

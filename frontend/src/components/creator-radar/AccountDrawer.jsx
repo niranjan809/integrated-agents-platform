@@ -6,9 +6,9 @@ import RemoveAccountConfirmModal from "./RemoveAccountConfirmModal";
 
 function Section({ title, children }) {
   return (
-    <div className="border-t border-slate-100 px-5 py-4">
-      <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">{title}</div>
-      <div className="mt-2">{children}</div>
+    <div className="u-border-t u-border-slate-100 u-px-5 u-py-4">
+      <div className="u-text-xs u-font-semibold u-uppercase u-tracking-wide u-text-slate-400">{title}</div>
+      <div className="u-mt-2">{children}</div>
     </div>
   );
 }
@@ -16,8 +16,8 @@ function Section({ title, children }) {
 function Field({ label, value }) {
   return (
     <div>
-      <div className="text-xs text-slate-400">{label}</div>
-      <div className="text-sm text-slate-800 tabular-nums">{value}</div>
+      <div className="u-text-xs u-text-slate-400">{label}</div>
+      <div className="u-text-sm u-text-slate-800 u-tabular-nums">{value}</div>
     </div>
   );
 }
@@ -44,51 +44,51 @@ export default function AccountDrawer({ handle, onClose, onRemoved }) {
   return (
     <>
       {/* backdrop */}
-      <div className="fixed inset-0 z-40 bg-slate-900/20" onClick={onClose} />
+      <div className="u-fixed u-inset-0 u-z-40 u-bg-slate-900-20" onClick={onClose} />
       {/* panel */}
-      <aside className="fixed right-0 top-0 z-50 flex h-full w-full max-w-md flex-col overflow-y-auto bg-white shadow-xl">
-        <div className="sticky top-0 flex items-center justify-between border-b border-slate-200 bg-white px-5 py-3">
-          <div className="min-w-0">
-            <div className="truncate font-semibold text-slate-900">@{handle}</div>
-            {detail && <div className="truncate text-sm text-slate-500">{detail.display_name || "—"}</div>}
+      <aside className="u-fixed u-right-0 u-top-0 u-z-50 u-flex u-h-full u-w-full u-max-w-md u-flex-col u-overflow-y-auto u-bg-white u-shadow-xl">
+        <div className="u-sticky u-top-0 u-flex u-items-center u-justify-between u-border-b u-border-slate-200 u-bg-white u-px-5 u-py-3">
+          <div className="u-min-w-0">
+            <div className="u-truncate u-font-semibold u-text-slate-900">@{handle}</div>
+            {detail && <div className="u-truncate u-text-sm u-text-slate-500">{detail.display_name || "—"}</div>}
           </div>
           <button onClick={onClose} aria-label="Close"
-            className="ml-3 rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700">
+            className="u-ml-3 u-rounded-md u-p-1 u-text-slate-400 u-hover-bg-slate-100 u-hover-text-slate-700">
             ✕
           </button>
         </div>
 
-        {error && <div className="p-5 text-sm text-red-600">Failed to load: {error}</div>}
-        {!detail && !error && <div className="p-5 text-sm text-slate-400">Loading…</div>}
+        {error && <div className="u-p-5 u-text-sm u-text-red-600">Failed to load: {error}</div>}
+        {!detail && !error && <div className="u-p-5 u-text-sm u-text-slate-400">Loading…</div>}
 
         {detail && (
-          <div className="pb-8">
+          <div className="u-pb-8">
             <Section title="Profile">
-              <div className="space-y-2 text-sm text-slate-700">
-                <p className="whitespace-pre-wrap text-slate-600">{detail.bio || "—"}</p>
-                <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+              <div className="u-space-y-2 u-text-sm u-text-slate-700">
+                <p className="u-whitespace-pre-wrap u-text-slate-600">{detail.bio || "—"}</p>
+                <div className="u-flex u-flex-wrap u-gap-x-4 u-gap-y-1 u-text-sm">
                   {detail.external_url && (
-                    <a href={detail.external_url} target="_blank" rel="noreferrer" className="text-indigo-600 hover:underline">
+                    <a href={detail.external_url} target="_blank" rel="noreferrer" className="u-text-indigo-600 u-hover-underline">
                       external link ↗
                     </a>
                   )}
-                  <a href={`https://www.instagram.com/${handle}/`} target="_blank" rel="noreferrer" className="text-indigo-600 hover:underline">
+                  <a href={`https://www.instagram.com/${handle}/`} target="_blank" rel="noreferrer" className="u-text-indigo-600 u-hover-underline">
                     Instagram profile ↗
                   </a>
-                  {detail.is_verified ? <span className="text-sky-600">✓ verified</span> : null}
-                  {detail.is_business_account ? <span className="text-slate-500">business</span> : null}
+                  {detail.is_verified ? <span className="u-text-sky-600">✓ verified</span> : null}
+                  {detail.is_business_account ? <span className="u-text-slate-500">business</span> : null}
                 </div>
               </div>
             </Section>
 
             <Section title="Classification">
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="u-flex u-flex-wrap u-items-center u-gap-2">
                 <CategoryChip value={detail.predicted_category} />
                 <GenuinenessChip value={detail.predicted_genuineness} />
                 {c && <MethodBadge value={c.category_method} />}
               </div>
               {c && (
-                <div className="mt-3 grid grid-cols-2 gap-3">
+                <div className="u-mt-3 u-grid u-grid-cols-2 u-gap-3">
                   <Field label="Confidence" value={c.category_confidence != null ? formatNum(c.category_confidence, 2) : "—"} />
                   <Field label="AI content" value={c.ai_content_fraction != null ? formatPct(c.ai_content_fraction) : "—"} />
                   <Field label="Category rule" value={c.category_rule_matched || "—"} />
@@ -99,12 +99,12 @@ export default function AccountDrawer({ handle, onClose, onRemoved }) {
 
             {isGateOut && (
               <Section title="AI-relevance gate">
-                <div className="border-l-4 border-amber-400 bg-amber-50 p-3 text-sm">
-                  <div className="font-semibold text-amber-800">Not primarily AI content</div>
-                  <div className="mt-0.5 text-xs text-amber-700">
+                <div className="u-border-l-4 u-border-amber-400 u-bg-amber-50 u-p-3 u-text-sm">
+                  <div className="u-font-semibold u-text-amber-800">Not primarily AI content</div>
+                  <div className="u-mt-0_5 u-text-xs u-text-amber-700">
                     Confidence: {c?.category_confidence != null ? Number(c.category_confidence).toFixed(2) : "—"}
                   </div>
-                  <p className="mt-2 whitespace-pre-wrap leading-relaxed text-amber-900">{c?.reasoning || "—"}</p>
+                  <p className="u-mt-2 u-whitespace-pre-wrap u-leading-relaxed u-text-amber-900">{c?.reasoning || "—"}</p>
                 </div>
               </Section>
             )}
@@ -113,12 +113,12 @@ export default function AccountDrawer({ handle, onClose, onRemoved }) {
                 shows the same reasoning text). */}
             {!isGateOut && c?.reasoning && (
               <Section title="Reasoning">
-                <p className="text-sm leading-relaxed text-slate-600">{c.reasoning}</p>
+                <p className="u-text-sm u-leading-relaxed u-text-slate-600">{c.reasoning}</p>
               </Section>
             )}
 
             <Section title="Signals">
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              <div className="u-grid u-grid-cols-2 u-gap-3 u-sm-grid-cols-3">
                 <Field label="Followers" value={formatCount(detail.follower_count)} />
                 <Field label="Following" value={formatCount(detail.following_count)} />
                 <Field label="Ratio" value={formatRatio(detail.follower_following_ratio)} />
@@ -132,23 +132,23 @@ export default function AccountDrawer({ handle, onClose, onRemoved }) {
             </Section>
 
             <Section title="Discovered via">
-              <span className="rounded-md bg-slate-100 px-2 py-1 font-mono text-xs text-slate-600">
+              <span className="u-rounded-md u-bg-slate-100 u-px-2 u-py-1 u-font-mono u-text-xs u-text-slate-600">
                 {detail.discovered_via || "seed"}
               </span>
               {detail.posts_in_db != null && (
-                <span className="ml-3 text-xs text-slate-400">{detail.posts_in_db} posts in DB</span>
+                <span className="u-ml-3 u-text-xs u-text-slate-400">{detail.posts_in_db} posts in DB</span>
               )}
               {detail.last_refreshed_at && (
-                <span className="ml-3 text-xs text-slate-400">refreshed {formatDate(detail.last_refreshed_at)}</span>
+                <span className="u-ml-3 u-text-xs u-text-slate-400">refreshed {formatDate(detail.last_refreshed_at)}</span>
               )}
             </Section>
 
             {/* Danger zone — review-first friction for a destructive action. */}
-            <div className="mt-4 border-t border-red-100 px-5 py-4">
-              <div className="text-xs font-semibold uppercase tracking-wide text-red-400">Danger zone</div>
+            <div className="u-mt-4 u-border-t u-border-red-100 u-px-5 u-py-4">
+              <div className="u-text-xs u-font-semibold u-uppercase u-tracking-wide u-text-red-400">Danger zone</div>
               <button
                 onClick={() => setShowRemove(true)}
-                className="mt-2 rounded-md border border-red-300 px-3 py-1.5 text-sm font-medium text-red-700 hover:bg-red-50"
+                className="u-mt-2 u-rounded-md u-border u-border-red-300 u-px-3 u-py-1_5 u-text-sm u-font-medium u-text-red-700 u-hover-bg-red-50"
               >
                 Remove account from catalog
               </button>

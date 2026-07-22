@@ -43,48 +43,48 @@ export default function AddKeywordModal({ tier, onClose, onDone }) {
   }
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-900/40 p-4">
-      <div className="w-full max-w-md overflow-hidden rounded-xl bg-white shadow-2xl">
-        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-3">
-          <h3 className="font-semibold text-slate-900">Add hashtag to {tier}</h3>
-          <button onClick={onClose} aria-label="Close" className="rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700">✕</button>
+    <div className="u-fixed u-inset-0 u-z-70 u-flex u-items-center u-justify-center u-bg-slate-900-40 u-p-4">
+      <div className="u-w-full u-max-w-md u-overflow-hidden u-rounded-xl u-bg-white u-shadow-2xl">
+        <div className="u-flex u-items-center u-justify-between u-border-b u-border-slate-200 u-px-5 u-py-3">
+          <h3 className="u-font-semibold u-text-slate-900">Add hashtag to {tier}</h3>
+          <button onClick={onClose} aria-label="Close" className="u-rounded-md u-p-1 u-text-slate-400 u-hover-bg-slate-100 u-hover-text-slate-700">✕</button>
         </div>
 
         {!restore ? (
-          <div className="space-y-4 px-5 py-4">
+          <div className="u-space-y-4 u-px-5 u-py-4">
             <div>
-              <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">Hashtag</label>
+              <label className="u-mb-1 u-block u-text-xs u-font-medium u-uppercase u-tracking-wide u-text-slate-500">Hashtag</label>
               <input type="text" value={hashtag} onChange={(e) => setHashtag(e.target.value)} placeholder="e.g. aiethics"
-                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-500" />
+                className="u-w-full u-rounded-md u-border u-border-slate-300 u-px-3 u-py-2 u-text-sm u-outline-none u-focus-border-slate-500" />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">Sub-cluster <span className="text-slate-300">(optional)</span></label>
+              <label className="u-mb-1 u-block u-text-xs u-font-medium u-uppercase u-tracking-wide u-text-slate-500">Sub-cluster <span className="u-text-slate-300">(optional)</span></label>
               <input type="text" value={subCluster} onChange={(e) => setSubCluster(e.target.value)} placeholder="e.g. Technical practitioner"
-                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-500" />
+                className="u-w-full u-rounded-md u-border u-border-slate-300 u-px-3 u-py-2 u-text-sm u-outline-none u-focus-border-slate-500" />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">Notes <span className="text-slate-300">(optional)</span></label>
+              <label className="u-mb-1 u-block u-text-xs u-font-medium u-uppercase u-tracking-wide u-text-slate-500">Notes <span className="u-text-slate-300">(optional)</span></label>
               <textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Why is this hashtag being added?"
-                className="w-full resize-none rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-500" />
+                className="u-w-full u-resize-none u-rounded-md u-border u-border-slate-300 u-px-3 u-py-2 u-text-sm u-outline-none u-focus-border-slate-500" />
             </div>
-            {error && <div className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
-            <div className="flex justify-end gap-2 border-t border-slate-100 pt-4">
-              <button onClick={onClose} className="rounded-md border border-slate-300 px-4 py-2 text-sm hover:bg-slate-50">Cancel</button>
-              <button onClick={submit} disabled={busy} className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-60">
+            {error && <div className="u-rounded-md u-bg-red-50 u-px-3 u-py-2 u-text-sm u-text-red-700">{error}</div>}
+            <div className="u-flex u-justify-end u-gap-2 u-border-t u-border-slate-100 u-pt-4">
+              <button onClick={onClose} className="u-rounded-md u-border u-border-slate-300 u-px-4 u-py-2 u-text-sm u-hover-bg-slate-50">Cancel</button>
+              <button onClick={submit} disabled={busy} className="u-rounded-md u-bg-slate-900 u-px-4 u-py-2 u-text-sm u-font-medium u-text-white u-hover-bg-slate-700 u-disabled-opacity-60">
                 {busy ? "Adding…" : "Add hashtag"}
               </button>
             </div>
           </div>
         ) : (
-          <div className="space-y-4 px-5 py-4">
-            <div className="rounded-md border-l-4 border-amber-400 bg-amber-50 p-3 text-sm text-amber-900">
+          <div className="u-space-y-4 u-px-5 u-py-4">
+            <div className="u-rounded-md u-border-l-4 u-border-amber-400 u-bg-amber-50 u-p-3 u-text-sm u-text-amber-900">
               This hashtag was previously removed{restore.removed_at ? ` on ${String(restore.removed_at).slice(0, 10)}` : ""} for reason:{" "}
-              <span className="italic">&ldquo;{restore.reason || "unknown"}&rdquo;</span>.
+              <span className="u-italic">&ldquo;{restore.reason || "unknown"}&rdquo;</span>.
             </div>
-            {error && <div className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
-            <div className="flex justify-end gap-2 border-t border-slate-100 pt-4">
-              <button onClick={onClose} className="rounded-md border border-slate-300 px-4 py-2 text-sm hover:bg-slate-50">Cancel</button>
-              <button onClick={() => post(true)} disabled={busy} className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-60">
+            {error && <div className="u-rounded-md u-bg-red-50 u-px-3 u-py-2 u-text-sm u-text-red-700">{error}</div>}
+            <div className="u-flex u-justify-end u-gap-2 u-border-t u-border-slate-100 u-pt-4">
+              <button onClick={onClose} className="u-rounded-md u-border u-border-slate-300 u-px-4 u-py-2 u-text-sm u-hover-bg-slate-50">Cancel</button>
+              <button onClick={() => post(true)} disabled={busy} className="u-rounded-md u-bg-slate-900 u-px-4 u-py-2 u-text-sm u-font-medium u-text-white u-hover-bg-slate-700 u-disabled-opacity-60">
                 {busy ? "Restoring…" : `Restore to ${tier}`}
               </button>
             </div>

@@ -10,7 +10,7 @@ const OPTIONS = [
 export default function PlatformToggle() {
   const { platform, setPlatform } = usePlatform();
   return (
-    <div className="flex gap-1">
+    <div className="u-flex u-gap-1">
       {OPTIONS.map(([value, label]) => {
         const active = platform === value;
         return (
@@ -18,10 +18,10 @@ export default function PlatformToggle() {
             key={value}
             onClick={() => setPlatform(value)}
             aria-pressed={active}
-            className={`rounded-full px-3 py-1 text-sm outline-none transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-500 ${
+            className={`u-rounded-full u-px-3 u-py-1 u-text-sm u-outline-none u-transition-colors u-focus-visible-outline u-focus-visible-outline-2 u-focus-visible-outline-offset-2 u-focus-visible-outline-slate-500 ${
               active
-                ? "bg-slate-900 text-white"
-                : "border border-gray-300 text-gray-500 hover:text-gray-700"
+                ? "u-bg-slate-900 u-text-white"
+                : "u-border u-border-gray-300 u-text-gray-500 u-hover-text-gray-700"
             }`}
           >
             {label}

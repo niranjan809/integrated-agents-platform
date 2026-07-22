@@ -55,39 +55,39 @@ export default function Search() {
   const rejected = data ? data.raw_count - data.survivors_count : 0;
 
   return (
-    <div className="mx-auto max-w-5xl p-8">
-      <h2 className="text-lg font-semibold text-slate-900">Search</h2>
-      <p className="mt-1 text-sm text-slate-500">
+    <div className="cr-page u-mx-auto u-max-w-5xl u-p-8">
+      <h2 className="u-text-lg u-font-semibold u-text-slate-900">Search</h2>
+      <p className="u-mt-1 u-text-sm u-text-slate-500">
         One-off keyword search with prefilter. Exploration only — nothing is added to the catalog. Each search spends one RapidAPI call and is logged to the audit trail.
       </p>
 
       {/* Controls */}
-      <div className="mt-4 flex flex-wrap items-end gap-3 rounded-xl border border-slate-200 bg-white p-4">
-        <div className="flex-1 min-w-[240px]">
-          <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">Keyword</label>
+      <div className="u-mt-4 u-flex u-flex-wrap u-items-end u-gap-3 u-rounded-xl u-border u-border-slate-200 u-bg-white u-p-4">
+        <div className="u-flex-1 u-min-w-240px">
+          <label className="u-mb-1 u-block u-text-xs u-font-medium u-uppercase u-tracking-wide u-text-slate-500">Keyword</label>
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={onKeyDown}
             placeholder="e.g. aiethics"
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-500"
+            className="u-w-full u-rounded-md u-border u-border-slate-300 u-px-3 u-py-2 u-text-sm u-outline-none u-focus-border-slate-500"
           />
         </div>
 
         <div>
-          <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">Platform</label>
-          <div className="flex overflow-hidden rounded-md border border-slate-300">
+          <label className="u-mb-1 u-block u-text-xs u-font-medium u-uppercase u-tracking-wide u-text-slate-500">Platform</label>
+          <div className="u-flex u-overflow-hidden u-rounded-md u-border u-border-slate-300">
             <button
               onClick={() => setPlatform("instagram")}
-              className={`px-3 py-2 text-sm ${platform === "instagram" ? "bg-slate-900 text-white" : "bg-white text-slate-600 hover:bg-slate-50"}`}
+              className={`u-px-3 u-py-2 u-text-sm ${platform === "instagram" ? "u-bg-slate-900 u-text-white" : "u-bg-white u-text-slate-600 u-hover-bg-slate-50"}`}
             >
               Instagram
             </button>
             <button
               disabled
               title="Not yet wired — TikTok search adapter isn't integrated into discovery."
-              className="cursor-not-allowed border-l border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-300"
+              className="u-cursor-not-allowed u-border-l u-border-slate-300 u-bg-slate-50 u-px-3 u-py-2 u-text-sm u-text-slate-300"
             >
               TikTok
             </button>
@@ -95,11 +95,11 @@ export default function Search() {
         </div>
 
         <div>
-          <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">Limit</label>
+          <label className="u-mb-1 u-block u-text-xs u-font-medium u-uppercase u-tracking-wide u-text-slate-500">Limit</label>
           <select
             value={limit}
             onChange={(e) => setLimit(Number(e.target.value))}
-            className="rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-500"
+            className="u-rounded-md u-border u-border-slate-300 u-px-3 u-py-2 u-text-sm u-outline-none u-focus-border-slate-500"
           >
             {LIMITS.map((n) => (
               <option key={n} value={n}>{n}</option>
@@ -110,7 +110,7 @@ export default function Search() {
         <button
           onClick={runSearch}
           disabled={!canSubmit}
-          className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+          className="u-rounded-md u-bg-slate-900 u-px-4 u-py-2 u-text-sm u-font-medium u-text-white u-hover-bg-slate-700 u-disabled-cursor-not-allowed u-disabled-bg-slate-300"
         >
           {loading ? "Searching…" : "Search"}
         </button>
@@ -118,13 +118,13 @@ export default function Search() {
 
       {/* Error */}
       {error && (
-        <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
+        <div className="u-mt-4 u-rounded-lg u-border u-border-red-200 u-bg-red-50 u-px-4 u-py-3 u-text-sm u-text-red-700">{error}</div>
       )}
 
       {/* Loading */}
       {loading && (
-        <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4">
-          <div className="space-y-3">
+        <div className="u-mt-4 u-rounded-xl u-border u-border-slate-200 u-bg-white u-p-4">
+          <div className="u-space-y-3">
             {Array.from({ length: 5 }).map((_, i) => (
               <Skeleton key={i} width="100%" height="1.75rem" />
             ))}
@@ -134,59 +134,59 @@ export default function Search() {
 
       {/* Empty state (no search yet, no error, not loading) */}
       {!loading && !error && !data && (
-        <div className="mt-4 rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-400">
+        <div className="u-mt-4 u-rounded-xl u-border u-border-dashed u-border-slate-300 u-bg-white u-p-8 u-text-center u-text-sm u-text-slate-400">
           No results yet — enter a keyword to search.
         </div>
       )}
 
       {/* Results */}
       {!loading && data && (
-        <div className="mt-4">
-          <div className="mb-2 text-sm text-slate-600">
-            Showing <span className="font-medium text-slate-900">{data.survivors_count}</span> candidate{data.survivors_count === 1 ? "" : "s"}{" "}
+        <div className="u-mt-4">
+          <div className="u-mb-2 u-text-sm u-text-slate-600">
+            Showing <span className="u-font-medium u-text-slate-900">{data.survivors_count}</span> candidate{data.survivors_count === 1 ? "" : "s"}{" "}
             ({data.raw_count} raw, {rejected} rejected by prefilter) for{" "}
-            <span className="font-medium text-slate-900">&ldquo;{data.query}&rdquo;</span>
+            <span className="u-font-medium u-text-slate-900">&ldquo;{data.query}&rdquo;</span>
           </div>
 
           {data.candidates.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-400">
+            <div className="u-rounded-xl u-border u-border-dashed u-border-slate-300 u-bg-white u-p-8 u-text-center u-text-sm u-text-slate-400">
               No candidates survived prefilter for this query.
             </div>
           ) : (
-            <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-              <table className="w-full text-sm">
+            <div className="u-overflow-x-auto u-rounded-xl u-border u-border-slate-200 u-bg-white">
+              <table className="u-w-full u-text-sm">
                 <thead>
-                  <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500">
-                    <th className="px-4 py-3 font-medium">Handle</th>
-                    <th className="px-4 py-3 font-medium">Full Name</th>
-                    <th className="px-4 py-3 font-medium text-right">Follower Count</th>
-                    <th className="px-4 py-3 font-medium">Prefilter Verdict</th>
-                    <th className="px-4 py-3 font-medium text-right">Position</th>
+                  <tr className="u-border-b u-border-slate-200 u-text-left u-text-xs u-uppercase u-tracking-wide u-text-slate-500">
+                    <th className="u-px-4 u-py-3 u-font-medium">Handle</th>
+                    <th className="u-px-4 u-py-3 u-font-medium">Full Name</th>
+                    <th className="u-px-4 u-py-3 u-font-medium u-text-right">Follower Count</th>
+                    <th className="u-px-4 u-py-3 u-font-medium">Prefilter Verdict</th>
+                    <th className="u-px-4 u-py-3 u-font-medium u-text-right">Position</th>
                   </tr>
                 </thead>
                 <tbody>
                   {data.candidates.map((c) => (
-                    <tr key={c.handle} className="border-b border-slate-100 last:border-0">
-                      <td className="px-4 py-3">
+                    <tr key={c.handle} className="u-border-b u-border-slate-100 u-last-border-0">
+                      <td className="u-px-4 u-py-3">
                         <a
                           href={`https://instagram.com/${c.handle}`}
                           target="_blank"
                           rel="noreferrer"
-                          className="font-medium text-slate-900 hover:underline"
+                          className="u-font-medium u-text-slate-900 u-hover-underline"
                         >
                           @{c.handle}
                         </a>
                       </td>
-                      <td className="px-4 py-3 text-slate-600">{c.full_name || <span className="text-slate-300">—</span>}</td>
-                      <td className="px-4 py-3 text-right tabular-nums text-slate-400" title="Follower count is only available after a full profile fetch">
+                      <td className="u-px-4 u-py-3 u-text-slate-600">{c.full_name || <span className="u-text-slate-300">—</span>}</td>
+                      <td className="u-px-4 u-py-3 u-text-right u-tabular-nums u-text-slate-400" title="Follower count is only available after a full profile fetch">
                         {int(c.follower_count)}
                       </td>
-                      <td className="px-4 py-3">
-                        <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                      <td className="u-px-4 u-py-3">
+                        <span className="u-rounded-full u-bg-emerald-50 u-px-2 u-py-0_5 u-text-xs u-font-medium u-text-emerald-700">
                           {c.prefilter_reason === "accept" ? "accept" : c.prefilter_reason}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-right tabular-nums text-slate-500">{c.position ?? "—"}</td>
+                      <td className="u-px-4 u-py-3 u-text-right u-tabular-nums u-text-slate-500">{c.position ?? "—"}</td>
                     </tr>
                   ))}
                 </tbody>

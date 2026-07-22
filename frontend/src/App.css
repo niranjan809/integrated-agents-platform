@@ -1648,7 +1648,7 @@ code, .mono, pre { font-family: var(--mono); }
 .u-bg-slate-100{background-color:var(--bg3)}
 .u-bg-slate-400{background-color:var(--text-dim)}
 .u-bg-slate-50{background-color:var(--bg)}
-.u-bg-slate-900{background-color:var(--bg)}
+.u-bg-slate-900{background:var(--blue);color:var(--on-primary)}
 .u-bg-slate-900-20{background-color:rgba(0,0,0,.4)}
 .u-bg-slate-900-40{background-color:rgba(0,0,0,.5)}
 .u-bg-white{background-color:var(--bg2)}

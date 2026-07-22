@@ -1593,3 +1593,32 @@ code, .mono, pre { font-family: var(--mono); }
   background: var(--bg3); border: 1px solid var(--border); border-radius: 8px;
   font-family: var(--mono); font-size: 12px; color: var(--text2); white-space: pre;
 }
+
+/* ── Dynamic registry (admin Agents & Sections tab) ──────────────────────── */
+/* status-badge base is defined in the History section; add the registry variants. */
+.status-badge.status-active       { color: var(--green); border-color: rgba(16, 185, 129, 0.4); background: rgba(16, 185, 129, 0.1); }
+.status-badge.status-coming-soon  { color: var(--gold);  border-color: rgba(245, 158, 11, 0.4); background: rgba(245, 158, 11, 0.1); }
+.status-badge.status-disabled     { color: var(--text-dim); border-color: var(--border); background: transparent; }
+
+.registry-subtabs { display: flex; gap: 8px; margin-bottom: 18px; }
+.registry-subtab {
+  padding: 7px 16px; background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--r-pill); color: var(--text2); font-size: 13px; font-weight: 600; cursor: pointer;
+  transition: all .15s;
+}
+.registry-subtab:hover { border-color: var(--blue); color: var(--blue); }
+.registry-subtab.active { background: rgba(0, 245, 212, 0.12); border-color: var(--blue); color: var(--blue); }
+
+.registry-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: 8px 0 12px; }
+
+/* ── Landing page: section groups with agent cards ───────────────────────── */
+.landing-section { margin-top: 36px; }
+.landing-section-head { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 16px; }
+.landing-section-icon { font-size: 28px; line-height: 1; }
+.landing-section-title {
+  font-size: 20px; font-weight: 700; color: var(--text); text-decoration: none;
+  border-bottom: 1px solid transparent; transition: border-color .15s;
+}
+.landing-section-title:hover { border-bottom-color: var(--blue); }
+.landing-section-desc { font-size: 13px; color: var(--text2); margin: 4px 0 0; }
+.agent-option-card.is-soon { opacity: 0.55; cursor: default; pointer-events: none; }

@@ -1,40 +1,49 @@
-import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import PlatformShell from '../../components/platform/PlatformShell';
 import { useAuth } from '../../context/AuthContext';
+import { useSections } from '../../hooks/useSections';
+import { useAgents } from '../../hooks/useAgents';
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+// The landing catalogue merges the system registry (agentRegistry.js /
+// systemSections.js) with the dynamic registry (admin-created sections + agents),
+// via /api/sections and /api/agents. RBAC Phase 3: we hide sections the user
+// isn't allowed to see (JWT sections_allowed) — the backend enforces access on
+// each section's own routes; this is the UX filter.
 
-// The landing catalogue is driven by the gateway registry (/api/sections), which
-// returns ALL sections. RBAC Phase 3: we hide sections the user isn't allowed to
-// see (JWT sections_allowed) — the backend enforces access on the section's own
-// routes; this is the UX filter. Adding a section = one entry in
-// backend/agentRegistry.js — this page needs no edit.
+// An agent is "available" when live/active; anything else renders as a preview.
+const isAvailable = (a) => a.status === 'live' || a.status === 'active';
+
+// Where an agent card navigates, by surface.
+function agentTarget(a) {
+  if (a.surface === 'app' && a.path) return a.path;
+  if (a.surface === 'iframe') return `/embed/${a.id}`;
+  return `/section/${a.sectionId}`; // http / fallback → section page
+}
+
 export default function LandingPage() {
   const { user } = useAuth();
   const location = useLocation();
-  const [sections, setSections] = useState(null);
-  const [error,    setError]    = useState(null);
+  const { sections: secData, loading: secLoading, error: secError } = useSections();
+  const { agents: agtData, loading: agtLoading, error: agtError } = useAgents();
 
   const allowed = user?.sections_allowed || [];
   const deniedSection = location.state?.deniedSection || null;
 
-  useEffect(() => {
-    fetch(`${API}/api/sections`, {
-      headers: { Authorization: `Bearer ${sessionStorage.getItem('kiteai_token')}` },
-    })
-      .then(r => (r.ok ? r.json() : Promise.reject(new Error('Failed to load sections'))))
-      .then(d => setSections(d.sections || []))
-      .catch(e => setError(e.message));
-  }, []);
+  const loading = secLoading || agtLoading;
+  const error = secError || agtError;
 
-  // Only sections the user may access, live first then coming-soon.
-  const visibleSections = (sections || [])
-    .filter(s => allowed.includes(s.id))
-    .slice()
-    .sort((a, b) => (a.status === 'live' ? 0 : 1) - (b.status === 'live' ? 0 : 1));
+  // Merge system + custom sections, order by display_order, keep only allowed.
+  const allSections = [...(secData?.system || []), ...(secData?.custom || [])]
+    .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0));
+  const visibleSections = allSections.filter((s) => allowed.includes(s.id));
+  const nameById = Object.fromEntries(allSections.map((s) => [s.id, s.name]));
 
-  const nameById = Object.fromEntries((sections || []).map(s => [s.id, s.name]));
+  // All agents (system first, then custom), grouped per section id.
+  const allAgents = [...(agtData?.system || []), ...(agtData?.custom || [])];
+  const agentsBySection = allAgents.reduce((acc, a) => {
+    (acc[a.sectionId] ||= []).push(a);
+    return acc;
+  }, {});
 
   return (
     <PlatformShell>
@@ -50,32 +59,59 @@ export default function LandingPage() {
           Access denied for {nameById[deniedSection] || deniedSection}. Contact your admin.
         </p>
       )}
-      {error && <p className="shell-sub" style={{ color: '#e06a6a' }}>Couldn’t load sections: {error}</p>}
-      {!sections && !error && <p className="shell-sub">Loading sections…</p>}
+      {error && <p className="shell-sub" style={{ color: '#e06a6a' }}>Couldn’t load the catalogue: {String(error.message || error)}</p>}
+      {loading && !error && <p className="shell-sub">Loading catalogue…</p>}
 
-      {sections && !error && visibleSections.length === 0 && (
+      {!loading && !error && visibleSections.length === 0 && (
         <p className="shell-sub">You don’t have access to any sections yet. Contact your admin.</p>
       )}
 
-      <div className="agent-grid">
-        {visibleSections.map((s, i) => {
-          const live = s.status === 'live';
-          return (
-            <Link key={s.id} to={`/section/${s.id}`} className="agent-option-card" style={{ animationDelay: `${i * 90}ms` }}>
-              <div className="aoc-icon">{s.icon}</div>
-              <div className="aoc-title">{s.name}</div>
-              <div className="aoc-desc">{s.description}</div>
-              <div className="aoc-foot">
-                <span className={`aoc-status ${live ? 'live' : 'soon'}`}>
-                  {live ? `${s.liveCount} agent${s.liveCount > 1 ? 's' : ''} live` : 'Coming soon'}
-                </span>
-                {s.creators?.length > 0 && <span className="aoc-by">Built by {s.creators.join(', ')}</span>}
+      {!loading && !error && visibleSections.map((section) => {
+        const agents = (agentsBySection[section.id] || [])
+          .slice()
+          .sort((a, b) => (isAvailable(b) ? 1 : 0) - (isAvailable(a) ? 1 : 0));
+        return (
+          <section key={section.id} className="landing-section">
+            <div className="landing-section-head">
+              <span className="landing-section-icon">{section.icon}</span>
+              <div>
+                <Link to={`/section/${section.id}`} className="landing-section-title">{section.name}</Link>
+                <p className="landing-section-desc">{section.description}</p>
               </div>
-              <span className="aoc-cta">{live ? 'Open section' : 'Preview'} →</span>
-            </Link>
-          );
-        })}
-      </div>
+            </div>
+
+            {agents.length === 0 ? (
+              <p className="shell-sub" style={{ marginTop: 0 }}>No agents in this section yet.</p>
+            ) : (
+              <div className="agent-grid">
+                {agents.map((a, i) => {
+                  const available = isAvailable(a);
+                  const Card = available ? Link : 'div';
+                  return (
+                    <Card
+                      key={a.id}
+                      {...(available ? { to: agentTarget(a) } : {})}
+                      className={`agent-option-card${available ? '' : ' is-soon'}`}
+                      style={{ animationDelay: `${i * 70}ms` }}
+                    >
+                      <div className="aoc-icon">{a.icon || '◆'}</div>
+                      <div className="aoc-title">{a.name}</div>
+                      <div className="aoc-desc">{a.description}</div>
+                      <div className="aoc-foot">
+                        <span className={`aoc-status ${available ? 'live' : 'soon'}`}>
+                          {available ? 'Live' : 'Coming soon'}
+                        </span>
+                        {a.creator && <span className="aoc-by">Built by {a.creator}</span>}
+                      </div>
+                      {available && <span className="aoc-cta">Open →</span>}
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        );
+      })}
     </PlatformShell>
   );
 }

@@ -19,8 +19,17 @@ const router = express.Router();
 router.use(requireAdminOrPanel);
 
 const VALID_ROLES    = ['viewer', 'editor', 'admin'];
-const VALID_SECTIONS = ['brand-visibility', 'pr', 'leaderboard'];
 const EMAIL_RE       = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// Valid section ids are now DYNAMIC: system sections (systemSections.js) plus any
+// active rows in dynamic_sections. Fetched per validation call so newly-created
+// custom sections are immediately assignable. Self-contained (no require of the
+// admin-sections router) to avoid a circular dependency.
+async function getValidSectionIds(db) {
+  const sys = require('../systemSections').SYSTEM_SECTIONS.map((s) => s.id);
+  const { rows } = await db.execute('SELECT id FROM dynamic_sections WHERE is_active = 1');
+  return [...sys, ...rows.map((r) => r.id)];
+}
 
 // ── Audit helper (exported; reused by routes/auth.js change-password too) ──────
 async function logAudit(db, actor, action, targetType, targetId, meta) {
@@ -54,14 +63,6 @@ function serializeUser(u) {
   };
 }
 
-// Validate a sections_allowed array against the allowed set. Returns error string or null.
-function validateSections(sections) {
-  if (!Array.isArray(sections)) return 'sections_allowed must be an array';
-  const bad = sections.filter((s) => !VALID_SECTIONS.includes(s));
-  if (bad.length) return `Invalid section(s): ${bad.join(', ')}. Allowed: ${VALID_SECTIONS.join(', ')}`;
-  return null;
-}
-
 const USER_COLS =
   'id, email, role, sections_allowed, created_at, last_login_at, password_updated_at, created_by';
 
@@ -84,10 +85,13 @@ router.post('/users', async (req, res) => {
   if (!email || !EMAIL_RE.test(email)) return res.status(400).json({ error: 'A valid email is required' });
   if (!password || String(password).length < 8) return res.status(400).json({ error: 'Password is required (min 8 characters)' });
   if (!VALID_ROLES.includes(role)) return res.status(400).json({ error: `role must be one of: ${VALID_ROLES.join(', ')}` });
-  const secErr = validateSections(sections_allowed);
-  if (secErr) return res.status(400).json({ error: secErr });
+  if (!Array.isArray(sections_allowed)) return res.status(400).json({ error: 'sections_allowed must be an array' });
 
   try {
+    const valid = await getValidSectionIds(db);
+    const invalid = sections_allowed.filter((s) => !valid.includes(s));
+    if (invalid.length) return res.status(400).json({ error: 'Invalid sections', invalid, valid });
+
     const { rows: existing } = await db.execute({ sql: 'SELECT id FROM users WHERE email = ?', args: [email] });
     if (existing.length) return res.status(409).json({ error: 'A user with that email already exists' });
 
@@ -122,9 +126,8 @@ router.patch('/users/:id', async (req, res) => {
   if (role !== undefined && !VALID_ROLES.includes(role)) {
     return res.status(400).json({ error: `role must be one of: ${VALID_ROLES.join(', ')}` });
   }
-  if (sections_allowed !== undefined) {
-    const secErr = validateSections(sections_allowed);
-    if (secErr) return res.status(400).json({ error: secErr });
+  if (sections_allowed !== undefined && !Array.isArray(sections_allowed)) {
+    return res.status(400).json({ error: 'sections_allowed must be an array' });
   }
   // Prevent self-lockout: an admin cannot change their own role.
   if (role !== undefined && id === req.user.id) {
@@ -132,6 +135,12 @@ router.patch('/users/:id', async (req, res) => {
   }
 
   try {
+    if (sections_allowed !== undefined) {
+      const valid = await getValidSectionIds(db);
+      const invalid = sections_allowed.filter((s) => !valid.includes(s));
+      if (invalid.length) return res.status(400).json({ error: 'Invalid sections', invalid, valid });
+    }
+
     const { rows } = await db.execute({ sql: `SELECT ${USER_COLS} FROM users WHERE id = ?`, args: [id] });
     if (!rows.length) return res.status(404).json({ error: 'User not found' });
 

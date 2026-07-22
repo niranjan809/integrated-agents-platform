@@ -58,6 +58,13 @@ app.use('/api/admin',     require('./routes/admin'));
 // /api/admin prefix (after routes/admin.js) so its admin-only gate can't
 // intercept other /api/* routes. Routes still resolve to /api/admin/users, etc.
 app.use('/api/admin',     require('./routes/admin-users'));
+// Dynamic registry (admin CRUD + merged public catalogue). Mounted at /api and
+// BEFORE the legacy sections/agents routers so the merged GET /api/sections and
+// GET /api/agents (which return { system, custom, ...legacy }) win, while
+// /api/sections/:id, /api/agents/:id, /run, /status still fall through below.
+// CRUD lives at /api/admin/sections and /api/admin/agents (requireAdminOrPanel).
+app.use('/api',           require('./routes/admin-sections'));
+app.use('/api',           require('./routes/admin-agents'));
 app.use('/api/sections',  require('./routes/sections'));
 app.use('/api/agents',    require('./routes/agents'));
 // Brand Visibility agent: lexicon config CRUD, proxied to the Python FastAPI backend

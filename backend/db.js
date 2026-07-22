@@ -127,6 +127,46 @@ CREATE TABLE IF NOT EXISTS audit_log (
   meta_json    TEXT,
   created_at   TEXT    DEFAULT (datetime('now'))
 );
+
+-- Dynamic registry (admin-managed sections + agents). These MERGE with the
+-- hardcoded system entries in agentRegistry.js / systemSections.js at read time.
+-- id is a TEXT slug (e.g. 'creator-radar'), not an autoincrement integer, so
+-- URLs and section gates read the same slug the admin typed. created_by is a
+-- users.id (no FK, kept even if the user row is later removed).
+CREATE TABLE IF NOT EXISTS dynamic_sections (
+  id            TEXT PRIMARY KEY,
+  name          TEXT NOT NULL,
+  description   TEXT,
+  icon          TEXT,
+  display_order INTEGER DEFAULT 0,
+  is_active     INTEGER DEFAULT 1,
+  created_at    TEXT DEFAULT (datetime('now')),
+  created_by    INTEGER,
+  updated_at    TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS dynamic_agents (
+  id            TEXT PRIMARY KEY,
+  section_id    TEXT NOT NULL,
+  name          TEXT NOT NULL,
+  description   TEXT,
+  creator       TEXT,
+  version       TEXT DEFAULT '0.1.0',
+  surface       TEXT NOT NULL CHECK(surface IN ('app', 'iframe', 'http')),
+  path          TEXT,
+  embed_url     TEXT,
+  run_url       TEXT,
+  status_url    TEXT,
+  icon          TEXT,
+  integrations  TEXT,
+  status        TEXT DEFAULT 'active' CHECK(status IN ('active', 'coming_soon', 'disabled')),
+  display_order INTEGER DEFAULT 0,
+  created_at    TEXT DEFAULT (datetime('now')),
+  created_by    INTEGER,
+  updated_at    TEXT DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_dynamic_agents_section ON dynamic_agents(section_id);
 `;
 
 // ── Seed keywords from Google Sheets class structure ──────────────────────────

@@ -69,6 +69,8 @@ app.use('/api/sections',  require('./routes/sections'));
 app.use('/api/agents',    require('./routes/agents'));
 // Brand Visibility agent: lexicon config CRUD, proxied to the Python FastAPI backend
 app.use('/api/brand-visibility/config', require('./routes/brand-visibility-config'));
+// Creator Radar agent: proxied to the Fastify backend on its own Railway service
+app.use('/api/creator-radar', require('./routes/creator-radar'));
 // X Agent (this repo's own agent, in the 'pr' section): its dashboard data + run
 // APIs. RBAC Phase 3.1 — mounted under /api/pr/* and gated by requireSection('pr')
 // at the mount level (hard cut, no /api/* aliases). Panel-admin bypasses the gate.

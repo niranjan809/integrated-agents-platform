@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ROLES, ROLE_LABELS, SECTIONS, SECTION_LABELS } from '../../../constants/rbac';
+import { ROLES, ROLE_LABELS, SYSTEM_SECTIONS, SYSTEM_SECTION_LABELS } from '../../../constants/rbac';
+import { useSections } from '../../../hooks/useSections';
 
 // Auth-source-agnostic: the parent passes `fetcher` (a fetch(path, opts)=>Response
 // wrapper carrying whichever token applies — panel-admin in AdminPage) and
@@ -19,9 +20,21 @@ function timeAgo(ts) {
   return d.toLocaleDateString();
 }
 
-const BLANK_CREATE = { email: '', password: '', role: 'viewer', sections: [...SECTIONS] };
+const BLANK_CREATE = { email: '', password: '', role: 'viewer', sections: [...SYSTEM_SECTIONS] };
 
 export default function UsersTab({ fetcher, currentUser }) {
+  // Dynamic sections (system + custom). Fetched with the panel-admin `fetcher`
+  // so it works in AdminPage's separate auth context.
+  const { sections: secData } = useSections(fetcher);
+  const allSections = useMemo(() => {
+    const merged = [...(secData?.system || []), ...(secData?.custom || [])];
+    // De-dup by id, preserve order; fall back to the built-in system list.
+    if (!merged.length) return SYSTEM_SECTIONS.map((id) => ({ id, name: SYSTEM_SECTION_LABELS[id] || id }));
+    const seen = new Set();
+    return merged.filter((s) => (seen.has(s.id) ? false : seen.add(s.id)));
+  }, [secData]);
+  const sectionLabel = (id) => allSections.find((s) => s.id === id)?.name || SYSTEM_SECTION_LABELS[id] || id;
+
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -63,7 +76,7 @@ export default function UsersTab({ fetcher, currentUser }) {
   }, [users, q, roleFilter, sectionFilter]);
 
   // ── modal open helpers ──
-  function openAdd()   { setModalError(null); setForm({ ...BLANK_CREATE, sections: [...SECTIONS] }); setModal({ mode: 'add' }); }
+  function openAdd()   { setModalError(null); setForm({ ...BLANK_CREATE, sections: allSections.map((s) => s.id) }); setModal({ mode: 'add' }); }
   function openEdit(u) { setModalError(null); setForm({ email: u.email, password: '', role: u.role, sections: [...(u.sections_allowed || [])] }); setModal({ mode: 'edit', row: u }); }
   function openReset(u){ setModalError(null); setPw1(''); setPw2(''); setModal({ mode: 'reset', row: u }); }
   function openDelete(u){ setModalError(null); setModal({ mode: 'delete', row: u }); }
@@ -147,7 +160,7 @@ export default function UsersTab({ fetcher, currentUser }) {
         </select>
         <select className="filter-select" value={sectionFilter} onChange={e => setSectionFilter(e.target.value)}>
           <option value="all">All sections</option>
-          {SECTIONS.map(s => <option key={s} value={s}>{SECTION_LABELS[s]}</option>)}
+          {allSections.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
         </select>
         <button className="btn-primary" style={{ marginLeft: 'auto' }} onClick={openAdd}>+ Add User</button>
       </div>
@@ -165,7 +178,7 @@ export default function UsersTab({ fetcher, currentUser }) {
                 <tr key={u.id} className={isSelf ? 'user-row self' : ''}>
                   <td>{u.email}{isSelf && <span className="user-chip" style={{ marginLeft: 8 }}>you</span>}</td>
                   <td>{ROLE_LABELS[u.role] || u.role}</td>
-                  <td>{(u.sections_allowed || []).map(s => <span key={s} className="user-chip">{SECTION_LABELS[s] || s}</span>)}</td>
+                  <td>{(u.sections_allowed || []).map(s => <span key={s} className="user-chip">{sectionLabel(s)}</span>)}</td>
                   <td title={u.last_login_at || ''}>{timeAgo(u.last_login_at)}</td>
                   <td>{u.created_by ? (emailById[u.created_by] || `#${u.created_by}`) : '—'}</td>
                   <td>
@@ -213,10 +226,10 @@ export default function UsersTab({ fetcher, currentUser }) {
             <div className="modal-field">
               <span>Sections allowed</span>
               <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
-                {SECTIONS.map(s => (
-                  <label key={s} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
-                    <input type="checkbox" checked={form.sections.includes(s)} onChange={() => toggleSection(s)} />
-                    {SECTION_LABELS[s]}
+                {allSections.map(s => (
+                  <label key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
+                    <input type="checkbox" checked={form.sections.includes(s.id)} onChange={() => toggleSection(s.id)} />
+                    {s.name}
                   </label>
                 ))}
               </div>

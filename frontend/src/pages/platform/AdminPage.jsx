@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { Link, Navigate, useSearchParams } from 'react-router-dom';
 import UsersTab from './admin/UsersTab';
 import AuditLogTab from './admin/AuditLogTab';
+import RegistryTab from './admin/RegistryTab';
 
 const API  = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 const TKEY = 'kiteai_admin_token';
@@ -17,8 +18,8 @@ export default function AdminPage() {
 
   const _initialTab = params.get('tab');
   const [view, setView]           = useState(
-    (_initialTab === 'users' || _initialTab === 'audit') ? _initialTab : 'overview'
-  ); // 'overview' | 'section' | 'agent' | 'users' | 'audit'
+    (_initialTab === 'users' || _initialTab === 'audit' || _initialTab === 'registry') ? _initialTab : 'overview'
+  ); // 'overview' | 'section' | 'agent' | 'users' | 'audit' | 'registry'
   const [sectionId, setSectionId] = useState(null);
   const [agentId, setAgentId]     = useState(null);
   const [detail, setDetail]       = useState(null);
@@ -114,6 +115,9 @@ export default function AdminPage() {
           <button className={`admin-nav-item${view === 'audit' ? ' active' : ''}`} onClick={() => goTab('audit')}>
             <span className="ni">▤</span> Audit Log
           </button>
+          <button className={`admin-nav-item${view === 'registry' ? ' active' : ''}`} onClick={() => goTab('registry')}>
+            <span className="ni">◈</span> Registry
+          </button>
           {(ov?.sections || []).map(s => (
             <div key={s.id} className="admin-nav-group">
               <button className={`admin-nav-section${view === 'section' && sectionId === s.id ? ' active' : ''}`} onClick={() => openSection(s.id)}>
@@ -137,8 +141,8 @@ export default function AdminPage() {
 
       {/* ── Main ── */}
       <main className="admin-main">
-        {err && view !== 'users' && view !== 'audit' && <div className="embed-msg embed-error">{err}</div>}
-        {!ov && !err && view !== 'users' && view !== 'audit' && <div className="embed-msg">Loading…</div>}
+        {err && !['users', 'audit', 'registry'].includes(view) && <div className="embed-msg embed-error">{err}</div>}
+        {!ov && !err && !['users', 'audit', 'registry'].includes(view) && <div className="embed-msg">Loading…</div>}
 
         {view === 'users' && (
           <>
@@ -150,6 +154,12 @@ export default function AdminPage() {
           <>
             <h1 className="admin-title">Audit Log</h1>
             <AuditLogTab fetcher={adminFetch} />
+          </>
+        )}
+        {view === 'registry' && (
+          <>
+            <h1 className="admin-title">Agents &amp; Sections</h1>
+            <RegistryTab fetcher={adminFetch} />
           </>
         )}
 

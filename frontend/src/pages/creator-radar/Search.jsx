@@ -80,7 +80,7 @@ export default function Search() {
           <div className="u-flex u-overflow-hidden u-rounded-md u-border u-border-slate-300">
             <button
               onClick={() => setPlatform("instagram")}
-              className={`u-px-3 u-py-2 u-text-sm ${platform === "instagram" ? "u-bg-slate-900 u-text-white" : "u-bg-white u-text-slate-600 u-hover-bg-slate-50"}`}
+              className={`u-px-3 u-py-2 u-text-sm ${platform === "instagram" ? "u-bg-slate-900" : "u-bg-white u-text-slate-600 u-hover-bg-slate-50"}`}
             >
               Instagram
             </button>
@@ -110,7 +110,7 @@ export default function Search() {
         <button
           onClick={runSearch}
           disabled={!canSubmit}
-          className="u-rounded-md u-bg-slate-900 u-px-4 u-py-2 u-text-sm u-font-medium u-text-white u-hover-bg-slate-700 u-disabled-cursor-not-allowed u-disabled-bg-slate-300"
+          className="u-rounded-md u-bg-slate-900 u-px-4 u-py-2 u-text-sm u-font-medium u-hover-bg-slate-700 u-disabled-cursor-not-allowed u-disabled-bg-slate-300"
         >
           {loading ? "Searching…" : "Search"}
         </button>

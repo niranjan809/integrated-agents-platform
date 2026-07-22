@@ -165,7 +165,7 @@ export default function AddAccountModal({ onClose, onAdded }) {
 
             <div className="u-flex u-justify-end u-gap-2 u-border-t u-border-slate-100 u-pt-4">
               <button onClick={onClose} className="u-rounded-md u-border u-border-slate-300 u-px-4 u-py-2 u-text-sm u-hover-bg-slate-50">Cancel</button>
-              <button onClick={submit} className="u-rounded-md u-bg-slate-900 u-px-4 u-py-2 u-text-sm u-font-medium u-text-white u-hover-bg-slate-700">Add account</button>
+              <button onClick={submit} className="u-rounded-md u-bg-slate-900 u-px-4 u-py-2 u-text-sm u-font-medium u-hover-bg-slate-700">Add account</button>
             </div>
           </div>
         )}
@@ -211,7 +211,7 @@ export default function AddAccountModal({ onClose, onAdded }) {
             )}
 
             <div className="u-flex u-justify-end u-border-t u-border-slate-100 u-pt-4">
-              <button onClick={() => { onAdded?.(); onClose(); }} className="u-rounded-md u-bg-slate-900 u-px-4 u-py-2 u-text-sm u-font-medium u-text-white u-hover-bg-slate-700">Done</button>
+              <button onClick={() => { onAdded?.(); onClose(); }} className="u-rounded-md u-bg-slate-900 u-px-4 u-py-2 u-text-sm u-font-medium u-hover-bg-slate-700">Done</button>
             </div>
           </div>
         )}
@@ -226,7 +226,7 @@ export default function AddAccountModal({ onClose, onAdded }) {
             <div className="u-rounded-md u-bg-red-50 u-px-3 u-py-2 u-text-sm u-text-red-700">{errMsg}</div>
             <div className="u-flex u-justify-end u-gap-2 u-border-t u-border-slate-100 u-pt-4">
               <button onClick={onClose} className="u-rounded-md u-border u-border-slate-300 u-px-4 u-py-2 u-text-sm u-hover-bg-slate-50">Cancel</button>
-              <button onClick={retry} className="u-rounded-md u-bg-slate-900 u-px-4 u-py-2 u-text-sm u-font-medium u-text-white u-hover-bg-slate-700">Try again</button>
+              <button onClick={retry} className="u-rounded-md u-bg-slate-900 u-px-4 u-py-2 u-text-sm u-font-medium u-hover-bg-slate-700">Try again</button>
             </div>
           </div>
         )}

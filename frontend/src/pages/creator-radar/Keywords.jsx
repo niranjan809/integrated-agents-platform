@@ -50,7 +50,7 @@ export default function Keywords() {
       <div className="u-flex u-items-center u-justify-between">
         <h2 className="u-text-lg u-font-semibold u-text-slate-900">Keywords</h2>
         {isTier && (
-          <button onClick={() => setShowAdd(true)} className="u-rounded-md u-bg-slate-900 u-px-3 u-py-1_5 u-text-sm u-font-medium u-text-white u-hover-bg-slate-700">
+          <button onClick={() => setShowAdd(true)} className="u-rounded-md u-bg-slate-900 u-px-3 u-py-1_5 u-text-sm u-font-medium u-hover-bg-slate-700">
             + Add hashtag
           </button>
         )}
@@ -137,7 +137,7 @@ export default function Keywords() {
       {restoreTarget && <RestoreKeywordModal entry={restoreTarget} onCancel={() => setRestoreTarget(null)} onRestored={afterMutation} />}
 
       {toast && (
-        <div className="u-fixed u-bottom-6 u-left-1-2 u-z-80 u-neg-translate-x-1-2 u-rounded-lg u-bg-slate-900 u-px-4 u-py-2 u-text-sm u-text-white u-shadow-lg">{toast}</div>
+        <div className="u-fixed u-bottom-6 u-left-1-2 u-z-80 u-neg-translate-x-1-2 u-rounded-lg u-bg-slate-900 u-px-4 u-py-2 u-text-sm u-shadow-lg">{toast}</div>
       )}
     </div>
   );

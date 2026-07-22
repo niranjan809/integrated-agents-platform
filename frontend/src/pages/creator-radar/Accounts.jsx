@@ -115,7 +115,7 @@ export default function Accounts() {
           <span className="u-text-sm u-text-slate-400">{loading ? "…" : `${sorted.length} of ${rows.length}`}</span>
           <button
             onClick={() => setShowAdd(true)}
-            className="u-rounded-md u-bg-slate-900 u-px-3 u-py-1_5 u-text-sm u-font-medium u-text-white u-hover-bg-slate-700"
+            className="u-rounded-md u-bg-slate-900 u-px-3 u-py-1_5 u-text-sm u-font-medium u-hover-bg-slate-700"
           >
             + Add account
           </button>
@@ -194,7 +194,7 @@ export default function Accounts() {
       {showAdd && <AddAccountModal onClose={() => setShowAdd(false)} onAdded={load} />}
 
       {toast && (
-        <div className="u-fixed u-bottom-6 u-left-1-2 u-z-80 u-neg-translate-x-1-2 u-rounded-lg u-bg-slate-900 u-px-4 u-py-2 u-text-sm u-text-white u-shadow-lg">
+        <div className="u-fixed u-bottom-6 u-left-1-2 u-z-80 u-neg-translate-x-1-2 u-rounded-lg u-bg-slate-900 u-px-4 u-py-2 u-text-sm u-shadow-lg">
           {toast}
         </div>
       )}

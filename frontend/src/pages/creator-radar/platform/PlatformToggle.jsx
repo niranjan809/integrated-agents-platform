@@ -20,7 +20,7 @@ export default function PlatformToggle() {
             aria-pressed={active}
             className={`u-rounded-full u-px-3 u-py-1 u-text-sm u-outline-none u-transition-colors u-focus-visible-outline u-focus-visible-outline-2 u-focus-visible-outline-offset-2 u-focus-visible-outline-slate-500 ${
               active
-                ? "u-bg-slate-900 u-text-white"
+                ? "u-bg-slate-900"
                 : "u-border u-border-gray-300 u-text-gray-500 u-hover-text-gray-700"
             }`}
           >

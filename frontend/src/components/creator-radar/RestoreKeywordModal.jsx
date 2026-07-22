@@ -57,7 +57,7 @@ export default function RestoreKeywordModal({ entry, onCancel, onRestored }) {
         </div>
         <div className="u-flex u-justify-end u-gap-2 u-border-t u-border-slate-100 u-px-5 u-py-4">
           <button onClick={onCancel} disabled={busy} className="u-rounded-md u-border u-border-slate-300 u-px-4 u-py-2 u-text-sm u-hover-bg-slate-50 u-disabled-opacity-50">Cancel</button>
-          <button onClick={submit} disabled={busy} className="u-rounded-md u-bg-slate-900 u-px-4 u-py-2 u-text-sm u-font-medium u-text-white u-hover-bg-slate-700 u-disabled-opacity-60">
+          <button onClick={submit} disabled={busy} className="u-rounded-md u-bg-slate-900 u-px-4 u-py-2 u-text-sm u-font-medium u-hover-bg-slate-700 u-disabled-opacity-60">
             {busy ? "Restoring…" : "Restore"}
           </button>
         </div>

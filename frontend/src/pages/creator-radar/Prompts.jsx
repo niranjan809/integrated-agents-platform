@@ -53,7 +53,7 @@ export default function Prompts() {
               </div>
             </div>
             {p.purpose && <p className="u-mt-2 u-text-sm u-text-slate-500">{p.purpose}</p>}
-            <pre className="u-mt-3 u-max-h-28rem u-overflow-auto u-whitespace-pre-wrap u-rounded-lg u-bg-slate-900 u-p-4 u-text-xs u-leading-relaxed u-text-slate-100">
+            <pre className="cr-code u-mt-3 u-max-h-28rem u-overflow-auto u-whitespace-pre-wrap u-rounded-lg u-p-4 u-text-xs u-leading-relaxed">
               {p.content}
             </pre>
           </section>

@@ -46,7 +46,7 @@ export default class ErrorBoundary extends Component {
           <div className="u-mt-4 u-flex u-items-center u-gap-3">
             <button
               onClick={() => window.location.reload()}
-              className="u-rounded-md u-bg-slate-900 u-px-3 u-py-1_5 u-text-sm u-font-medium u-text-white u-hover-bg-slate-800"
+              className="u-rounded-md u-bg-slate-900 u-px-3 u-py-1_5 u-text-sm u-font-medium u-hover-bg-slate-800"
             >
               Refresh
             </button>

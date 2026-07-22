@@ -31,6 +31,16 @@ import BvManualRun from './pages/brand-visibility/x/ManualRun';
 import BvHistory   from './pages/brand-visibility/x/History';
 import LinkedInComingSoon from './pages/brand-visibility/linkedin/ComingSoon';
 
+// Creator Radar agent (Instagram + TikTok; platform via cr_selected_platform)
+import CrLayout    from './components/creator-radar/Layout';
+import CrOverview  from './pages/creator-radar/Overview';
+import CrAccounts  from './pages/creator-radar/Accounts';
+import CrSearch    from './pages/creator-radar/Search';
+import CrKeywords  from './pages/creator-radar/Keywords';
+import CrPrompts   from './pages/creator-radar/Prompts';
+import CrServices  from './pages/creator-radar/Services';
+import CrScheduler from './pages/creator-radar/Scheduler';
+
 // The X Agent dashboard (sidebar layout). Mounted under the platform catch-all so the
 // landing + agent-section pages can live at the top level.
 function AppLayout() {
@@ -125,6 +135,26 @@ export default function App() {
         <Route path="linkedin" element={<Navigate to="/brand-visibility/overview?platform=linkedin" replace />} />
         <Route path="linkedin/:section" element={<LegacyRedirect platform="linkedin" />} />
         <Route path="*" element={<PlatformIndexRedirect />} />
+      </Route>
+
+      {/* Creator Radar agent dashboard (Instagram + TikTok, own sidebar). Platform
+          selection lives in sessionStorage (cr_selected_platform), not the URL. */}
+      <Route path="/creator-radar" element={
+        <ProtectedRoute>
+          <SectionGuard section="creator-radar">
+            <CrLayout />
+          </SectionGuard>
+        </ProtectedRoute>
+      }>
+        <Route index element={<Navigate to="/creator-radar/overview" replace />} />
+        <Route path="overview"  element={<CrOverview />} />
+        <Route path="accounts"  element={<CrAccounts />} />
+        <Route path="search"    element={<CrSearch />} />
+        <Route path="keywords"  element={<CrKeywords />} />
+        <Route path="prompts"   element={<CrPrompts />} />
+        <Route path="services"  element={<CrServices />} />
+        <Route path="scheduler" element={<CrScheduler />} />
+        <Route path="*" element={<Navigate to="/creator-radar/overview" replace />} />
       </Route>
 
       {/* X Agent dashboard (everything else, with sidebar) — the X Agent is the

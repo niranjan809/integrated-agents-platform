@@ -872,7 +872,7 @@ code, .mono, pre { font-family: var(--mono); }
 .embed-title { font-family: var(--mono); font-size: 13px; letter-spacing: .04em; color: var(--text2); }
 .embed-open { margin-left: auto; font-family: var(--mono); font-size: 12px; color: var(--primary); text-decoration: none; }
 .embed-open:hover { text-decoration: underline; }
-.embed-frame { flex: 1; width: 100%; border: 0; background: #fff; }
+.embed-frame { flex: 1; width: 100%; border: 0; background: #000; }
 .embed-msg { padding: 28px 24px; color: var(--text2); }
 .embed-msg.embed-error { color: var(--red); }
 

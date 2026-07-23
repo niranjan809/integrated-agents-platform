@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
-// Renders an `iframe`-surface agent's own dashboard inside the platform, full-screen
-// with a slim back bar. The agent's embedUrl comes from the registry (/api/agents/:id).
+// Renders an `iframe`-surface agent's own dashboard full-screen (no wrapper bar) —
+// the embedded agent provides its own "← All Agents" control to return to the
+// platform. The agent's embedUrl comes from the registry (/api/agents/:id).
 export default function AgentEmbedPage() {
   const { agentId } = useParams();
   const [agent, setAgent] = useState(null);
@@ -19,18 +20,8 @@ export default function AgentEmbedPage() {
       .catch(e => setError(e.message));
   }, [agentId]);
 
-  const backTo = agent?.sectionId ? `/section/${agent.sectionId}` : '/';
-
   return (
     <div className="embed-shell">
-      <div className="embed-topbar">
-        <Link to={backTo} className="back-to-platform" style={{ margin: 0 }}>← Back</Link>
-        <span className="embed-title">{agent?.name || 'Agent'}</span>
-        {agent?.embedUrl && (
-          <a className="embed-open" href={agent.embedUrl} target="_blank" rel="noreferrer">Open in new tab ↗</a>
-        )}
-      </div>
-
       {error && <div className="embed-msg embed-error">{error}</div>}
       {!agent && !error && <div className="embed-msg">Loading…</div>}
       {agent && !agent.embedUrl && (

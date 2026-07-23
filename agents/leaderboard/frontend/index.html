@@ -8,6 +8,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
     <title>AI Leaderboard Agent</title>
     <meta name="description" content="Master directory of AI leaderboards across LLM, Voice AI, and Coding domains" />
+    <!-- Dark first paint: applied before the JS bundle / index.css load, so the
+         initial render is dark instead of a white flash (esp. when embedded). -->
+    <style>html, body { background: #000; margin: 0; }</style>
   </head>
   <body>
     <div id="root"></div>

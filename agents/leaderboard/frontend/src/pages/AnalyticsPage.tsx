@@ -43,7 +43,13 @@ function groupChanges(rows: RankingChange[]): Board[] {
 
   const list = Array.from(boards.values());
   // sort each board's events newest-first (defensive), then boards by latest change
-  for (const b of list) b.events.sort((a, c) => c.recordedAt.localeCompare(a.recordedAt));
+  const rankOf = (c: RankingChange) => c.new_rank ?? c.old_rank ?? Number.POSITIVE_INFINITY;
+  for (const b of list) {
+    b.events.sort((a, c) => c.recordedAt.localeCompare(a.recordedAt));
+    // within each scan event, list rank changes by resulting position ascending —
+    // top positions (#1, #2, …) first.
+    for (const ev of b.events) ev.changes.sort((x, y) => rankOf(x) - rankOf(y));
+  }
   list.sort((a, c) => latestTs(c).localeCompare(latestTs(a)));
   return list;
 }

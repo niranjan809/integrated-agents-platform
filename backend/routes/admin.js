@@ -119,7 +119,7 @@ async function probeLeaderboard() {
       fetchJson(`${api}/domain-categories`).catch(() => []),
     ]);
     return {
-      db: { status: 'connected', engine: 'Turso / SQLite' },
+      db: { status: 'connected', engine: 'Turso (libSQL/SQLite)' },
       stats: [
         { label: 'Leaderboards', value: Array.isArray(lbs) ? lbs.length : 0 },
         { label: 'Domain categories', value: Array.isArray(cats) ? cats.length : 0 },

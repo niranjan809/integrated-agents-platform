@@ -107,6 +107,21 @@ export async function runAnalysis(companyId: string): Promise<void> {
     await companiesRepo.updateCompanyStatus(companyId, "classifying");
     const classified: ClassifiedEvidence[] = await classifyBatch(ctx, candidates);
 
+    // Guard: NEVER destroy previously-collected evidence for a run that produced
+    // none. An empty result almost always means scraping failed (no browser /
+    // anti-bot 403s / network) rather than the company genuinely having zero GTM
+    // signals — so deleting then inserting nothing would silently erase good data
+    // while the job still finished "done". Keep the prior evidence, record the run
+    // as failed for diagnostics, and restore a visible terminal status.
+    if (classified.length === 0) {
+      await scrapeJobsRepo.fail(
+        jobId,
+        "Analysis produced no evidence — previous results kept (check scraper/browser availability)"
+      );
+      await companiesRepo.updateCompanyStatus(companyId, "done");
+      return;
+    }
+
     // clear previous evidence/strategies so re-analysis doesn't duplicate
     await evidenceRepo.deleteByCompany(companyId);
     await gtmStrategiesRepo.deleteByCompany(companyId);

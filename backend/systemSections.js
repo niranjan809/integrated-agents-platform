@@ -25,5 +25,12 @@ module.exports = {
       icon: '🏆',
       display_order: 3,
     },
+    {
+      id: 'gtm',
+      name: 'GTM Intelligence',
+      description: 'Competitive go-to-market strategy analysis, evidence-first',
+      icon: '🔍',
+      display_order: 5,
+    },
   ],
 };

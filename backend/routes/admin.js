@@ -159,6 +159,28 @@ async function probeBrand(kind) {
   } catch (e) { return { db: { status: 'error', engine: 'Postgres', note: e.message }, stats: [] }; }
 }
 
+// GTM Intelligence — its Fastify backend (GTM_BACKEND_URL), reached with the shared
+// X-Internal-Secret (server-side only, never exposed to the browser).
+async function probeGtm() {
+  const base = process.env.GTM_BACKEND_URL;
+  const secret = process.env.GTM_INTERNAL_SECRET;
+  if (!base) return { db: { status: 'unknown', note: 'GTM_BACKEND_URL not set' }, stats: [] };
+  const headers = secret ? { 'X-Internal-Secret': secret } : {};
+  try {
+    const [companies, categories] = await Promise.all([
+      fetchJson(`${base}/api/companies`, 15000, headers),
+      fetchJson(`${base}/api/categories`, 15000, headers).catch(() => []),
+    ]);
+    return {
+      db: { status: 'connected', engine: 'Turso (libSQL/SQLite)' },
+      stats: [
+        { label: 'Companies', value: Array.isArray(companies) ? companies.length : 0 },
+        { label: 'GTM categories', value: Array.isArray(categories) ? categories.length : 0 },
+      ],
+    };
+  } catch (e) { return { db: { status: 'error', note: e.message }, stats: [] }; }
+}
+
 router.get('/agents/:id', requirePanelAdmin, async (req, res) => {
   const agent = adminAgents().find(a => a.id === req.params.id);
   if (!agent) return res.status(404).json({ error: 'Agent not found' });
@@ -178,6 +200,10 @@ router.get('/agents/:id', requirePanelAdmin, async (req, res) => {
     health = { status: base ? await ping(`${base}/health`) : 'unknown', url: base ? `${base}/health` : 'not configured' };
     // X is the only platform wired to real data; probe its counts.
     probe  = await probeBrand('x');
+  } else if (agent.id === 'gtm') {
+    const base = process.env.GTM_BACKEND_URL;
+    health = { status: base ? await ping(`${base}/health`) : 'unknown', url: base ? `${base}/health` : 'not configured' };
+    probe  = await probeGtm();
   }
 
   res.json({ agent, health, db: probe.db, stats: probe.stats, checkedAt: new Date().toISOString() });

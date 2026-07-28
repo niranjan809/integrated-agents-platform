@@ -276,7 +276,7 @@ async function initDB() {
     // sections_allowed: comma-separated section slugs the user may access (used by
     // Phase 3 gating; not enforced yet). SQLite backfills existing rows with the
     // default. The other three are audit/ops metadata (NULL for pre-existing rows).
-    `ALTER TABLE users ADD COLUMN sections_allowed    TEXT DEFAULT 'brand-visibility,pr,leaderboard'`,
+    `ALTER TABLE users ADD COLUMN sections_allowed    TEXT DEFAULT 'brand-visibility,pr,leaderboard,gtm'`,
     `ALTER TABLE users ADD COLUMN password_updated_at TEXT`,
     `ALTER TABLE users ADD COLUMN created_by          INTEGER`,
     `ALTER TABLE users ADD COLUMN last_login_at       TEXT`,
@@ -343,11 +343,21 @@ async function initDB() {
     // (on some engines) have NULL — grant full section access so it isn't locked
     // out once Phase 3 gating lands. New rows already get the column default.
     await db.execute({
-      sql: `UPDATE users SET sections_allowed = 'brand-visibility,pr,leaderboard'
+      sql: `UPDATE users SET sections_allowed = 'brand-visibility,pr,leaderboard,gtm'
             WHERE email = ? AND sections_allowed IS NULL`,
       args: [adminEmail],
     });
   }
+
+  // Grant the built-in GTM section to every existing user that predates it (new
+  // rows get it via the column default). Idempotent — only touches rows missing it.
+  await db.execute(
+    `UPDATE users SET sections_allowed =
+       CASE WHEN sections_allowed IS NULL OR sections_allowed = ''
+            THEN 'brand-visibility,pr,leaderboard,gtm'
+            ELSE sections_allowed || ',gtm' END
+     WHERE ',' || COALESCE(sections_allowed, '') || ',' NOT LIKE '%,gtm,%'`
+  );
 
   // Seed default agent config
   await db.execute(`INSERT OR IGNORE INTO agent_config (key, value) VALUES ('last_run', NULL)`);

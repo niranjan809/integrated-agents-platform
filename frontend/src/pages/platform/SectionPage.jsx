@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import PlatformShell from '../../components/platform/PlatformShell';
+import AgentIcon from '../../components/platform/AgentIcon';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
@@ -46,7 +47,7 @@ export default function SectionPage() {
 
           {agents.length === 0 ? (
             <div className="placeholder-wrap">
-              <div className="aoc-icon">{section.icon}</div>
+              <div className="aoc-icon"><AgentIcon id={section.id} icon={section.icon} /></div>
               <h2>Coming soon</h2>
               <p>Agents for this section are being prepared and will appear here once connected.</p>
               <span className="aoc-status soon">In progress</span>
@@ -64,7 +65,7 @@ export default function SectionPage() {
                 const cls = `agent-option-card${target ? '' : ' disabled'}`;
                 const inner = (
                   <>
-                    <div className="aoc-icon">{a.icon}</div>
+                    <div className="aoc-icon"><AgentIcon id={a.id} icon={a.icon} /></div>
                     <div className="aoc-title">{a.name}</div>
                     <div className="aoc-desc">{a.description}</div>
                     <div className="aoc-foot">

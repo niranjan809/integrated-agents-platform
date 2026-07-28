@@ -832,6 +832,9 @@ code, .mono, pre { font-family: var(--mono); }
 .agent-option-card.disabled:hover { transform: none; border-color: var(--border); box-shadow: none; }
 .agent-option-card.disabled:hover::before { transform: scaleX(0); }
 .aoc-icon { width: 50px; height: 50px; border-radius: var(--r-control); display: flex; align-items: center; justify-content: center; font-size: 24px; color: var(--primary); background: linear-gradient(135deg, rgba(0,245,212,.22), rgba(0,245,212,.06)); border: 1px solid rgba(0,245,212,.25); }
+/* Agent icon rendered as inline SVG (e.g. GTM's SparkleSearchIcon) — monochrome,
+   sized to 1em so it inherits each container's font-size/color like a glyph would. */
+.agent-svg-icon { width: 1em; height: 1em; display: inline-block; vertical-align: middle; }
 .aoc-title { font-size: 19px; font-weight: 600; letter-spacing: -.01em; }
 .aoc-desc { font-size: 13.5px; color: var(--text2); line-height: 1.58; flex: 1; }
 .aoc-status { font-family: var(--mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; padding: 4px 10px; border-radius: var(--r-pill); align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; }

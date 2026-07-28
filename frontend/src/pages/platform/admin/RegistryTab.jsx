@@ -4,6 +4,7 @@ import { useSections } from '../../../hooks/useSections';
 import { useAgents } from '../../../hooks/useAgents';
 import SectionFormModal from './SectionFormModal';
 import AgentFormModal from './AgentFormModal';
+import AgentIcon from '../../../components/platform/AgentIcon';
 
 // Agents & Sections registry admin. `fetcher` carries the panel-admin token.
 // Two sub-tabs (Agents / Sections), deep-linkable via ?sub=. System entries are
@@ -126,7 +127,7 @@ export default function RegistryTab({ fetcher }) {
               <thead><tr><th>ID</th><th>Name</th><th>Description</th></tr></thead>
               <tbody>
                 {systemSections.map((s) => (
-                  <tr key={s.id}><td className="mono">{s.id}</td><td>{s.icon} {s.name}</td><td>{s.description}</td></tr>
+                  <tr key={s.id}><td className="mono">{s.id}</td><td><AgentIcon id={s.id} icon={s.icon} /> {s.name}</td><td>{s.description}</td></tr>
                 ))}
               </tbody>
             </table>
@@ -171,7 +172,7 @@ export default function RegistryTab({ fetcher }) {
               <tbody>
                 {systemAgents.map((a) => (
                   <tr key={a.id}>
-                    <td className="mono">{a.id}</td><td>{a.icon} {a.name}</td>
+                    <td className="mono">{a.id}</td><td><AgentIcon id={a.id} icon={a.icon} /> {a.name}</td>
                     <td>{a.sectionId}</td><td>{a.surface}</td><td>{a.status}</td>
                   </tr>
                 ))}

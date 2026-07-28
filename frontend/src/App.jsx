@@ -41,6 +41,13 @@ import CrPrompts   from './pages/creator-radar/Prompts';
 import CrServices  from './pages/creator-radar/Services';
 import CrScheduler from './pages/creator-radar/Scheduler';
 
+// GTM Intelligence agent (competitive GTM-strategy analysis; own top-bar layout)
+import GtmLayout        from './gtm/Layout';
+import GtmDashboard     from './gtm/pages/Dashboard';
+import GtmCompanyDetail from './gtm/pages/CompanyDetail';
+import GtmCategories    from './gtm/pages/Categories';
+import GtmCompare       from './gtm/pages/Compare';
+
 // The X Agent dashboard (sidebar layout). Mounted under the platform catch-all so the
 // landing + agent-section pages can live at the top level.
 function AppLayout() {
@@ -155,6 +162,21 @@ export default function App() {
         <Route path="services"  element={<CrServices />} />
         <Route path="scheduler" element={<CrScheduler />} />
         <Route path="*" element={<Navigate to="/creator-radar/overview" replace />} />
+      </Route>
+
+      {/* GTM Intelligence agent — native app section (own top-bar layout). */}
+      <Route path="/gtm" element={
+        <ProtectedRoute>
+          <SectionGuard section="gtm">
+            <GtmLayout />
+          </SectionGuard>
+        </ProtectedRoute>
+      }>
+        <Route index element={<GtmDashboard />} />
+        <Route path="company/:id" element={<GtmCompanyDetail />} />
+        <Route path="categories"  element={<GtmCategories />} />
+        <Route path="compare"     element={<GtmCompare />} />
+        <Route path="*" element={<Navigate to="/gtm" replace />} />
       </Route>
 
       {/* X Agent dashboard (everything else, with sidebar) — the X Agent is the

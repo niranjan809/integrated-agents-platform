@@ -48,7 +48,13 @@ app.use(express.json());
 
 // â”€â”€ Rate limiting â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 app.use('/api/auth', rateLimit({ windowMs: 15 * 60 * 1000, max: 20, standardHeaders: true }));
-app.use('/api',      rateLimit({ windowMs: 1 * 60 * 1000,  max: 120, standardHeaders: true }));
+// GTM proxies a whole dashboard that bursts on load AND polls (companies/status),
+// so the 120/min global cap 429s it. It's already gated by requireAuth +
+// requireSection('gtm'), and forwards to GTM's own backend — give it a much higher
+// dedicated cap and skip it in the global limiter below.
+app.use('/api/gtm',  rateLimit({ windowMs: 1 * 60 * 1000,  max: 2000, standardHeaders: true }));
+app.use('/api',      rateLimit({ windowMs: 1 * 60 * 1000,  max: 120, standardHeaders: true,
+  skip: (req) => req.originalUrl.startsWith('/api/gtm') }));
 
 // â”€â”€ Routes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Platform (shared by every agent): auth + the section/agent catalogue gateway + admin panel
@@ -71,6 +77,8 @@ app.use('/api/agents',    require('./routes/agents'));
 app.use('/api/brand-visibility/config', require('./routes/brand-visibility-config'));
 // Creator Radar agent: proxied to the Fastify backend on its own Railway service
 app.use('/api/creator-radar', require('./routes/creator-radar'));
+// GTM Intelligence agent: proxied to its own Fastify backend service
+app.use('/api/gtm', require('./routes/gtm'));
 // X Agent (this repo's own agent, in the 'pr' section): its dashboard data + run
 // APIs. RBAC Phase 3.1 — mounted under /api/pr/* and gated by requireSection('pr')
 // at the mount level (hard cut, no /api/* aliases). Panel-admin bypasses the gate.

@@ -1,5 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import PlatformShell from '../../components/platform/PlatformShell';
+import AgentIcon from '../../components/platform/AgentIcon';
 import { useAuth } from '../../context/AuthContext';
 import { useSections } from '../../hooks/useSections';
 import { useAgents } from '../../hooks/useAgents';
@@ -94,7 +95,7 @@ export default function LandingPage() {
                       className={`agent-option-card${available ? '' : ' is-soon'}`}
                       style={{ animationDelay: `${i * 70}ms` }}
                     >
-                      <div className="aoc-icon">{a.icon || '◆'}</div>
+                      <div className="aoc-icon"><AgentIcon id={a.id} icon={a.icon || '◆'} /></div>
                       <div className="aoc-title">{a.name}</div>
                       <div className="aoc-desc">{a.description}</div>
                       <div className="aoc-foot">

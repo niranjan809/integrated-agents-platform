@@ -42,6 +42,16 @@ const SECTIONS = [
       'A live leaderboard of the top products and applications in your field — so you always ' +
       'know the landscape and exactly where you stand.',
   },
+  {
+    id: 'gtm',
+    name: 'GTM Intelligence',
+    // Landing page shows this emoji; the section/admin/in-app surfaces override GTM
+    // to the SparkleSearchIcon SVG in the frontend (per design — emoji only on landing).
+    icon: '🔍',
+    description:
+      'Competitive go-to-market intelligence — discover and compare how AI companies acquire ' +
+      'and convert customers, classified from real public evidence.',
+  },
 ];
 
 const AGENTS = [
@@ -101,6 +111,27 @@ const AGENTS = [
     description:
       'Voice-AI builder signals across X and LinkedIn — sweeps, classifies, and surfaces the ' +
       'accounts and posts driving your brand visibility on both platforms.',
+    runUrl: null,
+    version: 1,
+  },
+  // GTM Intelligence agent — native app section (surface:'app', route /gtm). Its
+  // Fastify backend runs as a separate service; the platform proxies /api/gtm/* to
+  // it (backend/routes/gtm.js). Goes live when GTM_BACKEND_URL is configured.
+  {
+    id: 'gtm',
+    sectionId: 'gtm',
+    name: 'GTM Intelligence Agent',
+    creator: 'Parvathi B',
+    integrations: ['Turso DB', 'OpenRouter (Gemini 2.5 Flash)', 'Playwright scraper', 'Cheerio'],
+    // Landing page shows this emoji; other surfaces override to the SparkleSearchIcon SVG.
+    icon: '🔍',
+    status: process.env.GTM_BACKEND_URL ? 'live' : 'soon',
+    surface: 'app',
+    path: '/gtm',
+    description:
+      'Competitive go-to-market intelligence — discovers and compares how AI companies acquire ' +
+      'and convert customers (product-led vs sales-led, pricing, launches, partnerships, and more), ' +
+      'each strategy classified from real public evidence with source links.',
     runUrl: null,
     version: 1,
   },

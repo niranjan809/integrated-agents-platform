@@ -1,0 +1,208 @@
+/* GTM agent styles — scoped Tailwind (utilities/components only; NO @tailwind base,
+   so there's no global reset that could disturb the rest of the platform SPA). */
+@tailwind components;
+@tailwind utilities;
+
+/* Scoped base — everything here is confined to the GTM section via .gtm-scope,
+   replacing the bits of Tailwind's disabled preflight that GTM actually relies on. */
+.gtm-scope,
+.gtm-scope *,
+.gtm-scope *::before,
+.gtm-scope *::after {
+  box-sizing: border-box;
+}
+
+/* Tailwind's --tw-* variable defaults normally ship in Preflight (disabled here).
+   Without them, ring / shadow / transform / filter / gradient utilities have no
+   fallback and silently do nothing (e.g. `ring-2` with no colour = invisible ring,
+   so a selected chip never highlights). Re-declare them scoped to the GTM section.
+   --tw-ring-color defaults to the KiteAI teal so bare `ring-2` reads on-theme. */
+:where(.gtm-scope) *,
+:where(.gtm-scope) *::before,
+:where(.gtm-scope) *::after {
+  --tw-translate-x: 0;
+  --tw-translate-y: 0;
+  --tw-rotate: 0;
+  --tw-skew-x: 0;
+  --tw-skew-y: 0;
+  --tw-scale-x: 1;
+  --tw-scale-y: 1;
+  --tw-pan-x: ;
+  --tw-pan-y: ;
+  --tw-pinch-zoom: ;
+  --tw-scroll-snap-strictness: proximity;
+  --tw-gradient-from-position: ;
+  --tw-gradient-via-position: ;
+  --tw-gradient-to-position: ;
+  --tw-ring-inset: ;
+  --tw-ring-offset-width: 0px;
+  --tw-ring-offset-color: #000;
+  --tw-ring-color: rgb(0 245 212 / 0.6);
+  --tw-ring-offset-shadow: 0 0 #0000;
+  --tw-ring-shadow: 0 0 #0000;
+  --tw-shadow: 0 0 #0000;
+  --tw-shadow-colored: 0 0 #0000;
+  --tw-blur: ;
+  --tw-brightness: ;
+  --tw-contrast: ;
+  --tw-grayscale: ;
+  --tw-hue-rotate: ;
+  --tw-invert: ;
+  --tw-saturate: ;
+  --tw-sepia: ;
+  --tw-drop-shadow: ;
+  --tw-backdrop-blur: ;
+  --tw-backdrop-brightness: ;
+  --tw-backdrop-contrast: ;
+  --tw-backdrop-grayscale: ;
+  --tw-backdrop-hue-rotate: ;
+  --tw-backdrop-invert: ;
+  --tw-backdrop-opacity: ;
+  --tw-backdrop-saturate: ;
+  --tw-backdrop-sepia: ;
+}
+
+/* Scoped Preflight — Tailwind's base reset, confined to the GTM section. Uses
+   :where(.gtm-scope) so it contributes ZERO specificity (exactly like Tailwind's real
+   preflight): utility classes (px-4, border, text-xl, …) still win. Global preflight
+   stays disabled so the rest of the platform SPA is untouched. */
+:where(.gtm-scope) *,
+:where(.gtm-scope) *::before,
+:where(.gtm-scope) *::after {
+  border-width: 0;
+  border-style: solid;
+  border-color: currentColor;
+}
+:where(.gtm-scope) h1, :where(.gtm-scope) h2, :where(.gtm-scope) h3,
+:where(.gtm-scope) h4, :where(.gtm-scope) h5, :where(.gtm-scope) h6 {
+  font-size: inherit;
+  font-weight: inherit;
+  margin: 0;
+}
+:where(.gtm-scope) p, :where(.gtm-scope) figure, :where(.gtm-scope) blockquote,
+:where(.gtm-scope) dl, :where(.gtm-scope) dd, :where(.gtm-scope) pre {
+  margin: 0;
+}
+:where(.gtm-scope) ol, :where(.gtm-scope) ul, :where(.gtm-scope) menu {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+:where(.gtm-scope) a {
+  color: inherit;
+  text-decoration: inherit;
+}
+:where(.gtm-scope) hr {
+  height: 0;
+  color: inherit;
+  border-top-width: 1px;
+}
+:where(.gtm-scope) img, :where(.gtm-scope) svg, :where(.gtm-scope) video,
+:where(.gtm-scope) canvas, :where(.gtm-scope) audio, :where(.gtm-scope) iframe,
+:where(.gtm-scope) embed, :where(.gtm-scope) object {
+  display: block;
+  vertical-align: middle;
+}
+:where(.gtm-scope) img, :where(.gtm-scope) video {
+  max-width: 100%;
+  height: auto;
+}
+:where(.gtm-scope) button, :where(.gtm-scope) input, :where(.gtm-scope) optgroup,
+:where(.gtm-scope) select, :where(.gtm-scope) textarea {
+  font-family: inherit;
+  font-feature-settings: inherit;
+  font-size: 100%;
+  font-weight: inherit;
+  line-height: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+  margin: 0;
+  padding: 0;
+}
+:where(.gtm-scope) button, :where(.gtm-scope) select {
+  text-transform: none;
+}
+:where(.gtm-scope) button,
+:where(.gtm-scope) input:where([type="button"]),
+:where(.gtm-scope) input:where([type="reset"]),
+:where(.gtm-scope) input:where([type="submit"]) {
+  -webkit-appearance: button;
+  appearance: button;
+  background-color: transparent;
+  background-image: none;
+  cursor: pointer;
+}
+:where(.gtm-scope) :disabled {
+  cursor: default;
+}
+:where(.gtm-scope) ::placeholder {
+  opacity: 1;
+  color: #9ca3af;
+}
+:where(.gtm-scope) table {
+  border-collapse: collapse;
+}
+:where(.gtm-scope) [hidden] {
+  display: none;
+}
+.gtm-scope {
+  position: relative;
+  min-height: 100vh;
+  background-color: #000000; /* platform base */
+  color: #ffffff; /* platform --text (pure white) */
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+.gtm-scope ::selection {
+  background-color: rgba(0, 245, 212, 0.25); /* KiteAI teal */
+}
+
+/* Embedded mode — when a GTM view (e.g. the Admin console) is rendered inside
+   another surface like the platform admin panel: no forced full height, and no
+   fixed-position ambient glow bleeding over the host page. */
+.gtm-scope.gtm-embed {
+  min-height: 0;
+}
+.gtm-scope.gtm-embed::before {
+  display: none;
+}
+
+/* Ambient drift glow — teal to match the platform shell, scoped + behind content. */
+.gtm-scope::before {
+  content: "";
+  position: fixed;
+  inset: -10%;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle at 20% 0%, rgba(0, 245, 212, 0.08), transparent 40%),
+    radial-gradient(circle at 80% 0%, rgba(0, 245, 212, 0.05), transparent 40%);
+  animation: ambient-drift 24s ease-in-out infinite;
+}
+.gtm-scope > * {
+  position: relative;
+  z-index: 1;
+}
+@keyframes ambient-drift {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(-1.5%, 2%); }
+}
+
+/* Themed scrollbar for dark horizontally-scrolling strips (category tab row). */
+.scrollbar-themed {
+  scrollbar-width: thin;
+  scrollbar-color: #1e2a35 transparent;
+}
+.scrollbar-themed::-webkit-scrollbar { height: 6px; width: 6px; }
+.scrollbar-themed::-webkit-scrollbar-track { background: transparent; }
+.scrollbar-themed::-webkit-scrollbar-thumb { background-color: #1e2a35; border-radius: 9999px; }
+.scrollbar-themed::-webkit-scrollbar-thumb:hover { background-color: #3d4a70; }
+
+@media (prefers-reduced-motion: reduce) {
+  .gtm-scope *,
+  .gtm-scope *::before,
+  .gtm-scope *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

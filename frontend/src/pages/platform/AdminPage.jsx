@@ -3,6 +3,8 @@ import { Link, Navigate, useSearchParams } from 'react-router-dom';
 import UsersTab from './admin/UsersTab';
 import AuditLogTab from './admin/AuditLogTab';
 import RegistryTab from './admin/RegistryTab';
+import GtmAdmin from '../../gtm/pages/Admin';
+import AgentIcon from '../../components/platform/AgentIcon';
 
 const API  = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 const TKEY = 'kiteai_admin_token';
@@ -121,7 +123,7 @@ export default function AdminPage() {
           {(ov?.sections || []).map(s => (
             <div key={s.id} className="admin-nav-group">
               <button className={`admin-nav-section${view === 'section' && sectionId === s.id ? ' active' : ''}`} onClick={() => openSection(s.id)}>
-                <span className="ni">{s.icon}</span> {s.name}
+                <span className="ni"><AgentIcon id={s.id} icon={s.icon} /></span> {s.name}
                 <span className="admin-nav-count">{s.liveCount}/{s.agentCount}</span>
               </button>
               {agentsIn(s.id).map(a => (
@@ -269,6 +271,19 @@ export default function AdminPage() {
                       <>
                         <h2 className="admin-h">Manage</h2>
                         <iframe title={`${a.name} admin console`} src={a.manageUrl} className="admin-embed-frame" />
+                      </>
+                    )}
+
+                    {a?.id === 'gtm' && (
+                      <>
+                        <h2 className="admin-h">Manage</h2>
+                        <p className="admin-note">Companies, analysis pipeline, and Gemini prompt templates — managed here without leaving the admin panel.</p>
+                        <div
+                          className="gtm-scope gtm-embed"
+                          style={{ borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border)', marginTop: 8 }}
+                        >
+                          <GtmAdmin />
+                        </div>
                       </>
                     )}
 

@@ -1,0 +1,12 @@
+# Keep `COPY . .` from overwriting the node_modules npm ci just built (host
+# builds are Windows — native binaries wouldn't run in the image) and from
+# baking local secrets or stale build output into the image.
+node_modules
+dist
+.env
+.env.*
+!.env.example
+*.db
+npm-debug.log*
+Dockerfile
+.dockerignore

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { llmClient } from "./llmClient.js";
+import { llmClient, llmCallWithRetry } from "./llmClient.js";
 import { buildClassificationPrompt } from "./prompt.js";
 import { extractJson } from "./extractJson.js";
 import { config } from "../config.js";
@@ -23,11 +23,14 @@ export async function classifyEvidence(
   categoryNames: string[]
 ): Promise<ClassificationResult> {
   try {
-    const response = await llmClient.chat.completions.create({
-      model: config.llmModel,
-      messages: [{ role: "user", content: await buildClassificationPrompt(ctx, candidate, categoryNames) }],
-      temperature: 0,
-    });
+    const prompt = await buildClassificationPrompt(ctx, candidate, categoryNames);
+    const response = await llmCallWithRetry(() =>
+      llmClient.chat.completions.create({
+        model: config.llmModel,
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0,
+      })
+    );
 
     const text = response.choices[0]?.message?.content ?? "";
     const raw = extractJson(text);

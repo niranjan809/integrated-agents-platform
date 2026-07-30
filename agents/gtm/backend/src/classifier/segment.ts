@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { llmClient } from "./llmClient.js";
+import { llmClient, llmCallWithRetry } from "./llmClient.js";
 import { extractJson } from "./extractJson.js";
 import { renderTemplate } from "./renderTemplate.js";
 import * as promptsRepo from "../db/prompts.repo.js";
@@ -29,11 +29,13 @@ export async function classifyCompanySegment(companyName: string, companyText: s
   });
 
   try {
-    const response = await llmClient.chat.completions.create({
-      model: config.llmModel,
-      messages: [{ role: "user", content: prompt }],
-      temperature: 0,
-    });
+    const response = await llmCallWithRetry(() =>
+      llmClient.chat.completions.create({
+        model: config.llmModel,
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0,
+      })
+    );
 
     const text = response.choices[0]?.message?.content ?? "";
     const parsed = SegmentSchema.parse(extractJson(text));

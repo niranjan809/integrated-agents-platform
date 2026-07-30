@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { llmClient } from "./llmClient.js";
+import { llmClient, llmCallWithRetry } from "./llmClient.js";
 import { extractJson } from "./extractJson.js";
 import { config } from "../config.js";
 
@@ -59,11 +59,13 @@ export async function selectOfficialWebsite(
   const prompt = WEBSITE_SELECTOR_PROMPT.replace("{{companyName}}", companyName).replace("{{candidateList}}", list);
 
   try {
-    const response = await llmClient.chat.completions.create({
-      model: config.llmModel,
-      messages: [{ role: "user", content: prompt }],
-      temperature: 0,
-    });
+    const response = await llmCallWithRetry(() =>
+      llmClient.chat.completions.create({
+        model: config.llmModel,
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0,
+      })
+    );
     const text = response.choices[0]?.message?.content ?? "";
     const parsed = Schema.parse(extractJson(text));
     if (!parsed.url) return null;

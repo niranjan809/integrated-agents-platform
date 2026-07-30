@@ -5,6 +5,12 @@
 FROM mcr.microsoft.com/playwright:v1.61.1-jammy AS base
 WORKDIR /app
 
+# Pin the browser location to the base image's pre-installed path. Set before
+# npm ci so install and runtime resolve the same directory: without it, launch
+# fell back to a per-user path (/home/<user>/pw-browsers) that has no Chromium,
+# so every scrape failed and runs produced no evidence.
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+
 # Deps first, so a source-only change doesn't reinstall node_modules.
 COPY package.json package-lock.json ./
 RUN npm ci
@@ -14,9 +20,11 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
-# Belt-and-braces: the base image pre-installs browsers at
-# PLAYWRIGHT_BROWSERS_PATH, this verifies the revision npm ci resolved is there.
-RUN npx playwright install chromium
+# Fallback if a build still reports a missing browser — i.e. this image tag
+# stopped shipping Chromium at /ms-playwright. Installs the revision npm ci
+# resolved into the pinned path. Left off by default: re-installing is what
+# scattered the browser across paths in the first place.
+# RUN npx playwright install chromium
 
 ENV NODE_ENV=production
 EXPOSE 8000

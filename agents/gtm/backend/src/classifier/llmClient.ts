@@ -4,9 +4,17 @@ import { config } from "../config.js";
 export const llmClient = new OpenAI({
   apiKey: config.openRouterApiKey,
   baseURL: "https://openrouter.ai/api/v1",
-  // Without these, a single transient hiccup fails the call permanently and the
-  // caller's catch turns it into a null classification — which reads as "no
-  // signal found" rather than "the request never completed".
+  // The SDK ships a nested node-fetch v2 (openai/node_modules/node-fetch@2.7.0)
+  // whose gunzip stream ends early on OpenRouter's gzipped responses, raising
+  // ERR_STREAM_PREMATURE_CLOSE on every single attempt — a deterministic
+  // failure that no amount of retrying can clear. Node's native fetch (undici)
+  // decompresses the same responses correctly, so hand the SDK that instead.
+  // Cast required: the SDK types this option against node-fetch v2's Request,
+  // which is structurally incompatible with the native/DOM one. The shapes the
+  // SDK actually uses (url, init, response body) line up at runtime.
+  fetch: globalThis.fetch as any,
+  // Retained from the retry fix: these cover genuine transient failures (429s,
+  // 5xx, real socket drops), which still exist independently of the gzip bug.
   maxRetries: 4,
   // 60s per request: classification responses are short, but OpenRouter routes
   // through upstream providers and can be slow to first byte.
